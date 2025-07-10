@@ -255,9 +255,7 @@ export function CourseViewer() {
           <video controls className="w-full rounded-xl mb-4">
             <source src={currentLesson.video_url} type="video/mp4" />
           </video>
-          <div className="prose max-w-none text-gray-800 whitespace-pre-line">
-            {currentLesson.content}
-          </div>
+          <div className="prose max-w-none text-gray-800 whitespace-pre-line" dangerouslySetInnerHTML={{ __html: currentLesson.content }} />
         </div>
       );
     } else if (currentLesson.video_url) {
@@ -279,9 +277,7 @@ export function CourseViewer() {
             <FileText className="inline w-6 h-6 mr-2 text-blue-500" />
             <span className="font-bold">Text Lesson</span>
           </div>
-          <div className="prose max-w-none text-gray-800 whitespace-pre-line">
-            {currentLesson.content}
-          </div>
+          <div className="prose max-w-none text-gray-800 whitespace-pre-line" dangerouslySetInnerHTML={{ __html: currentLesson.content }} />
         </div>
       );
     }

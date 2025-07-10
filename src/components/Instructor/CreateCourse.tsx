@@ -1,7 +1,10 @@
-import React, { useState } from 'react';
+import React, { useState, useRef, Suspense } from 'react';
 import { Sidebar } from '../Layout/Sidebar';
 import { Header } from '../Layout/Header';
 import { useCategories } from '../../hooks/useData';
+const ReactQuill = React.lazy(() => import('react-quill').then(module => ({ default: module.default })));
+import 'react-quill/dist/quill.snow.css';
+import { uploadToCloudinary } from '../../lib/cloudinary';
 
 const courseTypes = [
   { label: 'Text Only', value: 'text' },
@@ -10,7 +13,7 @@ const courseTypes = [
 ];
 
 function Stepper({ step }: { step: number }) {
-  const steps = ['Course Basics', 'Content', 'Assessments', 'Publish'];
+  const steps = ['Course Basics', 'Content', 'Publish'];
   return (
     <div className="flex items-center justify-center gap-4 mb-8">
       {steps.map((label, idx) => (
@@ -22,6 +25,66 @@ function Stepper({ step }: { step: number }) {
       ))}
     </div>
   );
+}
+
+// Video upload modal component
+function VideoUploadModal({ open, onClose, onUpload, progress, error }: {
+  open: boolean;
+  onClose: () => void;
+  onUpload: (file: File) => void;
+  progress: number;
+  error: string | null;
+}) {
+  const fileInputRef = useRef<HTMLInputElement>(null);
+  if (!open) return null;
+  return (
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-40">
+      <div className="bg-white rounded-xl shadow-2xl p-8 max-w-md w-full relative animate-fade-in">
+        <button
+          onClick={onClose}
+          className="absolute top-4 right-4 text-gray-400 hover:text-gray-700 text-2xl font-bold"
+          aria-label="Close"
+        >×</button>
+        <h2 className="text-xl font-bold mb-4">Upload Lesson Video</h2>
+        <input
+          type="file"
+          accept="video/mp4,video/x-matroska"
+          ref={fileInputRef}
+          className="mb-4"
+          onChange={e => {
+            const file = e.target.files?.[0];
+            if (file) onUpload(file);
+          }}
+        />
+        <div className="mb-2 text-xs text-gray-500">Max size: 50MB. Formats: mp4, mkv.</div>
+        {progress > 0 && (
+          <div className="w-full bg-gray-200 rounded-full h-3 mb-2">
+            <div
+              className="bg-blue-600 h-3 rounded-full transition-all duration-300"
+              style={{ width: `${progress}%` }}
+            />
+          </div>
+        )}
+        {error && <div className="text-red-600 text-sm mb-2">{error}</div>}
+      </div>
+    </div>
+  );
+}
+
+// Types for modules and lessons
+interface Lesson {
+  id: string;
+  title: string;
+  type: string;
+  content: string;
+  videoUrl?: string;
+  assignment?: string; // New field for assignment question
+  assignmentFile?: string; // New field for assignment file URL
+}
+interface Module {
+  id: string;
+  title: string;
+  lessons: Lesson[];
 }
 
 export default function CreateCourse() {
@@ -38,14 +101,32 @@ export default function CreateCourse() {
   const [error, setError] = useState('');
 
   // Content step state
-  const [modules, setModules] = useState([
-    // Example: { id: '1', title: 'Introduction', lessons: [{ id: '1-1', title: 'Welcome', type: 'text', content: '' }] }
-  ]);
+  const [modules, setModules] = useState<Module[]>([]);
   const [newModuleTitle, setNewModuleTitle] = useState('');
   const [activeModuleIdx, setActiveModuleIdx] = useState<number | null>(null);
   const [newLessonTitle, setNewLessonTitle] = useState('');
   const [newLessonType, setNewLessonType] = useState(format);
   const [newLessonContent, setNewLessonContent] = useState('');
+
+  // Accordion state for modules
+  const [openModuleIdx, setOpenModuleIdx] = useState<number | null>(0);
+
+  // Slugify helper
+  function slugify(text: string) {
+    return text
+      .toString()
+      .toLowerCase()
+      .trim()
+      .replace(/\s+/g, '-')
+      .replace(/&/g, '-and-')
+      .replace(/[\u0300-\u036f]/g, '')
+      .replace(/[^a-z0-9-]/g, '')
+      .replace(/--+/g, '-')
+      .replace(/^-+/, '')
+      .replace(/-+$/, '');
+  }
+
+  const [slugManuallyEdited, setSlugManuallyEdited] = useState(false);
 
   const handleNext = () => {
     if (!title || !slug || !category || !price || !description || !duration || !format) {
@@ -67,16 +148,24 @@ export default function CreateCourse() {
     setNewModuleTitle('');
   };
   // Add lesson to module
-  const handleAddLesson = (moduleIdx: number) => {
+  const handleAddLesson = async (moduleIdx: number) => {
     if (!newLessonTitle.trim()) return;
     const updatedModules = [...modules];
+    let fileUrl = '';
+    if (assignmentFile) {
+      const result = await uploadToCloudinary(assignmentFile, 'lms-assignments');
+      fileUrl = result.secure_url;
+    }
     updatedModules[moduleIdx].lessons.push({
       id: Date.now().toString(),
       title: newLessonTitle,
       type: newLessonType,
-      content: newLessonContent
+      content: newLessonContent,
+      assignment: assignmentQuestion,
+      assignmentFile: fileUrl
     });
-    setModules(updatedModules);
+    setAssignmentQuestion('');
+    setAssignmentFile(null);
     setNewLessonTitle('');
     setNewLessonType(format);
     setNewLessonContent('');
@@ -92,6 +181,63 @@ export default function CreateCourse() {
     updatedModules[moduleIdx].lessons.splice(lessonIdx, 1);
     setModules(updatedModules);
   };
+
+  // Video upload modal state
+  const [videoModal, setVideoModal] = useState<{ open: boolean; moduleIdx: number | null; lessonIdx: number | null }>({ open: false, moduleIdx: null, lessonIdx: null });
+  const [videoUploadProgress, setVideoUploadProgress] = useState(0);
+  const [videoUploadError, setVideoUploadError] = useState<string | null>(null);
+
+  // Real Cloudinary video upload
+  const handleVideoUpload = async (file: File) => {
+    if (file.size > 50 * 1024 * 1024) {
+      setVideoUploadError('File size exceeds 50MB.');
+      return;
+    }
+    setVideoUploadError(null);
+    setVideoUploadProgress(0);
+    try {
+      // Show progress bar (simulate, since fetch doesn't provide progress natively)
+      let progress = 0;
+      const fakeProgress = setInterval(() => {
+        progress += 10;
+        setVideoUploadProgress(Math.min(progress, 90));
+      }, 200);
+      const result = await uploadToCloudinary(file, 'lms-videos');
+      clearInterval(fakeProgress);
+      setVideoUploadProgress(100);
+      if (videoModal.moduleIdx !== null && videoModal.lessonIdx !== null) {
+        const updatedModules = [...modules];
+        updatedModules[videoModal.moduleIdx].lessons[videoModal.lessonIdx].videoUrl = result.secure_url;
+        setModules(updatedModules);
+      }
+      setTimeout(() => {
+        setVideoModal({ open: false, moduleIdx: null, lessonIdx: null });
+        setVideoUploadProgress(0);
+      }, 800);
+    } catch (err) {
+      setVideoUploadError('Upload failed. Please try again.');
+      setVideoUploadProgress(0);
+    }
+  };
+
+  // Assignment state for lesson-level assignments
+  const [assignmentQuestion, setAssignmentQuestion] = useState('');
+  const [assignmentFile, setAssignmentFile] = useState<File | null>(null);
+  const [assignmentFileUrl, setAssignmentFileUrl] = useState('');
+
+  // Helper to check if due date is in the future
+  function isFutureDate(dateStr: string) {
+    if (!dateStr) return false;
+    const today = new Date();
+    today.setHours(0,0,0,0);
+    const due = new Date(dateStr);
+    return due > today;
+  }
+
+  const [showPublishConfirm, setShowPublishConfirm] = useState(false);
+  const [showCelebration, setShowCelebration] = useState(false);
+  // TODO: Replace with real check for instructor's first course
+  const isFirstCourse = true; // Set to false if not first course
 
   return (
     <div className="min-h-screen bg-gray-50 flex">
@@ -110,7 +256,12 @@ export default function CreateCourse() {
                     <input
                       type="text"
                       value={title}
-                      onChange={e => setTitle(e.target.value)}
+                      onChange={e => {
+                        setTitle(e.target.value);
+                        if (!slugManuallyEdited) {
+                          setSlug(slugify(e.target.value));
+                        }
+                      }}
                       className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent text-lg font-semibold"
                       placeholder="Enter course title"
                     />
@@ -120,7 +271,10 @@ export default function CreateCourse() {
                     <input
                       type="text"
                       value={slug}
-                      onChange={e => setSlug(e.target.value)}
+                      onChange={e => {
+                        setSlug(e.target.value);
+                        setSlugManuallyEdited(true);
+                      }}
                       className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent text-lg font-semibold"
                       placeholder="e.g. react-for-beginners"
                     />
@@ -217,117 +371,355 @@ export default function CreateCourse() {
             {step === 2 && (
               <div>
                 <h2 className="text-2xl font-bold mb-6 text-gray-900">Course Content</h2>
-                <div className="mb-6">
-                  <label className="block text-sm font-medium mb-2">Add Section/Module</label>
-                  <div className="flex gap-2 mb-2">
-                    <input
-                      type="text"
-                      value={newModuleTitle}
-                      onChange={e => setNewModuleTitle(e.target.value)}
-                      className="flex-1 px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent text-lg font-semibold"
-                      placeholder="e.g. Introduction"
-                    />
-                    <button
-                      className="px-4 py-3 rounded-lg bg-blue-600 text-white font-semibold hover:bg-blue-700 transition"
-                      onClick={handleAddModule}
-                      type="button"
-                    >Add Section</button>
-                  </div>
+                <div className="mb-6 flex flex-col md:flex-row gap-4 items-start md:items-end">
+                  <input
+                    type="text"
+                    value={newModuleTitle}
+                    onChange={e => setNewModuleTitle(e.target.value)}
+                    className="flex-1 px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent text-lg font-semibold"
+                    placeholder="e.g. Introduction"
+                  />
+                  <button
+                    className="px-4 py-3 rounded-lg bg-blue-600 text-white font-semibold hover:bg-blue-700 transition"
+                    onClick={handleAddModule}
+                    type="button"
+                  >Add Section</button>
                 </div>
                 <div className="space-y-6">
                   {modules.map((mod, mIdx) => (
                     <div key={mod.id} className="bg-gray-50 rounded-xl p-4 shadow-sm">
                       <div className="flex items-center justify-between mb-2">
-                        <div className="font-bold text-lg text-gray-900">{mod.title}</div>
+                        <div className="flex items-center gap-2">
+                          <button
+                            className="w-6 h-6 flex items-center justify-center rounded-full border border-gray-300 bg-white text-gray-700 hover:bg-blue-50 focus:outline-none"
+                            onClick={() => setOpenModuleIdx(openModuleIdx === mIdx ? null : mIdx)}
+                            aria-label={openModuleIdx === mIdx ? 'Collapse' : 'Expand'}
+                          >
+                            {openModuleIdx === mIdx ? <span>&#8722;</span> : <span>&#43;</span>}
+                          </button>
+                          <span className="font-bold text-lg text-gray-900">{mod.title}</span>
+                        </div>
                         <button className="text-red-500 hover:underline text-sm" onClick={() => handleRemoveModule(mIdx)}>Remove</button>
                       </div>
-                      <div className="ml-4">
-                        <div className="mb-2 flex items-center gap-2">
-                          <button
-                            className="px-3 py-1 rounded bg-blue-50 text-blue-700 hover:bg-blue-100 text-sm font-semibold"
-                            onClick={() => setActiveModuleIdx(mIdx)}
-                            type="button"
-                          >Add Lesson</button>
-                        </div>
-                        <div className="space-y-2">
-                          {mod.lessons.map((lesson, lIdx) => (
-                            <div key={lesson.id} className="bg-white rounded-lg p-3 flex items-center justify-between border border-gray-200">
-                              <div>
-                                <div className="font-semibold text-gray-900">{lesson.title}</div>
-                                <div className="text-xs text-gray-500">{lesson.type === 'text' ? 'Text' : lesson.type === 'video' ? 'Video' : 'Mixed'}</div>
-                              </div>
-                              <button className="text-red-500 hover:underline text-xs" onClick={() => handleRemoveLesson(mIdx, lIdx)}>Remove</button>
+                      {openModuleIdx === mIdx && (
+                        <div>
+                          <div className="ml-4">
+                            <div className="mb-2 flex items-center gap-2">
+                              <button
+                                className="px-3 py-1 rounded bg-blue-50 text-blue-700 hover:bg-blue-100 text-sm font-semibold"
+                                onClick={() => setActiveModuleIdx(mIdx)}
+                                type="button"
+                              >Add Lesson</button>
+                              <button
+                                className="px-3 py-1 rounded bg-red-50 text-red-700 hover:bg-red-100 text-sm font-semibold"
+                                onClick={() => handleRemoveModule(mIdx)}
+                                type="button"
+                              >Remove Section</button>
                             </div>
-                          ))}
-                        </div>
-                      </div>
-                      {/* Add Lesson Form */}
-                      {activeModuleIdx === mIdx && (
-                        <div className="mt-4 bg-white rounded-lg p-4 border border-blue-200">
-                          <div className="mb-2">
-                            <label className="block text-sm font-medium mb-1">Lesson Title</label>
-                            <input
-                              type="text"
-                              value={newLessonTitle}
-                              onChange={e => setNewLessonTitle(e.target.value)}
-                              className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent text-base font-semibold"
-                              placeholder="e.g. Welcome"
-                            />
+                            <div className="space-y-2">
+                              {mod.lessons.map((lesson, lIdx) => (
+                                <div key={lesson.id} className="bg-white rounded-lg p-3 flex items-center justify-between border border-gray-200">
+                                  <div>
+                                    <div className="font-semibold text-gray-900">{lesson.title}</div>
+                                    <div className="text-xs text-gray-500">{lesson.type === 'text' ? 'Text' : lesson.type === 'video' ? 'Video' : 'Mixed'}</div>
+                                  </div>
+                                  <button className="text-red-500 hover:underline text-xs" onClick={() => handleRemoveLesson(mIdx, lIdx)}>Remove</button>
+                                </div>
+                              ))}
+                            </div>
                           </div>
-                          <div className="mb-2">
-                            <label className="block text-sm font-medium mb-1">Lesson Type</label>
-                            <select
-                              value={newLessonType}
-                              onChange={e => setNewLessonType(e.target.value)}
-                              className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent text-base font-semibold"
-                            >
-                              <option value="text">Text</option>
-                              <option value="video">Video</option>
-                              <option value="mixed">Mixed</option>
-                            </select>
-                          </div>
-                          <div className="mb-2">
-                            <label className="block text-sm font-medium mb-1">Lesson Content</label>
-                            <textarea
-                              value={newLessonContent}
-                              onChange={e => setNewLessonContent(e.target.value)}
-                              className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent text-base font-semibold min-h-[60px]"
-                              placeholder="Lesson content or video link..."
-                            />
-                          </div>
-                          <div className="flex gap-2 justify-end">
-                            <button
-                              className="px-4 py-2 rounded-lg bg-gray-100 text-gray-700 font-semibold hover:bg-gray-200 transition"
-                              onClick={() => setActiveModuleIdx(null)}
-                              type="button"
-                            >Cancel</button>
-                            <button
-                              className="px-4 py-2 rounded-lg bg-blue-600 text-white font-semibold hover:bg-blue-700 transition"
-                              onClick={() => handleAddLesson(mIdx)}
-                              type="button"
-                            >Add Lesson</button>
-                          </div>
+                          {/* Add Lesson Form */}
+                          {activeModuleIdx === mIdx && (
+                            <div className="mt-4 bg-white rounded-lg p-4 border border-blue-200">
+                              <div className="mb-2">
+                                <label className="block text-sm font-medium mb-1">Lesson Title</label>
+                                <input
+                                  type="text"
+                                  value={newLessonTitle}
+                                  onChange={e => setNewLessonTitle(e.target.value)}
+                                  className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent text-base font-semibold"
+                                  placeholder="e.g. Welcome"
+                                />
+                              </div>
+                              <div className="mb-2">
+                                <label className="block text-sm font-medium mb-1">Lesson Type</label>
+                                <select
+                                  value={newLessonType}
+                                  onChange={e => setNewLessonType(e.target.value)}
+                                  className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent text-base font-semibold"
+                                >
+                                  <option value="text">Text</option>
+                                  <option value="video">Video</option>
+                                  <option value="mixed">Mixed</option>
+                                </select>
+                              </div>
+                              {/* Content for lesson type */}
+                              {newLessonType === 'text' && (
+                                <div className="mb-2">
+                                  <label className="block text-sm font-medium mb-1">Lesson Content</label>
+                                  <Suspense fallback={<div>Loading editor...</div>}>
+                                    <ReactQuill
+                                      value={newLessonContent}
+                                      onChange={setNewLessonContent}
+                                      className="bg-white rounded-lg"
+                                      theme="snow"
+                                      placeholder="Lesson content..."
+                                      modules={{
+                                        toolbar: [
+                                          [{ 'header': [1, 2, 3, false] }],
+                                          ['bold', 'italic', 'underline', 'strike'],
+                                          [{ 'list': 'ordered'}, { 'list': 'bullet' }],
+                                          ['blockquote', 'code-block'],
+                                          ['link', 'image', 'video'],
+                                          [{ 'align': [] }],
+                                          ['clean']
+                                        ]
+                                      }}
+                                      style={{ minHeight: 200, height: 200 }}
+                                    />
+                                  </Suspense>
+                                </div>
+                              )}
+                              {newLessonType === 'video' && (
+                                <div className="mb-2">
+                                  <label className="block text-sm font-medium mb-1">Lesson Video</label>
+                                  <button
+                                    className="px-4 py-2 rounded-lg bg-blue-600 text-white font-semibold hover:bg-blue-700 transition"
+                                    type="button"
+                                    onClick={() => setVideoModal({ open: true, moduleIdx: mIdx, lessonIdx: modules[mIdx].lessons.length })}
+                                  >Upload Video</button>
+                                  {videoModal.open && videoModal.moduleIdx === mIdx && videoModal.lessonIdx === modules[mIdx].lessons.length && (
+                                    <VideoUploadModal
+                                      open={videoModal.open}
+                                      onClose={() => setVideoModal({ open: false, moduleIdx: null, lessonIdx: null })}
+                                      onUpload={handleVideoUpload}
+                                      progress={videoUploadProgress}
+                                      error={videoUploadError}
+                                    />
+                                  )}
+                                  {/* Show video preview if uploaded */}
+                                  {modules[mIdx].lessons[modules[mIdx].lessons.length - 1]?.videoUrl && (
+                                    <video
+                                      src={modules[mIdx].lessons[modules[mIdx].lessons.length - 1].videoUrl}
+                                      controls
+                                      className="w-full rounded-lg mt-2"
+                                      style={{ maxHeight: 240 }}
+                                    />
+                                  )}
+                                </div>
+                              )}
+                              {newLessonType === 'mixed' && (
+                                <>
+                                  <div className="mb-2">
+                                    <label className="block text-sm font-medium mb-1">Lesson Content</label>
+                                    <Suspense fallback={<div>Loading editor...</div>}>
+                                      <ReactQuill
+                                        value={newLessonContent}
+                                        onChange={setNewLessonContent}
+                                        className="bg-white rounded-lg"
+                                        theme="snow"
+                                        placeholder="Lesson content..."
+                                        modules={{
+                                          toolbar: [
+                                            [{ 'header': [1, 2, 3, false] }],
+                                            ['bold', 'italic', 'underline', 'strike'],
+                                            [{ 'list': 'ordered'}, { 'list': 'bullet' }],
+                                            ['blockquote', 'code-block'],
+                                            ['link', 'image', 'video'],
+                                            [{ 'align': [] }],
+                                            ['clean']
+                                          ]
+                                        }}
+                                        style={{ minHeight: 200, height: 200 }}
+                                      />
+                                    </Suspense>
+                                  </div>
+                                  <div className="mb-2">
+                                    <label className="block text-sm font-medium mb-1">Lesson Video</label>
+                                    <button
+                                      className="px-4 py-2 rounded-lg bg-blue-600 text-white font-semibold hover:bg-blue-700 transition"
+                                      type="button"
+                                      onClick={() => setVideoModal({ open: true, moduleIdx: mIdx, lessonIdx: modules[mIdx].lessons.length })}
+                                    >Upload Video</button>
+                                    {videoModal.open && videoModal.moduleIdx === mIdx && videoModal.lessonIdx === modules[mIdx].lessons.length && (
+                                      <VideoUploadModal
+                                        open={videoModal.open}
+                                        onClose={() => setVideoModal({ open: false, moduleIdx: null, lessonIdx: null })}
+                                        onUpload={handleVideoUpload}
+                                        progress={videoUploadProgress}
+                                        error={videoUploadError}
+                                      />
+                                    )}
+                                    {/* Show video preview if uploaded */}
+                                    {modules[mIdx].lessons[modules[mIdx].lessons.length - 1]?.videoUrl && (
+                                      <video
+                                        src={modules[mIdx].lessons[modules[mIdx].lessons.length - 1].videoUrl}
+                                        controls
+                                        className="w-full rounded-lg mt-2"
+                                        style={{ maxHeight: 240 }}
+                                      />
+                                    )}
+                                  </div>
+                                </>
+                              )}
+                              {/* Assignment section (optional) */}
+                              <div className="mt-8">
+                                <label className="block text-sm font-medium mb-1">Assignment (optional)</label>
+                                <Suspense fallback={<div>Loading editor...</div>}>
+                                  <ReactQuill
+                                    value={assignmentQuestion}
+                                    onChange={setAssignmentQuestion}
+                                    className="bg-white rounded-lg"
+                                    theme="snow"
+                                    placeholder="Assignment question (optional)"
+                                    modules={{
+                                      toolbar: [
+                                        [{ 'header': [1, 2, 3, false] }],
+                                        ['bold', 'italic', 'underline', 'strike'],
+                                        [{ 'list': 'ordered'}, { 'list': 'bullet' }],
+                                        ['blockquote', 'code-block'],
+                                        ['link', 'image', 'video'],
+                                        [{ 'align': [] }],
+                                        ['clean']
+                                      ]
+                                    }}
+                                    style={{ minHeight: 120, height: 120 }}
+                                  />
+                                </Suspense>
+                                <input
+                                  type="file"
+                                  accept=".pdf,.doc,.docx,.zip,.rar,.jpg,.png"
+                                  onChange={e => setAssignmentFile(e.target.files?.[0] || null)}
+                                  className="mt-2"
+                                />
+                              </div>
+                              <div className="mt-14 flex gap-2 justify-end">
+                                <button
+                                  className="px-4 py-2 rounded-lg bg-gray-100 text-gray-700 font-semibold hover:bg-gray-200 transition"
+                                  onClick={() => setActiveModuleIdx(null)}
+                                  type="button"
+                                >Cancel</button>
+                                <button
+                                  className="px-4 py-2 rounded-lg bg-blue-600 text-white font-semibold hover:bg-blue-700 transition"
+                                  onClick={() => handleAddLesson(mIdx)}
+                                  type="button"
+                                >Add Lesson</button>
+                              </div>
+                            </div>
+                          )}
                         </div>
                       )}
                     </div>
                   ))}
                 </div>
+                {error && <div className="text-red-600 mt-4 font-medium">{error}</div>}
+                <div className="flex justify-between mt-8">
+                  <button
+                    className="px-6 py-3 rounded-lg bg-gray-100 text-gray-700 font-semibold hover:bg-gray-200 transition text-lg"
+                    onClick={handleBack}
+                  >
+                    Back
+                  </button>
+                  <button
+                    className="px-6 py-3 rounded-lg bg-blue-600 text-white font-semibold hover:bg-blue-700 transition text-lg"
+                    onClick={() => {
+                      if (modules.length === 0 || modules.every(m => m.lessons.length === 0)) {
+                        setError('Please add at least one module with at least one lesson before proceeding.');
+                        return;
+                      }
+                      setError('');
+                      setStep(3);
+                    }}
+                  >
+                    Next
+                  </button>
+                </div>
               </div>
             )}
-            {step > 1 && (
-              <div className="flex justify-between mt-8">
-                <button
-                  className="px-6 py-3 rounded-lg bg-gray-100 text-gray-700 font-semibold hover:bg-gray-200 transition text-lg"
-                  onClick={handleBack}
-                >
-                  Back
-                </button>
-                <button
-                  className="px-6 py-3 rounded-lg bg-blue-600 text-white font-semibold hover:bg-blue-700 transition text-lg"
-                  disabled
-                >
-                  Next
-                </button>
+            {step === 3 && (
+              <div>
+                <h2 className="text-2xl font-bold mb-6 text-gray-900">Publish Course</h2>
+                <div className="bg-white rounded-xl shadow p-6 mb-8 max-w-3xl mx-auto">
+                  <div className="flex flex-col md:flex-row gap-8">
+                    <div className="flex-shrink-0">
+                      {cover ? (
+                        <img src={URL.createObjectURL(cover)} alt="cover preview" className="h-40 w-64 object-cover rounded-lg shadow" />
+                      ) : (
+                        <div className="h-40 w-64 bg-gray-200 rounded-lg flex items-center justify-center text-gray-400">No Cover</div>
+                      )}
+                    </div>
+                    <div className="flex-1 space-y-2">
+                      <div className="text-2xl font-bold text-blue-700">{title}</div>
+                      <div className="text-gray-500 text-sm">Slug: <span className="font-mono">{slug}</span></div>
+                      <div className="text-gray-700">Category: <span className="font-semibold">{categories.find(c => c.id === category)?.name}</span></div>
+                      <div className="text-gray-700">Type: <span className="font-semibold">{courseTypes.find(t => t.value === format)?.label}</span></div>
+                      <div className="text-gray-700">Price: <span className="font-semibold">₦{price}</span></div>
+                      <div className="text-gray-700">Duration: <span className="font-semibold">{duration} hours</span></div>
+                      <div className="text-gray-700">Description:</div>
+                      <div className="prose max-w-none text-gray-800 bg-gray-50 rounded p-2">{description}</div>
+                    </div>
+                  </div>
+                  <div className="mt-8">
+                    <h3 className="text-lg font-bold mb-2">Modules & Lessons</h3>
+                    <div className="space-y-4">
+                      {modules.map((mod, mIdx) => (
+                        <div key={mod.id} className="bg-blue-50 rounded-lg p-4">
+                          <div className="font-bold text-blue-800 mb-2">{mod.title}</div>
+                          <ul className="space-y-2 ml-4">
+                            {mod.lessons.map((lesson, lIdx) => (
+                              <li key={lesson.id} className="bg-white rounded p-3 shadow flex flex-col gap-1">
+                                <div className="font-semibold text-gray-900">{lesson.title}</div>
+                                <div className="text-xs text-gray-500">{lesson.type === 'text' ? 'Text' : lesson.type === 'video' ? 'Video' : 'Mixed'}</div>
+                                {lesson.assignment && (
+                                  <div className="mt-2 p-2 bg-yellow-50 rounded">
+                                    <div className="font-semibold text-yellow-700">Assignment</div>
+                                    <div className="prose max-w-none text-gray-800" dangerouslySetInnerHTML={{ __html: lesson.assignment }} />
+                                    {lesson.assignmentFile && <a href={lesson.assignmentFile} target="_blank" rel="noopener noreferrer" className="text-blue-600 underline text-xs">View Attachment</a>}
+                                  </div>
+                                )}
+                              </li>
+                            ))}
+                          </ul>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                </div>
+                <div className="flex justify-end gap-4">
+                  <button className="px-6 py-3 rounded-lg bg-gray-100 text-gray-700 font-semibold hover:bg-gray-200 transition text-lg" onClick={handleBack}>Back</button>
+                  <button className="px-6 py-3 rounded-lg bg-green-600 text-white font-semibold hover:bg-green-700 transition text-lg" onClick={() => setShowPublishConfirm(true)}>Publish</button>
+                </div>
+                {/* Publish confirmation popup */}
+                {showPublishConfirm && (
+                  <div className="fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-40">
+                    <div className="bg-white rounded-xl shadow-2xl p-8 max-w-md w-full relative animate-fade-in text-center">
+                      <h2 className="text-xl font-bold mb-4">Confirm Publish</h2>
+                      <p className="mb-6">Are you sure you want to publish this course?</p>
+                      <div className="flex justify-center gap-4">
+                        <button className="px-6 py-3 bg-gray-200 text-gray-800 rounded-lg font-semibold shadow hover:bg-gray-300 transition" onClick={() => setShowPublishConfirm(false)}>Cancel</button>
+                        <button className="px-6 py-3 bg-green-600 text-white rounded-lg font-semibold shadow hover:bg-green-700 transition" onClick={() => { setShowPublishConfirm(false); setShowCelebration(true); }}>Yes, Publish</button>
+                      </div>
+                    </div>
+                  </div>
+                )}
+                {/* Celebration Modal */}
+                {showCelebration && (
+                  <div className="fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-50">
+                    <div className="bg-white rounded-xl p-8 shadow-2xl text-center max-w-md w-full relative">
+                      <button className="absolute top-4 right-4 text-gray-400 hover:text-gray-700 text-2xl font-bold" onClick={() => setShowCelebration(false)}>×</button>
+                      <h2 className="text-2xl font-bold mb-4">Congratulations!</h2>
+                      <p className="mb-6">
+                        {isFirstCourse
+                          ? 'You have published your first course! 🎉 This is a big milestone. '
+                          : 'Your course has been published successfully!'}
+                      </p>
+                      <button className="px-6 py-3 bg-blue-600 text-white rounded-lg font-semibold shadow hover:bg-blue-700 transition mb-4">Boost Course</button>
+                      <div>
+                        <button className="px-6 py-3 bg-gray-200 text-gray-800 rounded-lg font-semibold shadow hover:bg-gray-300 transition" onClick={() => setShowCelebration(false)}>Close</button>
+                      </div>
+                    </div>
+                  </div>
+                )}
               </div>
             )}
           </div>
