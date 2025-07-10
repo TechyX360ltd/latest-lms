@@ -48,6 +48,7 @@ import { CertificateVerificationPage } from './pages/CertificateVerificationPage
 import CertificatePage from './pages/CertificatePage';
 import AdminUserDetailPage from './pages/AdminUserDetailPage';
 import InstructorMyCourses from './components/Instructor/InstructorMyCourses';
+import Enrollments from './components/Instructor/Enrollments';
 import CreateCourse from './components/Instructor/CreateCourse';
 
 function AuthPage() {
@@ -221,6 +222,14 @@ function AppContent() {
           element={
             <ProtectedRoute allowedRoles={['instructor']}>
               <InstructorMyCourses />
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="/instructor/enrollments"
+          element={
+            <ProtectedRoute allowedRoles={['instructor']}>
+              <Enrollments />
             </ProtectedRoute>
           }
         />

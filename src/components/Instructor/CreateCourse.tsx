@@ -5,6 +5,8 @@ import { useCategories } from '../../hooks/useData';
 const ReactQuill = React.lazy(() => import('react-quill').then(module => ({ default: module.default })));
 import 'react-quill/dist/quill.snow.css';
 import { uploadToCloudinary } from '../../lib/cloudinary';
+import Confetti from 'react-confetti';
+import { FaTrophy } from 'react-icons/fa';
 
 const courseTypes = [
   { label: 'Text Only', value: 'text' },
@@ -704,20 +706,33 @@ export default function CreateCourse() {
                 )}
                 {/* Celebration Modal */}
                 {showCelebration && (
-                  <div className="fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-50">
-                    <div className="bg-white rounded-xl p-8 shadow-2xl text-center max-w-md w-full relative">
+                  <div className="fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-50 animate-fade-in">
+                    <Confetti width={window.innerWidth} height={window.innerHeight} numberOfPieces={350} recycle={false} gravity={0.25} />
+                    <div className="bg-white rounded-2xl p-10 shadow-2xl text-center max-w-md w-full relative animate-celebrate-modal">
                       <button className="absolute top-4 right-4 text-gray-400 hover:text-gray-700 text-2xl font-bold" onClick={() => setShowCelebration(false)}>×</button>
-                      <h2 className="text-2xl font-bold mb-4">Congratulations!</h2>
-                      <p className="mb-6">
-                        {isFirstCourse
-                          ? 'You have published your first course! 🎉 This is a big milestone. '
-                          : 'Your course has been published successfully!'}
-                      </p>
-                      <button className="px-6 py-3 bg-blue-600 text-white rounded-lg font-semibold shadow hover:bg-blue-700 transition mb-4">Boost Course</button>
-                      <div>
-                        <button className="px-6 py-3 bg-gray-200 text-gray-800 rounded-lg font-semibold shadow hover:bg-gray-300 transition" onClick={() => setShowCelebration(false)}>Close</button>
+                      <div className="flex flex-col items-center mb-4">
+                        <span className="inline-block bg-gradient-to-tr from-yellow-400 via-pink-500 to-blue-500 p-4 rounded-full shadow-lg mb-2 animate-bounce">
+                          <FaTrophy className="text-white text-4xl drop-shadow" />
+                        </span>
+                        <h2 className="text-3xl font-extrabold bg-gradient-to-r from-blue-600 via-pink-500 to-yellow-400 bg-clip-text text-transparent mb-2">Congratulations!</h2>
                       </div>
+                      <div className="text-lg text-gray-700 mb-6">
+                        {isFirstCourse
+                          ? <><span className="font-semibold text-blue-700">You have published your first course!</span> <span role="img" aria-label="party">🎉</span> This is a <span className="font-semibold text-pink-600">big milestone</span>.</>
+                          : <>Your course has been <span className="font-semibold text-green-600">published successfully!</span></>}
+                      </div>
+                      <div className="border-t border-gray-200 my-6"></div>
+                      <button className="w-full px-6 py-3 bg-gradient-to-r from-blue-600 via-pink-500 to-yellow-400 text-white rounded-xl font-bold shadow-lg hover:scale-105 transition mb-4 flex items-center justify-center gap-2 text-lg">
+                        <FaTrophy className="text-white text-xl" /> Boost Course
+                      </button>
+                      <button className="w-full px-6 py-3 bg-gray-100 text-gray-800 rounded-xl font-semibold shadow hover:bg-gray-200 transition" onClick={() => setShowCelebration(false)}>Close</button>
                     </div>
+                    <style>{`
+                      .animate-fade-in { animation: fadeIn 0.3s ease; }
+                      .animate-celebrate-modal { animation: scaleIn 0.4s cubic-bezier(.4,2,.6,1) both; }
+                      @keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
+                      @keyframes scaleIn { from { opacity: 0; transform: scale(0.85); } to { opacity: 1; transform: scale(1); } }
+                    `}</style>
                   </div>
                 )}
               </div>

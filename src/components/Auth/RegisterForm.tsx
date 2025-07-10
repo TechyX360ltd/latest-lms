@@ -152,137 +152,137 @@ export function RegisterForm() {
         <div className="w-full max-w-md p-4 bg-white rounded-2xl shadow-2xl md:max-w-2xl md:w-[90vw] md:p-8 md:max-h-[90vh] md:overflow-y-auto md:scrollbar-thin md:scrollbar-thumb-blue-200 md:scrollbar-track-blue-50">
           <div className="flex flex-col items-center mb-8">
             {/* Logo or App Name */}
-            <img
-              src="/BLACK-1-removebg-preview.png"
-              alt="TECHYX 360"
+          <img 
+            src="/BLACK-1-removebg-preview.png" 
+            alt="TECHYX 360" 
               className="h-12 w-auto mb-4"
               onError={e => { (e.target as HTMLImageElement).style.display = 'none'; }}
-            />
+          />
             <h2 className="text-3xl font-bold text-gray-900 mb-2">Welcome Back</h2>
-          </div>
-          <form onSubmit={handleSubmit} className="space-y-6">
-            <div className="flex gap-4">
-              <div className="w-1/2">
-                <label className="block text-sm font-medium text-gray-700 mb-2">
+      </div>
+      <form onSubmit={handleSubmit} className="space-y-6">
+        <div className="flex gap-4">
+          <div className="w-1/2">
+            <label className="block text-sm font-medium text-gray-700 mb-2">
                   First Name <span className="text-red-500">*</span>
-                </label>
-                <div className="relative">
-                  <User className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-5 h-5" />
-                  <input
-                    type="text"
-                    name="firstName"
-                    value={formData.firstName}
-                    onChange={handleChange}
-                    className="w-full pl-10 pr-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                    placeholder="John"
-                    required
-                  />
-                </div>
-              </div>
-              <div className="w-1/2">
-                <label className="block text-sm font-medium text-gray-700 mb-2">
+            </label>
+            <div className="relative">
+              <User className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-5 h-5" />
+              <input
+                type="text"
+                name="firstName"
+                value={formData.firstName}
+                onChange={handleChange}
+                className="w-full pl-10 pr-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                placeholder="John"
+                required
+              />
+            </div>
+          </div>
+          <div className="w-1/2">
+            <label className="block text-sm font-medium text-gray-700 mb-2">
                   Last Name <span className="text-red-500">*</span>
-                </label>
-                <div className="relative">
-                  <User className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-5 h-5" />
-                  <input
-                    type="text"
-                    name="lastName"
-                    value={formData.lastName}
-                    onChange={handleChange}
-                    className="w-full pl-10 pr-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                    placeholder="Doe"
-                    required
-                  />
-                </div>
-              </div>
+            </label>
+            <div className="relative">
+              <User className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-5 h-5" />
+              <input
+                type="text"
+                name="lastName"
+                value={formData.lastName}
+                onChange={handleChange}
+                className="w-full pl-10 pr-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                placeholder="Doe"
+                required
+              />
             </div>
+          </div>
+        </div>
 
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">
+        <div>
+          <label className="block text-sm font-medium text-gray-700 mb-2">
                 Email Address <span className="text-red-500">*</span>
-                <span className="ml-2 text-xs text-orange-500">(This will also be your payout email)</span>
-              </label>
-              <div className="relative">
-                <Mail className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-5 h-5" />
-                <input
-                  type="email"
-                  name="email"
-                  value={formData.email}
-                  onChange={handleChange}
-                  className="w-full pl-10 pr-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                  placeholder="john@example.com"
-                  required
-                />
-              </div>
-            </div>
+            <span className="ml-2 text-xs text-orange-500">(This will also be your payout email)</span>
+          </label>
+          <div className="relative">
+            <Mail className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-5 h-5" />
+            <input
+              type="email"
+              name="email"
+              value={formData.email}
+              onChange={handleChange}
+              className="w-full pl-10 pr-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+              placeholder="john@example.com"
+              required
+            />
+          </div>
+        </div>
 
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">
+        <div>
+          <label className="block text-sm font-medium text-gray-700 mb-2">
                 Phone <span className="text-red-500">*</span>
-              </label>
-              <div className="relative">
-                <Phone className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-5 h-5" />
-                <input
+          </label>
+          <div className="relative">
+            <Phone className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-5 h-5" />
+            <input
                   type="text"
-                  name="phone"
-                  value={formData.phone}
-                  onChange={handleChange}
-                  className="w-full pl-10 pr-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+              name="phone"
+              value={formData.phone}
+              onChange={handleChange}
+              className="w-full pl-10 pr-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
                   placeholder="e.g. +2348012345678"
-                  required
-                />
-              </div>
-            </div>
+              required
+            />
+          </div>
+        </div>
 
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">
+        <div>
+          <label className="block text-sm font-medium text-gray-700 mb-2">
                 Password <span className="text-red-500">*</span>
-              </label>
-              <div className="relative">
-                <Lock className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-5 h-5" />
-                <input
-                  type={showPassword ? 'text' : 'password'}
-                  name="password"
-                  value={formData.password}
-                  onChange={handleChange}
+          </label>
+          <div className="relative">
+            <Lock className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-5 h-5" />
+            <input
+              type={showPassword ? 'text' : 'password'}
+              name="password"
+              value={formData.password}
+              onChange={handleChange}
                   className="w-full pl-10 pr-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                  placeholder="Enter your password"
-                  required
+              placeholder="Enter your password"
+              required
                   autoComplete="new-password"
-                />
-                <button
-                  type="button"
+            />
+            <button
+              type="button"
                   onClick={() => setShowPassword((prev: boolean) => !prev)}
-                  className="absolute right-3 top-1/2 transform -translate-y-1/2 text-gray-400 hover:text-gray-600"
-                >
-                  {showPassword ? <EyeOff className="w-5 h-5" /> : <Eye className="w-5 h-5" />}
-                </button>
-              </div>
-            </div>
-            <div>
+              className="absolute right-3 top-1/2 transform -translate-y-1/2 text-gray-400 hover:text-gray-600"
+            >
+              {showPassword ? <EyeOff className="w-5 h-5" /> : <Eye className="w-5 h-5" />}
+            </button>
+          </div>
+        </div>
+        <div>
               <label className="block text-sm font-medium text-gray-700 mb-2">
                 Confirm Password <span className="text-red-500">*</span>
               </label>
-              <div className="relative">
-                <Lock className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-5 h-5" />
-                <input
-                  type={showPassword ? 'text' : 'password'}
-                  name="confirmPassword"
-                  value={formData.confirmPassword}
-                  onChange={handleChange}
+          <div className="relative">
+            <Lock className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-5 h-5" />
+            <input
+              type={showPassword ? 'text' : 'password'}
+              name="confirmPassword"
+              value={formData.confirmPassword}
+              onChange={handleChange}
                   className="w-full pl-10 pr-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                  placeholder="Confirm your password"
-                  required
+              placeholder="Confirm your password"
+              required
                   autoComplete="new-password"
-                />
-              </div>
-            </div>
+            />
+          </div>
+        </div>
 
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-2">
                 Role <span className="text-red-500">*</span>
-              </label>
+          </label>
               <select
                 name="role"
                 value={formData.role}
@@ -293,55 +293,55 @@ export function RegisterForm() {
                 <option value="learner">Learner</option>
                 <option value="instructor">Instructor</option>
               </select>
+        </div>
+
+        {formData.role === 'instructor' && (
+          <>
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-2">Expertise</label>
+              <input
+                type="text"
+                name="expertise"
+                value={formData.expertise}
+                onChange={handleChange}
+                className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                placeholder="e.g. Web Development, Data Science"
+                required
+              />
             </div>
+          </>
+        )}
 
-            {formData.role === 'instructor' && (
-              <>
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">Expertise</label>
-                  <input
-                    type="text"
-                    name="expertise"
-                    value={formData.expertise}
-                    onChange={handleChange}
-                    className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                    placeholder="e.g. Web Development, Data Science"
-                    required
-                  />
-                </div>
-              </>
-            )}
+        {error && (
+          <div className="text-red-600 text-sm bg-red-50 p-3 rounded-lg">
+            {error}
+          </div>
+        )}
 
-            {error && (
-              <div className="text-red-600 text-sm bg-red-50 p-3 rounded-lg">
-                {error}
-              </div>
-            )}
+        {isSupabaseConnected && (
+          <div className="text-green-600 text-sm bg-green-50 p-3 rounded-lg">
+            Connected to Supabase - Your account will be created in the database
+          </div>
+        )}
 
-            {isSupabaseConnected && (
-              <div className="text-green-600 text-sm bg-green-50 p-3 rounded-lg">
-                Connected to Supabase - Your account will be created in the database
-              </div>
-            )}
-
-            <button
-              type="submit"
-              disabled={isLoading}
-              className="w-full bg-gradient-to-r from-blue-600 to-indigo-600 text-white py-3 rounded-lg font-medium hover:from-blue-700 hover:to-indigo-700 transition-all duration-200 disabled:opacity-50"
-            >
-              {isLoading ? 'Creating Account...' : 'Create Account'}
-            </button>
-          </form>
-          <div className="mt-6 text-center">
-            <p className="text-gray-600">
-              Already have an account?{' '}
-              <button
+        <button
+          type="submit"
+          disabled={isLoading}
+          className="w-full bg-gradient-to-r from-blue-600 to-indigo-600 text-white py-3 rounded-lg font-medium hover:from-blue-700 hover:to-indigo-700 transition-all duration-200 disabled:opacity-50"
+        >
+          {isLoading ? 'Creating Account...' : 'Create Account'}
+        </button>
+      </form>
+      <div className="mt-6 text-center">
+        <p className="text-gray-600">
+          Already have an account?{' '}
+          <button
                 onClick={() => navigate('/login')}
-                className="text-blue-600 hover:text-blue-700 font-medium"
-              >
+            className="text-blue-600 hover:text-blue-700 font-medium"
+          >
                 Log in
-              </button>
-            </p>
+          </button>
+        </p>
           </div>
         </div>
       </div>

@@ -336,12 +336,20 @@ export function InstructorDashboard() {
                   );
                 })}
               </div>
+              <div className="flex gap-3 mt-6">
               <button
-                className="mt-6 bg-blue-600 text-white px-6 py-2 rounded-lg font-medium hover:bg-blue-700 transition-colors"
+                  className="bg-blue-600 text-white px-6 py-2 rounded-lg font-medium hover:bg-blue-700 transition-colors"
                 onClick={() => navigate('/instructor/create-course')}
               >
                 Create New Course
               </button>
+                <button
+                  className="bg-green-600 text-white px-6 py-2 rounded-lg font-medium hover:bg-green-700 transition-colors"
+                  onClick={() => navigate('/instructor/enrollments')}
+                >
+                  View Enrollments
+                </button>
+              </div>
             </div>
             {/* Earnings & Payouts */}
             <div className="bg-white rounded-xl shadow-sm p-6 border border-gray-100">

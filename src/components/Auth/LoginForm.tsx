@@ -127,103 +127,103 @@ export function LoginForm({
         <div className="w-full max-w-md bg-white rounded-2xl shadow-2xl p-8">
           <div className="flex flex-col items-center mb-8">
             {/* Logo or App Name */}
-            <img
-              src="/BLACK-1-removebg-preview.png"
-              alt="TECHYX 360"
+          <img 
+            src="/BLACK-1-removebg-preview.png" 
+            alt="TECHYX 360" 
               className="h-12 w-auto mb-4"
               onError={e => { (e.target as HTMLImageElement).style.display = 'none'; }}
-            />
-            <h2 className="text-3xl font-bold text-gray-900 mb-2">Welcome Back</h2>
-          </div>
-          <form onSubmit={handleSubmit} className="space-y-6">
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">
+          />
+        <h2 className="text-3xl font-bold text-gray-900 mb-2">Welcome Back</h2>
+      </div>
+      <form onSubmit={handleSubmit} className="space-y-6">
+        <div>
+          <label className="block text-sm font-medium text-gray-700 mb-2">
                 Email <span className="text-red-500">*</span>
-              </label>
-              <div className="relative">
-                <Mail className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-5 h-5" />
-                <input
-                  type="email"
-                  name="email"
-                  value={formData.email}
-                  onChange={handleChange}
-                  className="w-full pl-10 pr-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                  placeholder="john@example.com"
-                  required
-                />
-              </div>
-            </div>
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">
+          </label>
+          <div className="relative">
+            <Mail className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-5 h-5" />
+            <input
+              type="email"
+              name="email"
+              value={formData.email}
+              onChange={handleChange}
+              className="w-full pl-10 pr-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+              placeholder="john@example.com"
+              required
+            />
+          </div>
+        </div>
+        <div>
+          <label className="block text-sm font-medium text-gray-700 mb-2">
                 Password <span className="text-red-500">*</span>
-              </label>
-              <div className="relative">
-                <Lock className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-5 h-5" />
-                <input
-                  type={showPassword ? 'text' : 'password'}
-                  name="password"
-                  value={formData.password}
-                  onChange={handleChange}
-                  className="w-full pl-10 pr-12 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                  placeholder="Enter your password"
-                  required
-                  autoComplete="current-password"
-                />
-                <button
-                  type="button"
-                  onClick={() => setShowPassword((prev: boolean) => !prev)}
-                  className="absolute right-3 top-1/2 transform -translate-y-1/2 text-gray-400 hover:text-gray-600"
-                >
-                  {showPassword ? <EyeOff className="w-5 h-5" /> : <Eye className="w-5 h-5" />}
-                </button>
-              </div>
-              <div className="flex items-center justify-between mt-2">
-                <label className="flex items-center text-sm text-gray-700 select-none">
-                  <input
-                    type="checkbox"
-                    checked={rememberMe}
-                    onChange={e => setRememberMe(e.target.checked)}
-                    className="form-checkbox h-4 w-4 text-blue-600 rounded mr-2"
-                  />
-                  Remember Me
-                </label>
-                <button
-                  type="button"
-                  onClick={handleForgotPassword}
-                  className="text-blue-600 hover:text-blue-700 text-sm font-medium"
-                >
-                  Forgot Password?
-                </button>
-              </div>
-            </div>
-            {error && (
-              <div className="text-red-600 text-sm bg-red-50 p-3 rounded-lg">
-                {error}
-              </div>
-            )}
-            {isSupabaseConnected && (
-              <div className="text-green-600 text-sm bg-green-50 p-3 rounded-lg">
-                Connected to Supabase - Your login will be authenticated with the database
-              </div>
-            )}
+          </label>
+          <div className="relative">
+            <Lock className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-5 h-5" />
+            <input
+              type={showPassword ? 'text' : 'password'}
+              name="password"
+              value={formData.password}
+              onChange={handleChange}
+              className="w-full pl-10 pr-12 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+              placeholder="Enter your password"
+              required
+              autoComplete="current-password"
+            />
             <button
-              type="submit"
-              disabled={isLoading}
-              className="w-full bg-gradient-to-r from-blue-600 to-blue-700 text-white py-3 rounded-lg font-medium hover:from-blue-700 hover:to-blue-800 transition-all duration-200 disabled:opacity-50"
+              type="button"
+              onClick={() => setShowPassword((prev: boolean) => !prev)}
+              className="absolute right-3 top-1/2 transform -translate-y-1/2 text-gray-400 hover:text-gray-600"
             >
-              {isLoading ? 'Signing in...' : 'Sign In'}
+              {showPassword ? <EyeOff className="w-5 h-5" /> : <Eye className="w-5 h-5" />}
             </button>
-          </form>
-          <div className="mt-6 text-center">
-            <p className="text-gray-600">
-              Don't have an account?{' '}
-              <button
+          </div>
+          <div className="flex items-center justify-between mt-2">
+            <label className="flex items-center text-sm text-gray-700 select-none">
+              <input
+                type="checkbox"
+                checked={rememberMe}
+                onChange={e => setRememberMe(e.target.checked)}
+                className="form-checkbox h-4 w-4 text-blue-600 rounded mr-2"
+              />
+              Remember Me
+            </label>
+            <button
+              type="button"
+              onClick={handleForgotPassword}
+              className="text-blue-600 hover:text-blue-700 text-sm font-medium"
+            >
+              Forgot Password?
+            </button>
+          </div>
+        </div>
+        {error && (
+          <div className="text-red-600 text-sm bg-red-50 p-3 rounded-lg">
+            {error}
+          </div>
+        )}
+        {isSupabaseConnected && (
+          <div className="text-green-600 text-sm bg-green-50 p-3 rounded-lg">
+            Connected to Supabase - Your login will be authenticated with the database
+          </div>
+        )}
+        <button
+          type="submit"
+          disabled={isLoading}
+              className="w-full bg-gradient-to-r from-blue-600 to-blue-700 text-white py-3 rounded-lg font-medium hover:from-blue-700 hover:to-blue-800 transition-all duration-200 disabled:opacity-50"
+        >
+          {isLoading ? 'Signing in...' : 'Sign In'}
+        </button>
+      </form>
+      <div className="mt-6 text-center">
+        <p className="text-gray-600">
+          Don't have an account?{' '}
+          <button
                 onClick={() => navigate('/signup')}
-                className="text-blue-600 hover:text-blue-700 font-medium"
-              >
+            className="text-blue-600 hover:text-blue-700 font-medium"
+          >
                 Signup
-              </button>
-            </p>
+          </button>
+        </p>
           </div>
         </div>
       </div>

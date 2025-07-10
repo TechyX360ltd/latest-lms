@@ -369,19 +369,19 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         // 2. Insert user profile into users table
         const userPayload = {
           id: authData.user.id, // Use UUID from Auth
-          first_name: userData.firstName,
-          last_name: userData.lastName,
-          email: userData.email,
+              first_name: userData.firstName,
+              last_name: userData.lastName,
+              email: userData.email,
           phone: userData.phone || '',
-          role: userData.role,
+              role: userData.role,
           bio: userData.bio || '',
           location: userData.location || '',
           occupation: userData.occupation || '',
           education: userData.education || '',
-          avatar_url: null,
+              avatar_url: null,
           payout_email: userData.role === 'instructor' ? userData.payoutEmail || '' : '',
           expertise: userData.role === 'instructor' ? userData.expertise || '' : '',
-          is_approved: userData.role === 'instructor' ? false : null,
+              is_approved: userData.role === 'instructor' ? false : null,
           created_at: new Date().toISOString(),
           // Add any other NOT NULL fields here with default values if needed
         };
