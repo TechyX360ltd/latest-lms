@@ -1,0 +1,86 @@
+-- =============================
+-- TABLE FOR TRACKING COURSE VIEWS
+-- =============================
+
+create table if not exists course_views (
+  id uuid primary key default gen_random_uuid(),
+  user_id uuid not null references users(id),
+  course_id text not null references courses(id),
+  viewed_at timestamptz not null default now()
+);
+
+create index if not exists idx_course_views_user_id on course_views(user_id);
+create index if not exists idx_course_views_course_id on course_views(course_id);
+
+-- =============================
+-- CATEGORY & COURSE SETUP
+-- =============================
+-- 1. Create categories table
+create table if not exists categories (
+  id uuid primary key default gen_random_uuid(),
+  name text not null unique,
+  description text,
+  created_at timestamptz default now(),
+  updated_at timestamptz
+);
+
+-- 2. Add category_id to courses (if not exists)
+alter table courses
+add column if not exists category_id uuid references categories(id);
+
+-- 3. (No migration from schools, since school_id does not exist)
+
+-- 4. Add index for performance
+create index if not exists idx_courses_category_id on courses(category_id);
+
+-- =============================
+-- FILTER SQL QUERIES FOR COURSES
+-- =============================
+
+-- 1. Based on your recent views (requires course_views table)
+-- Replace 'USER_ID' with the actual user id
+select c.* from courses c
+join (
+  select course_id, max(viewed_at) as last_view
+  from course_views
+  where user_id = 'USER_ID'
+  group by course_id
+  order by last_view desc
+  limit 6
+) v on v.course_id = c.id;
+
+-- 2. Course rating (by stars) (requires course_ratings table)
+select c.*, avg(r.rating) as avg_rating
+from courses c
+left join course_ratings r on r.course_id = c.id
+group by c.id
+order by avg_rating desc nulls last
+limit 6;
+
+-- 3. Recently viewed (same as recent views)
+select c.* from courses c
+join (
+  select course_id, max(viewed_at) as last_view
+  from course_views
+  where user_id = 'USER_ID'
+  group by course_id
+  order by last_view desc
+  limit 6
+) v on v.course_id = c.id;
+
+-- 4. Basic courses (requires 'level' column in courses)
+select * from courses where level = 'basic' order by created_at desc limit 6;
+
+-- 5. Newest
+select * from courses order by created_at desc limit 6;
+
+-- 6. Skills under 2 hours (requires 'duration' column in courses)
+select * from courses where duration <= 2 order by created_at desc limit 6;
+
+-- 7. Most popular (by enrollments, requires user_courses table)
+select c.*, count(e.id) as enroll_count
+from courses c
+left join user_courses e on e.course_id = c.id
+group by c.id
+order by enroll_count desc
+limit 6;
