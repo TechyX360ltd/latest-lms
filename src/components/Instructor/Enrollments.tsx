@@ -5,8 +5,6 @@ import { useAuth } from '../../context/AuthContext';
 import { 
   Users, 
   UserCheck, 
-  UserX, 
-  UserMinus, 
   Award, 
   TrendingUp, 
   DollarSign, 
@@ -39,124 +37,82 @@ import {
 import * as XLSX from 'xlsx';
 import { saveAs } from 'file-saver';
 import jsPDF from 'jspdf';
-import html2canvas from 'html2canvas';
+import { supabase } from '../../lib/supabase';
 
-// Demo data for development
-const demoStats = {
-  total: 156,
-  active: 89,
-  inactive: 34,
-  cancelled: 12,
-  completed: 21,
-  recent: 8,
-  revenue: 1250000
+// Helper to load image as base64
+const getBase64FromUrl = async (url: string) => {
+  const response = await fetch(url);
+  const blob = await response.blob();
+  return new Promise<string>((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onloadend = () => resolve(reader.result as string);
+    reader.onerror = reject;
+    reader.readAsDataURL(blob);
+  });
 };
-
-const demoStudents = [
-  {
-    id: 1,
-    name: 'John Doe',
-    email: 'john.doe@example.com',
-    course: 'React for Beginners',
-    enrollmentDate: '2024-01-15',
-    status: 'active' as const,
-    progress: 75,
-    lastAccessed: '2024-01-20',
-    amountPaid: 25000,
-    avatar: null
-  },
-  {
-    id: 2,
-    name: 'Sarah Wilson',
-    email: 'sarah.wilson@example.com',
-    course: 'Advanced TypeScript',
-    enrollmentDate: '2024-01-10',
-    status: 'completed' as const,
-    progress: 100,
-    lastAccessed: '2024-01-18',
-    amountPaid: 35000,
-    avatar: null
-  },
-  {
-    id: 3,
-    name: 'Mike Johnson',
-    email: 'mike.johnson@example.com',
-    course: 'UI/UX Design',
-    enrollmentDate: '2024-01-05',
-    status: 'inactive' as const,
-    progress: 25,
-    lastAccessed: '2024-01-12',
-    amountPaid: 20000,
-    avatar: null
-  },
-  {
-    id: 4,
-    name: 'Emily Brown',
-    email: 'emily.brown@example.com',
-    course: 'React for Beginners',
-    enrollmentDate: '2024-01-08',
-    status: 'active' as const,
-    progress: 90,
-    lastAccessed: '2024-01-20',
-    amountPaid: 25000,
-    avatar: null
-  },
-  {
-    id: 5,
-    name: 'David Lee',
-    email: 'david.lee@example.com',
-    course: 'Advanced TypeScript',
-    enrollmentDate: '2024-01-03',
-    status: 'cancelled' as const,
-    progress: 10,
-    lastAccessed: '2024-01-07',
-    amountPaid: 0,
-    avatar: null
-  }
-];
-
-const demoCourses = [
-  'React for Beginners',
-  'Advanced TypeScript', 
-  'UI/UX Design',
-  'Node.js Backend',
-  'Python for Data Science'
-];
-
-const demoEnrollmentTrends = [
-  { month: 'Jan', enrollments: 45, revenue: 450000 },
-  { month: 'Feb', enrollments: 52, revenue: 520000 },
-  { month: 'Mar', enrollments: 38, revenue: 380000 },
-  { month: 'Apr', enrollments: 61, revenue: 610000 },
-  { month: 'May', enrollments: 48, revenue: 480000 },
-  { month: 'Jun', enrollments: 55, revenue: 550000 }
-];
 
 export default function Enrollments() {
   const { user } = useAuth();
   const navigate = useNavigate();
-  
-  // State management
-  const [stats, setStats] = useState(demoStats);
-  const [students, setStudents] = useState(demoStudents);
-  const [filteredStudents, setFilteredStudents] = useState(demoStudents);
+  const [students, setStudents] = useState<any[]>([]);
+  const [filteredStudents, setFilteredStudents] = useState<any[]>([]);
   const [loading, setLoading] = useState(false);
-  
+  const [error, setError] = useState<string | null>(null);
+
   // Filter states
   const [searchTerm, setSearchTerm] = useState('');
   const [statusFilter, setStatusFilter] = useState('all');
   const [courseFilter, setCourseFilter] = useState('all');
   const [dateFilter, setDateFilter] = useState('all');
   const [showFilters, setShowFilters] = useState(false);
-  
-  // Chart states
   const [selectedChart, setSelectedChart] = useState<'trends' | 'distribution' | 'progress'>('trends');
+
+  // Pagination and Sorting states
+  const [currentPage, setCurrentPage] = useState(1);
+  const [rowsPerPage] = useState(10);
+  const [sortBy, setSortBy] = useState<string>('enrollmentDate');
+  const [sortOrder, setSortOrder] = useState<'asc' | 'desc'>('desc');
+
+  // Fetch enrollments from Supabase
+  useEffect(() => {
+    const fetchEnrollments = async () => {
+      setLoading(true);
+      setError(null);
+      try {
+        const { data, error } = await supabase
+          .from('enrollments')
+          .select(`
+            *,
+            users:user_id (id, first_name, last_name, email, avatar),
+            courses:course_id (id, title)
+          `)
+          .eq('instructor_id', user.id);
+        if (error) throw error;
+        const formatted = data.map((e: any) => ({
+          id: e.id,
+          name: e.users ? `${e.users.first_name || ''} ${e.users.last_name || ''}`.trim() : 'Unknown',
+          email: e.users?.email || '',
+          course: e.courses?.title || '',
+          enrollmentDate: e.enrolled_at,
+          status: e.status,
+          progress: e.progress_percentage,
+          lastAccessed: e.last_accessed,
+          amountPaid: e.amount_paid,
+          avatar: e.users?.avatar || null
+        }));
+        setStudents(formatted);
+        setFilteredStudents(formatted);
+      } catch (err: any) {
+        setError(err.message || 'Failed to fetch enrollments');
+      }
+      setLoading(false);
+    };
+    if (user?.id) fetchEnrollments();
+  }, [user]);
 
   // Filter students based on current filters
   useEffect(() => {
     let filtered = students;
-    
-    // Search filter
     if (searchTerm) {
       filtered = filtered.filter(student => 
         student.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
@@ -164,56 +120,93 @@ export default function Enrollments() {
         student.course.toLowerCase().includes(searchTerm.toLowerCase())
       );
     }
-    
-    // Status filter
     if (statusFilter !== 'all') {
       filtered = filtered.filter(student => student.status === statusFilter);
     }
-    
-    // Course filter
     if (courseFilter !== 'all') {
       filtered = filtered.filter(student => student.course === courseFilter);
     }
-    
-    // Date filter (simplified for demo)
     if (dateFilter !== 'all') {
       const now = new Date();
       const daysAgo = dateFilter === '7d' ? 7 : dateFilter === '30d' ? 30 : 90;
       const cutoffDate = new Date(now.getTime() - (daysAgo * 24 * 60 * 60 * 1000));
-      
       filtered = filtered.filter(student => 
         new Date(student.enrollmentDate) >= cutoffDate
       );
     }
-    
     setFilteredStudents(filtered);
   }, [students, searchTerm, statusFilter, courseFilter, dateFilter]);
 
-  // Get status color
-  const getStatusColor = (status: string) => {
-    switch (status) {
-      case 'active': return 'bg-green-100 text-green-700';
-      case 'completed': return 'bg-blue-100 text-blue-700';
-      case 'inactive': return 'bg-yellow-100 text-yellow-700';
-      case 'cancelled': return 'bg-red-100 text-red-700';
-      default: return 'bg-gray-100 text-gray-700';
+  // Sorting logic
+  const sortedStudents = React.useMemo(() => {
+    const sorted = [...filteredStudents];
+    sorted.sort((a, b) => {
+      let aVal = a[sortBy];
+      let bVal = b[sortBy];
+      // For string columns, compare lowercase
+      if (typeof aVal === 'string' && typeof bVal === 'string') {
+        aVal = aVal.toLowerCase();
+        bVal = bVal.toLowerCase();
+      }
+      if (aVal < bVal) return sortOrder === 'asc' ? -1 : 1;
+      if (aVal > bVal) return sortOrder === 'asc' ? 1 : -1;
+      return 0;
+    });
+    return sorted;
+  }, [filteredStudents, sortBy, sortOrder]);
+
+  // Pagination logic
+  const totalPages = Math.ceil(sortedStudents.length / rowsPerPage);
+  const paginatedStudents = sortedStudents.slice((currentPage - 1) * rowsPerPage, currentPage * rowsPerPage);
+
+  // Handle sort
+  const handleSort = (column: string) => {
+    if (sortBy === column) {
+      setSortOrder(sortOrder === 'asc' ? 'desc' : 'asc');
+    } else {
+      setSortBy(column);
+      setSortOrder('asc');
     }
+    setCurrentPage(1);
   };
 
-  // Get progress color
-  const getProgressColor = (progress: number) => {
-    if (progress >= 80) return 'bg-green-500';
-    if (progress >= 60) return 'bg-blue-500';
-    if (progress >= 40) return 'bg-yellow-500';
-    return 'bg-red-500';
+  // Handle page change
+  const handlePageChange = (page: number) => {
+    if (page >= 1 && page <= totalPages) setCurrentPage(page);
   };
+
+  // Get unique courses for filter dropdown
+  const uniqueCourses = Array.from(new Set(students.map(s => s.course))).filter(Boolean);
+
+  // Stats calculation
+  const stats = {
+    total: filteredStudents.length,
+    active: filteredStudents.filter(s => s.status === 'active').length,
+    inactive: filteredStudents.filter(s => s.status === 'inactive').length,
+    cancelled: filteredStudents.filter(s => s.status === 'cancelled').length,
+    completed: filteredStudents.filter(s => s.status === 'completed').length,
+    revenue: filteredStudents.reduce((sum, s) => sum + (s.amountPaid || 0), 0)
+  };
+
+  // Enrollment trends for chart (by month)
+  const enrollmentTrends = (() => {
+    const months: { [key: string]: { enrollments: number; revenue: number } } = {};
+    filteredStudents.forEach(s => {
+      const d = new Date(s.enrollmentDate);
+      const key = `${d.getFullYear()}-${d.getMonth() + 1}`;
+      if (!months[key]) months[key] = { enrollments: 0, revenue: 0 };
+      months[key].enrollments++;
+      months[key].revenue += s.amountPaid || 0;
+    });
+    return Object.entries(months).map(([k, v]) => ({ month: k, ...v }));
+  })();
 
   // Format currency
   const formatCurrency = (amount: number) => {
     return new Intl.NumberFormat('en-NG', {
       style: 'currency',
       currency: 'NGN'
-    }).format(amount);
+    }).format(amount || 0);
   };
 
   // Export data as CSV
@@ -256,41 +249,31 @@ export default function Enrollments() {
     saveAs(blob, 'enrollments.xlsx');
   };
 
-  // Export data as PDF
+  // Export data as PDF (same as before, using getBase64FromUrl for logo)
   const handleExportPDF = async () => {
     const doc = new jsPDF({ orientation: 'landscape', unit: 'mm' });
     const pageWidth = doc.internal.pageSize.getWidth();
     const pageHeight = doc.internal.pageSize.getHeight();
     const margin = 15;
-    const tableStartY = 50;
-    
-    // Add brand logo and header
-    doc.setFillColor(59, 130, 246); // Blue color
-    doc.rect(0, 0, pageWidth, 35, 'F');
-    
-    // Add logo placeholder (you can replace with actual logo)
-    doc.setFontSize(24);
-    doc.setTextColor(255, 255, 255);
-    doc.text('TECHYX 360', margin, 22);
-    
-    // Add subtitle
-    doc.setFontSize(12);
-    doc.text('Learning Management System', margin, 30);
-    
-    // Add report title
-    doc.setFillColor(255, 255, 255);
-    doc.rect(margin, 40, pageWidth - 2 * margin, 8, 'F');
-    doc.setFontSize(16);
+    const tableStartY = 60;
+    const logoUrl = '/BLACK-1-removebg-preview.png';
+    let logoBase64 = '';
+    try {
+      logoBase64 = await getBase64FromUrl(logoUrl);
+    } catch (e) { logoBase64 = ''; }
+    if (logoBase64) {
+      doc.addImage(logoBase64, 'PNG', pageWidth / 2 - 15, 10, 30, 30);
+    }
+    doc.setFontSize(14);
     doc.setTextColor(0, 0, 0);
-    doc.text('Student Enrollments Report', pageWidth / 2, 46, { align: 'center' });
-    
-    // Add report metadata
+    doc.text('TECHYX 360', pageWidth / 2, 44, { align: 'center' });
     doc.setFontSize(10);
-    doc.setTextColor(100, 100, 100);
-    doc.text(`Generated on: ${new Date().toLocaleDateString()}`, margin, 55);
-    doc.text(`Total Students: ${filteredStudents.length}`, pageWidth - margin - 50, 55);
-    
-    // Create table data
+    doc.text('Learning Management System', pageWidth / 2, 50, { align: 'center' });
+    doc.setFontSize(16);
+    doc.text('ENROLLMENT REPORT', pageWidth / 2, 58, { align: 'center' });
+    doc.setFontSize(11);
+    doc.text(`Generated: ${new Date().toLocaleDateString()}`, margin, 58);
+    doc.text(`Total Students: ${filteredStudents.length}`, pageWidth - margin, 58, { align: 'right' });
     const columns = [
       { header: 'Name', dataKey: 'name', width: 35 },
       { header: 'Email', dataKey: 'email', width: 50 },
@@ -301,7 +284,6 @@ export default function Enrollments() {
       { header: 'Last Accessed', dataKey: 'lastAccessed', width: 30 },
       { header: 'Amount Paid', dataKey: 'amountPaid', width: 25 }
     ];
-    
     const tableData = filteredStudents.map(student => ({
       name: student.name,
       email: student.email,
@@ -309,11 +291,9 @@ export default function Enrollments() {
       status: student.status.charAt(0).toUpperCase() + student.status.slice(1),
       progress: student.progress + '%',
       enrollmentDate: new Date(student.enrollmentDate).toLocaleDateString(),
-      lastAccessed: new Date(student.lastAccessed).toLocaleDateString(),
+      lastAccessed: student.lastAccessed ? new Date(student.lastAccessed).toLocaleDateString() : '',
       amountPaid: formatCurrency(student.amountPaid)
     }));
-    
-    // Add table with custom styling
     // @ts-ignore
     if (doc.autoTable) {
       // @ts-ignore
@@ -338,114 +318,74 @@ export default function Enrollments() {
           fillColor: [248, 250, 252],
         },
         columnStyles: {
-          0: { cellWidth: 35 }, // Name
-          1: { cellWidth: 50 }, // Email
-          2: { cellWidth: 40 }, // Course
-          3: { cellWidth: 20 }, // Status
-          4: { cellWidth: 20 }, // Progress
-          5: { cellWidth: 30 }, // Enrollment Date
-          6: { cellWidth: 30 }, // Last Accessed
-          7: { cellWidth: 25 }, // Amount Paid
+          0: { cellWidth: 35 },
+          1: { cellWidth: 50 },
+          2: { cellWidth: 40 },
+          3: { cellWidth: 20 },
+          4: { cellWidth: 20 },
+          5: { cellWidth: 30 },
+          6: { cellWidth: 30 },
+          7: { cellWidth: 25 },
         },
         didDrawPage: function(data) {
-          // Add page number
           const pageCount = doc.internal.getNumberOfPages();
           doc.setFontSize(10);
           doc.setTextColor(100, 100, 100);
           doc.text(`Page ${data.pageNumber} of ${pageCount}`, pageWidth / 2, pageHeight - 10, { align: 'center' });
-          
-          // Add footer
           doc.setFontSize(8);
           doc.text('© 2024 TECHYX 360 - Learning Management System', margin, pageHeight - 5);
           doc.text('Confidential - For internal use only', pageWidth - margin - 60, pageHeight - 5);
         },
         willDrawCell: function(data) {
-          // Custom cell styling for status
-          if (data.column.index === 3) { // Status column
+          if (data.column.index === 3) {
             const status = data.cell.text.join('');
             if (status === 'Active') {
-              data.cell.styles.fillColor = [34, 197, 94]; // Green
+              data.cell.styles.fillColor = [34, 197, 94];
             } else if (status === 'Completed') {
-              data.cell.styles.fillColor = [59, 130, 246]; // Blue
+              data.cell.styles.fillColor = [59, 130, 246];
             } else if (status === 'Inactive') {
-              data.cell.styles.fillColor = [245, 158, 11]; // Yellow
+              data.cell.styles.fillColor = [245, 158, 11];
             } else if (status === 'Cancelled') {
-              data.cell.styles.fillColor = [239, 68, 68]; // Red
+              data.cell.styles.fillColor = [239, 68, 68];
             }
             data.cell.styles.textColor = [255, 255, 255];
           }
-          
-          // Custom cell styling for progress
-          if (data.column.index === 4) { // Progress column
+          if (data.column.index === 4) {
             const progress = parseInt(data.cell.text.join('').replace('%', ''));
             if (progress >= 80) {
-              data.cell.styles.fillColor = [34, 197, 94]; // Green
+              data.cell.styles.fillColor = [34, 197, 94];
             } else if (progress >= 60) {
-              data.cell.styles.fillColor = [59, 130, 246]; // Blue
+              data.cell.styles.fillColor = [59, 130, 246];
             } else if (progress >= 40) {
-              data.cell.styles.fillColor = [245, 158, 11]; // Yellow
+              data.cell.styles.fillColor = [245, 158, 11];
             } else {
-              data.cell.styles.fillColor = [239, 68, 68]; // Red
+              data.cell.styles.fillColor = [239, 68, 68];
             }
             data.cell.styles.textColor = [255, 255, 255];
           }
         }
       });
-    } else {
-      // Fallback for when autoTable is not available
-      let y = tableStartY;
-      doc.setFontSize(10);
-      doc.setTextColor(0, 0, 0);
-      
-      // Draw header
-      doc.setFillColor(59, 130, 246);
-      doc.rect(margin, y, pageWidth - 2 * margin, 8, 'F');
-      doc.setTextColor(255, 255, 255);
-      doc.text('Name | Email | Course | Status | Progress | Enrollment Date | Last Accessed | Amount Paid', margin + 2, y + 6);
-      y += 10;
-      
-      // Draw data rows
-      doc.setTextColor(0, 0, 0);
-      tableData.forEach((row, index) => {
-        if (index % 2 === 0) {
-          doc.setFillColor(248, 250, 252);
-          doc.rect(margin, y - 2, pageWidth - 2 * margin, 6, 'F');
-        }
-        doc.text(Object.values(row).join(' | '), margin + 2, y + 4);
-        y += 8;
-      });
-      
-      // Add page number
-      doc.setFontSize(10);
-      doc.setTextColor(100, 100, 100);
-      doc.text('Page 1 of 1', pageWidth / 2, pageHeight - 10, { align: 'center' });
-      
-      // Add footer
-      doc.setFontSize(8);
-      doc.text('© 2024 TECHYX 360 - Learning Management System', margin, pageHeight - 5);
-      doc.text('Confidential - For internal use only', pageWidth - margin - 60, pageHeight - 5);
     }
-    
-    // Add summary section at the end
-    const finalY = doc.lastAutoTable ? doc.lastAutoTable.finalY + 10 : pageHeight - 30;
-    
-    if (finalY < pageHeight - 40) {
-      doc.setFillColor(248, 250, 252);
-      doc.rect(margin, finalY, pageWidth - 2 * margin, 25, 'F');
-      
-      doc.setFontSize(12);
-      doc.setTextColor(0, 0, 0);
-      doc.text('Summary', margin + 5, finalY + 8);
-      
-      doc.setFontSize(10);
-      doc.setTextColor(100, 100, 100);
-      doc.text(`• Total Students: ${filteredStudents.length}`, margin + 5, finalY + 15);
-      doc.text(`• Active Students: ${filteredStudents.filter(s => s.status === 'active').length}`, margin + 5, finalY + 22);
-      doc.text(`• Completed Courses: ${filteredStudents.filter(s => s.status === 'completed').length}`, margin + 80, finalY + 15);
-      doc.text(`• Total Revenue: ${formatCurrency(filteredStudents.reduce((sum, s) => sum + s.amountPaid, 0))}`, margin + 80, finalY + 22);
-    }
-    
     doc.save('enrollments-report.pdf');
+  };
+
+  // Get status color
+  const getStatusColor = (status: string) => {
+    switch (status) {
+      case 'active': return 'bg-green-100 text-green-700';
+      case 'completed': return 'bg-blue-100 text-blue-700';
+      case 'inactive': return 'bg-yellow-100 text-yellow-700';
+      case 'cancelled': return 'bg-red-100 text-red-700';
+      default: return 'bg-gray-100 text-gray-700';
+    }
+  };
+
+  // Get progress color
+  const getProgressColor = (progress: number) => {
+    if (progress >= 80) return 'bg-green-500';
+    if (progress >= 60) return 'bg-blue-500';
+    if (progress >= 40) return 'bg-yellow-500';
+    return 'bg-red-500';
   };
 
   return (
@@ -578,12 +518,10 @@ export default function Enrollments() {
                 </button>
               </div>
             </div>
-
-            {/* Charts */}
             <div className="h-80">
               {selectedChart === 'trends' && (
                 <ResponsiveContainer width="100%" height="100%">
-                  <LineChart data={demoEnrollmentTrends}>
+                  <LineChart data={enrollmentTrends}>
                     <CartesianGrid strokeDasharray="3 3" />
                     <XAxis dataKey="month" />
                     <YAxis yAxisId="left" />
@@ -614,7 +552,6 @@ export default function Enrollments() {
                   </LineChart>
                 </ResponsiveContainer>
               )}
-
               {selectedChart === 'distribution' && (
                 <ResponsiveContainer width="100%" height="100%">
                   <RechartsPieChart>
@@ -644,14 +581,13 @@ export default function Enrollments() {
                   </RechartsPieChart>
                 </ResponsiveContainer>
               )}
-
               {selectedChart === 'progress' && (
                 <ResponsiveContainer width="100%" height="100%">
                   <BarChart data={[
-                    { range: '0-25%', students: students.filter(s => s.progress <= 25).length },
-                    { range: '26-50%', students: students.filter(s => s.progress > 25 && s.progress <= 50).length },
-                    { range: '51-75%', students: students.filter(s => s.progress > 50 && s.progress <= 75).length },
-                    { range: '76-100%', students: students.filter(s => s.progress > 75).length }
+                    { range: '0-25%', students: filteredStudents.filter(s => s.progress <= 25).length },
+                    { range: '26-50%', students: filteredStudents.filter(s => s.progress > 25 && s.progress <= 50).length },
+                    { range: '51-75%', students: filteredStudents.filter(s => s.progress > 50 && s.progress <= 75).length },
+                    { range: '76-100%', students: filteredStudents.filter(s => s.progress > 75).length }
                   ]}>
                     <CartesianGrid strokeDasharray="3 3" />
                     <XAxis dataKey="range" />
@@ -679,7 +615,6 @@ export default function Enrollments() {
                   />
                 </div>
               </div>
-              
               <div className="flex items-center gap-3">
                 <button
                   onClick={() => setShowFilters(!showFilters)}
@@ -693,8 +628,6 @@ export default function Enrollments() {
                 </span>
               </div>
             </div>
-
-            {/* Advanced Filters */}
             {showFilters && (
               <div className="mt-4 pt-4 border-t border-gray-200">
                 <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
@@ -712,7 +645,6 @@ export default function Enrollments() {
                       <option value="cancelled">Cancelled</option>
                     </select>
                   </div>
-                  
                   <div>
                     <label className="block text-sm font-medium text-gray-700 mb-1">Course</label>
                     <select
@@ -721,12 +653,11 @@ export default function Enrollments() {
                       className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
                     >
                       <option value="all">All Courses</option>
-                      {demoCourses.map(course => (
+                      {uniqueCourses.map(course => (
                         <option key={course} value={course}>{course}</option>
                       ))}
                     </select>
                   </div>
-                  
                   <div>
                     <label className="block text-sm font-medium text-gray-700 mb-1">Date Range</label>
                     <select
@@ -747,100 +678,125 @@ export default function Enrollments() {
 
           {/* Students Table */}
           <div className="bg-white rounded-xl shadow-sm border border-gray-100 overflow-hidden">
-            <div className="overflow-x-auto">
-              <table className="min-w-full divide-y divide-gray-200">
-                <thead className="bg-gray-50">
-                  <tr>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                      Student
-                    </th>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                      Course
-                    </th>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                      Status
-                    </th>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                      Progress
-                    </th>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                      Enrollment Date
-                    </th>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                      Last Accessed
-                    </th>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                      Amount Paid
-                    </th>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                      Actions
-                    </th>
-                  </tr>
-                </thead>
-                <tbody className="bg-white divide-y divide-gray-200">
-                  {filteredStudents.map((student) => (
-                    <tr key={student.id} className="hover:bg-gray-50 transition-colors">
-                      <td className="px-6 py-4 whitespace-nowrap">
-                        <div className="flex items-center">
-                          <div className="w-8 h-8 bg-gray-200 rounded-full flex items-center justify-center mr-3">
-                            {student.avatar ? (
-                              <img src={student.avatar} alt={student.name} className="w-full h-full rounded-full object-cover" />
-                            ) : (
-                              <Users className="w-4 h-4 text-gray-500" />
-                            )}
-                          </div>
-                          <div>
-                            <div className="text-sm font-medium text-gray-900">{student.name}</div>
-                            <div className="text-sm text-gray-500">{student.email}</div>
-                          </div>
-                        </div>
-                      </td>
-                      <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
-                        {student.course}
-                      </td>
-                      <td className="px-6 py-4 whitespace-nowrap">
-                        <span className={`px-2 py-1 text-xs font-medium rounded-full ${getStatusColor(student.status)}`}>
-                          {student.status.charAt(0).toUpperCase() + student.status.slice(1)}
-                        </span>
-                      </td>
-                      <td className="px-6 py-4 whitespace-nowrap">
-                        <div className="flex items-center">
-                          <div className="w-16 bg-gray-200 rounded-full h-2 mr-2">
-                            <div
-                              className={`h-2 rounded-full ${getProgressColor(student.progress)}`}
-                              style={{ width: `${student.progress}%` }}
-                            />
-                          </div>
-                          <span className="text-sm text-gray-900">{student.progress}%</span>
-                        </div>
-                      </td>
-                      <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
-                        {new Date(student.enrollmentDate).toLocaleDateString()}
-                      </td>
-                      <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
-                        {new Date(student.lastAccessed).toLocaleDateString()}
-                      </td>
-                      <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
-                        {formatCurrency(student.amountPaid)}
-                      </td>
-                      <td className="px-6 py-4 whitespace-nowrap text-sm font-medium">
-                        <div className="flex items-center gap-2">
-                          <button className="text-blue-600 hover:text-blue-900">
-                            <Eye className="w-4 h-4" />
-                          </button>
-                          <button className="text-green-600 hover:text-green-900">
-                            <MessageCircle className="w-4 h-4" />
-                          </button>
-                        </div>
-                      </td>
+            {loading ? (
+              <div className="text-center py-12 text-blue-600 font-semibold">Loading enrollments...</div>
+            ) : error ? (
+              <div className="text-center py-12 text-red-600 font-semibold">{error}</div>
+            ) : (
+              <>
+              <div className="overflow-x-auto">
+                <table className="min-w-full divide-y divide-gray-200">
+                  <thead className="bg-gray-50">
+                    <tr>
+                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider cursor-pointer" onClick={() => handleSort('name')}>
+                        Student {sortBy === 'name' && (sortOrder === 'asc' ? '▲' : '▼')}
+                      </th>
+                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider cursor-pointer" onClick={() => handleSort('course')}>
+                        Course {sortBy === 'course' && (sortOrder === 'asc' ? '▲' : '▼')}
+                      </th>
+                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider cursor-pointer" onClick={() => handleSort('status')}>
+                        Status {sortBy === 'status' && (sortOrder === 'asc' ? '▲' : '▼')}
+                      </th>
+                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider cursor-pointer" onClick={() => handleSort('progress')}>
+                        Progress {sortBy === 'progress' && (sortOrder === 'asc' ? '▲' : '▼')}
+                      </th>
+                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider cursor-pointer" onClick={() => handleSort('enrollmentDate')}>
+                        Enrollment Date {sortBy === 'enrollmentDate' && (sortOrder === 'asc' ? '▲' : '▼')}
+                      </th>
+                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider cursor-pointer" onClick={() => handleSort('lastAccessed')}>
+                        Last Accessed {sortBy === 'lastAccessed' && (sortOrder === 'asc' ? '▲' : '▼')}
+                      </th>
+                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider cursor-pointer" onClick={() => handleSort('amountPaid')}>
+                        Amount Paid {sortBy === 'amountPaid' && (sortOrder === 'asc' ? '▲' : '▼')}
+                      </th>
+                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                        Actions
+                      </th>
                     </tr>
+                  </thead>
+                  <tbody className="bg-white divide-y divide-gray-200">
+                    {paginatedStudents.map((student) => (
+                      <tr key={student.id} className="hover:bg-gray-50 transition-colors">
+                        <td className="px-6 py-4 whitespace-nowrap">
+                          <div className="flex items-center">
+                            <div className="w-8 h-8 bg-gray-200 rounded-full flex items-center justify-center mr-3">
+                              {student.avatar ? (
+                                <img src={student.avatar} alt={student.name} className="w-full h-full rounded-full object-cover" />
+                              ) : (
+                                <Users className="w-4 h-4 text-gray-500" />
+                              )}
+                            </div>
+                            <div>
+                              <div className="text-sm font-medium text-gray-900">{student.name}</div>
+                              <div className="text-sm text-gray-500">{student.email}</div>
+                            </div>
+                          </div>
+                        </td>
+                        <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
+                          {student.course}
+                        </td>
+                        <td className="px-6 py-4 whitespace-nowrap">
+                          <span className={`px-2 py-1 text-xs font-medium rounded-full ${getStatusColor(student.status)}`}>
+                            {student.status?.charAt(0).toUpperCase() + student.status?.slice(1)}
+                          </span>
+                        </td>
+                        <td className="px-6 py-4 whitespace-nowrap">
+                          <div className="flex items-center">
+                            <div className="w-16 bg-gray-200 rounded-full h-2 mr-2">
+                              <div
+                                className={`h-2 rounded-full ${getProgressColor(student.progress)}`}
+                                style={{ width: `${student.progress}%` }}
+                              />
+                            </div>
+                            <span className="text-sm text-gray-900">{student.progress}%</span>
+                          </div>
+                        </td>
+                        <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
+                          {student.enrollmentDate ? new Date(student.enrollmentDate).toLocaleDateString() : ''}
+                        </td>
+                        <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
+                          {student.lastAccessed ? new Date(student.lastAccessed).toLocaleDateString() : ''}
+                        </td>
+                        <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
+                          {formatCurrency(student.amountPaid)}
+                        </td>
+                        <td className="px-6 py-4 whitespace-nowrap text-sm font-medium">
+                          <div className="flex items-center gap-2">
+                            <button className="text-blue-600 hover:text-blue-900">
+                              <Eye className="w-4 h-4" />
+                            </button>
+                            <button className="text-green-600 hover:text-green-900">
+                              <MessageCircle className="w-4 h-4" />
+                            </button>
+                          </div>
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+              {/* Pagination Controls */}
+              <div className="flex justify-between items-center p-4 border-t bg-gray-50">
+                <div className="text-sm text-gray-600">
+                  Page {currentPage} of {totalPages} ({sortedStudents.length} students)
+                </div>
+                <div className="flex gap-2">
+                  <button onClick={() => handlePageChange(currentPage - 1)} disabled={currentPage === 1} className="px-3 py-1 rounded bg-gray-200 text-gray-700 disabled:opacity-50">Prev</button>
+                  {Array.from({ length: totalPages }, (_, i) => (
+                    <button
+                      key={i + 1}
+                      onClick={() => handlePageChange(i + 1)}
+                      className={`px-3 py-1 rounded ${currentPage === i + 1 ? 'bg-blue-600 text-white' : 'bg-gray-100 text-gray-700'}`}
+                    >
+                      {i + 1}
+                    </button>
                   ))}
-                </tbody>
-              </table>
-            </div>
-            
-            {/* Empty State */}
-            {filteredStudents.length === 0 && (
+                  <button onClick={() => handlePageChange(currentPage + 1)} disabled={currentPage === totalPages} className="px-3 py-1 rounded bg-gray-200 text-gray-700 disabled:opacity-50">Next</button>
+                </div>
+              </div>
+              </>
+            )}
+            {filteredStudents.length === 0 && !loading && !error && (
               <div className="text-center py-12">
                 <Users className="w-12 h-12 text-gray-400 mx-auto mb-4" />
                 <h3 className="text-lg font-medium text-gray-900 mb-2">No students found</h3>
