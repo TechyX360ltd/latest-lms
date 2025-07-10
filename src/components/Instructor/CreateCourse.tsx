@@ -37,6 +37,16 @@ export default function CreateCourse() {
   const [format, setFormat] = useState('mixed');
   const [error, setError] = useState('');
 
+  // Content step state
+  const [modules, setModules] = useState([
+    // Example: { id: '1', title: 'Introduction', lessons: [{ id: '1-1', title: 'Welcome', type: 'text', content: '' }] }
+  ]);
+  const [newModuleTitle, setNewModuleTitle] = useState('');
+  const [activeModuleIdx, setActiveModuleIdx] = useState<number | null>(null);
+  const [newLessonTitle, setNewLessonTitle] = useState('');
+  const [newLessonType, setNewLessonType] = useState(format);
+  const [newLessonContent, setNewLessonContent] = useState('');
+
   const handleNext = () => {
     if (!title || !slug || !category || !price || !description || !duration || !format) {
       setError('Please fill in all fields.');
@@ -48,6 +58,39 @@ export default function CreateCourse() {
 
   const handleBack = () => {
     setStep(step - 1);
+  };
+
+  // Add module
+  const handleAddModule = () => {
+    if (!newModuleTitle.trim()) return;
+    setModules([...modules, { id: Date.now().toString(), title: newModuleTitle, lessons: [] }]);
+    setNewModuleTitle('');
+  };
+  // Add lesson to module
+  const handleAddLesson = (moduleIdx: number) => {
+    if (!newLessonTitle.trim()) return;
+    const updatedModules = [...modules];
+    updatedModules[moduleIdx].lessons.push({
+      id: Date.now().toString(),
+      title: newLessonTitle,
+      type: newLessonType,
+      content: newLessonContent
+    });
+    setModules(updatedModules);
+    setNewLessonTitle('');
+    setNewLessonType(format);
+    setNewLessonContent('');
+    setActiveModuleIdx(null);
+  };
+  // Remove module
+  const handleRemoveModule = (idx: number) => {
+    setModules(modules.filter((_, i) => i !== idx));
+  };
+  // Remove lesson
+  const handleRemoveLesson = (moduleIdx: number, lessonIdx: number) => {
+    const updatedModules = [...modules];
+    updatedModules[moduleIdx].lessons.splice(lessonIdx, 1);
+    setModules(updatedModules);
   };
 
   return (
@@ -168,6 +211,106 @@ export default function CreateCourse() {
                   >
                     Next
                   </button>
+                </div>
+              </div>
+            )}
+            {step === 2 && (
+              <div>
+                <h2 className="text-2xl font-bold mb-6 text-gray-900">Course Content</h2>
+                <div className="mb-6">
+                  <label className="block text-sm font-medium mb-2">Add Section/Module</label>
+                  <div className="flex gap-2 mb-2">
+                    <input
+                      type="text"
+                      value={newModuleTitle}
+                      onChange={e => setNewModuleTitle(e.target.value)}
+                      className="flex-1 px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent text-lg font-semibold"
+                      placeholder="e.g. Introduction"
+                    />
+                    <button
+                      className="px-4 py-3 rounded-lg bg-blue-600 text-white font-semibold hover:bg-blue-700 transition"
+                      onClick={handleAddModule}
+                      type="button"
+                    >Add Section</button>
+                  </div>
+                </div>
+                <div className="space-y-6">
+                  {modules.map((mod, mIdx) => (
+                    <div key={mod.id} className="bg-gray-50 rounded-xl p-4 shadow-sm">
+                      <div className="flex items-center justify-between mb-2">
+                        <div className="font-bold text-lg text-gray-900">{mod.title}</div>
+                        <button className="text-red-500 hover:underline text-sm" onClick={() => handleRemoveModule(mIdx)}>Remove</button>
+                      </div>
+                      <div className="ml-4">
+                        <div className="mb-2 flex items-center gap-2">
+                          <button
+                            className="px-3 py-1 rounded bg-blue-50 text-blue-700 hover:bg-blue-100 text-sm font-semibold"
+                            onClick={() => setActiveModuleIdx(mIdx)}
+                            type="button"
+                          >Add Lesson</button>
+                        </div>
+                        <div className="space-y-2">
+                          {mod.lessons.map((lesson, lIdx) => (
+                            <div key={lesson.id} className="bg-white rounded-lg p-3 flex items-center justify-between border border-gray-200">
+                              <div>
+                                <div className="font-semibold text-gray-900">{lesson.title}</div>
+                                <div className="text-xs text-gray-500">{lesson.type === 'text' ? 'Text' : lesson.type === 'video' ? 'Video' : 'Mixed'}</div>
+                              </div>
+                              <button className="text-red-500 hover:underline text-xs" onClick={() => handleRemoveLesson(mIdx, lIdx)}>Remove</button>
+                            </div>
+                          ))}
+                        </div>
+                      </div>
+                      {/* Add Lesson Form */}
+                      {activeModuleIdx === mIdx && (
+                        <div className="mt-4 bg-white rounded-lg p-4 border border-blue-200">
+                          <div className="mb-2">
+                            <label className="block text-sm font-medium mb-1">Lesson Title</label>
+                            <input
+                              type="text"
+                              value={newLessonTitle}
+                              onChange={e => setNewLessonTitle(e.target.value)}
+                              className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent text-base font-semibold"
+                              placeholder="e.g. Welcome"
+                            />
+                          </div>
+                          <div className="mb-2">
+                            <label className="block text-sm font-medium mb-1">Lesson Type</label>
+                            <select
+                              value={newLessonType}
+                              onChange={e => setNewLessonType(e.target.value)}
+                              className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent text-base font-semibold"
+                            >
+                              <option value="text">Text</option>
+                              <option value="video">Video</option>
+                              <option value="mixed">Mixed</option>
+                            </select>
+                          </div>
+                          <div className="mb-2">
+                            <label className="block text-sm font-medium mb-1">Lesson Content</label>
+                            <textarea
+                              value={newLessonContent}
+                              onChange={e => setNewLessonContent(e.target.value)}
+                              className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent text-base font-semibold min-h-[60px]"
+                              placeholder="Lesson content or video link..."
+                            />
+                          </div>
+                          <div className="flex gap-2 justify-end">
+                            <button
+                              className="px-4 py-2 rounded-lg bg-gray-100 text-gray-700 font-semibold hover:bg-gray-200 transition"
+                              onClick={() => setActiveModuleIdx(null)}
+                              type="button"
+                            >Cancel</button>
+                            <button
+                              className="px-4 py-2 rounded-lg bg-blue-600 text-white font-semibold hover:bg-blue-700 transition"
+                              onClick={() => handleAddLesson(mIdx)}
+                              type="button"
+                            >Add Lesson</button>
+                          </div>
+                        </div>
+                      )}
+                    </div>
+                  ))}
                 </div>
               </div>
             )}
