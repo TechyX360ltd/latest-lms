@@ -3,6 +3,7 @@ import { Eye, EyeOff, Mail, Lock } from 'lucide-react';
 import { useAuth } from '../../context/AuthContext';
 import { useToast } from './ToastContext';
 import { useNavigate } from 'react-router-dom';
+import { useGamification } from '../../hooks/useGamification';
 
 interface LoginFormProps {
   onToggleForm: () => void;
@@ -24,6 +25,7 @@ export function LoginForm({
 }: Omit<LoginFormProps, 'onToggleForm'>) {
   const { login, isLoading, isSupabaseConnected, resetPassword, user } = useAuth();
   const { showToast } = useToast();
+  const { triggerDailyLogin } = useGamification();
   const [rememberMe, setRememberMe] = useState(false);
   const [showForgotModal, setShowForgotModal] = useState(false);
   const [forgotEmail, setForgotEmail] = useState('');
@@ -57,10 +59,13 @@ export function LoginForm({
     }
     try {
       await login(formData.email, formData.password);
+      await triggerDailyLogin(); // <-- Update streak and award daily login bonus
       showToast('Login successful!', 'success', 4000);
       // Redirect based on user role
       if (user?.role === 'admin') {
         navigate('/admin/overview');
+      } else if (user?.role === 'instructor') {
+        navigate('/instructor/dashboard');
       } else {
         navigate('/dashboard');
       }

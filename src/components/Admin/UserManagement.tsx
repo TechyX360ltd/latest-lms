@@ -1,13 +1,15 @@
 import React, { useState, useEffect } from 'react';
-import { Search, Plus, Edit, Trash2, Mail, Phone, RefreshCw } from 'lucide-react';
+import { Search, Plus, Edit, Trash2, Mail, Phone, RefreshCw, Eye } from 'lucide-react';
 import { useUsers } from '../../hooks/useData';
 import { AddUser } from './AddUser';
+import { useNavigate } from 'react-router-dom';
 
 export function UserManagement() {
   const { users, addUser, refreshUsers, loading } = useUsers();
   const [searchTerm, setSearchTerm] = useState('');
   const [selectedRole, setSelectedRole] = useState('all');
   const [showAddUser, setShowAddUser] = useState(false);
+  const navigate = useNavigate();
 
   // Refresh users when component mounts to get latest data
   useEffect(() => {
@@ -164,8 +166,12 @@ export function UserManagement() {
                   </td>
                   <td className="p-4">
                     <div className="flex items-center gap-2">
-                      <button className="p-2 text-gray-400 hover:text-blue-600 hover:bg-blue-50 rounded transition-colors">
-                        <Edit className="w-4 h-4" />
+                      <button
+                        className="p-2 text-gray-400 hover:text-blue-600 hover:bg-blue-50 rounded transition-colors"
+                        title="View User"
+                        onClick={() => navigate(`/admin/users/${user.id}`)}
+                      >
+                        <Eye className="w-4 h-4" />
                       </button>
                       <button className="p-2 text-gray-400 hover:text-red-600 hover:bg-red-50 rounded transition-colors">
                         <Trash2 className="w-4 h-4" />

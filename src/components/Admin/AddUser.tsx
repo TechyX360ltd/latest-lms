@@ -5,19 +5,20 @@ import { useAuth } from '../../context/AuthContext';
 interface AddUserProps {
   onSave: (userData: any) => void;
   onCancel: () => void;
+  initialUser?: any;
 }
 
-export function AddUser({ onSave, onCancel }: AddUserProps) {
+export function AddUser({ onSave, onCancel, initialUser }: AddUserProps) {
   const { addUserToAuth } = useAuth();
   const [userData, setUserData] = useState({
-    firstName: '',
-    lastName: '',
-    email: '',
-    phone: '',
-    role: 'learner' as 'learner' | 'admin',
+    firstName: initialUser?.firstName || '',
+    lastName: initialUser?.lastName || '',
+    email: initialUser?.email || '',
+    phone: initialUser?.phone || '',
+    role: initialUser?.role || 'learner',
     password: '',
     confirmPassword: '',
-    enrolledCourses: [] as string[],
+    enrolledCourses: initialUser?.enrolledCourses || [],
     sendWelcomeEmail: true,
   });
 
@@ -105,11 +106,11 @@ export function AddUser({ onSave, onCancel }: AddUserProps) {
   };
 
   return (
-    <div className="max-w-2xl mx-auto space-y-8">
+    <div className="w-full px-2 md:px-6 space-y-8">
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-3xl font-bold text-gray-900 mb-2">Add New User</h1>
-          <p className="text-gray-600">Create a new user account for the platform</p>
+          <h1 className="text-3xl font-bold text-gray-900 mb-2">{initialUser ? 'Edit User' : 'Add New User'}</h1>
+          <p className="text-gray-600">{initialUser ? 'Update user details and permissions' : 'Create a new user account for the platform'}</p>
         </div>
         <div className="flex gap-3">
           <button
@@ -310,33 +311,6 @@ export function AddUser({ onSave, onCancel }: AddUserProps) {
           </div>
         </div>
 
-        {/* Role Information */}
-        <div className="bg-blue-50 rounded-xl p-6 border border-blue-100">
-          <h3 className="text-lg font-medium text-blue-900 mb-2">Role Permissions</h3>
-          {userData.role === 'admin' ? (
-            <div className="text-sm text-blue-800">
-              <p className="font-medium mb-2">Administrator privileges include:</p>
-              <ul className="list-disc list-inside space-y-1">
-                <li>Full access to admin dashboard</li>
-                <li>User management capabilities</li>
-                <li>Course creation and management</li>
-                <li>Payment and analytics access</li>
-                <li>Platform settings control</li>
-              </ul>
-            </div>
-          ) : (
-            <div className="text-sm text-blue-800">
-              <p className="font-medium mb-2">Learner privileges include:</p>
-              <ul className="list-disc list-inside space-y-1">
-                <li>Access to learner dashboard</li>
-                <li>Course enrollment and viewing</li>
-                <li>Progress tracking</li>
-                <li>Profile management</li>
-              </ul>
-            </div>
-          )}
-        </div>
-
         {/* Login Instructions */}
         <div className="bg-green-50 rounded-xl p-6 border border-green-100">
           <h3 className="text-lg font-medium text-green-900 mb-2">Login Instructions</h3>
@@ -360,7 +334,7 @@ export function AddUser({ onSave, onCancel }: AddUserProps) {
             className="bg-blue-600 text-white px-8 py-3 rounded-lg font-medium hover:bg-blue-700 transition-colors disabled:opacity-50 flex items-center gap-2"
           >
             <Save className="w-5 h-5" />
-            {isLoading ? 'Creating User...' : 'Create User'}
+            {isLoading ? (initialUser ? 'Updating User...' : 'Creating User...') : (initialUser ? 'Update User' : 'Create User')}
           </button>
         </div>
       </form>

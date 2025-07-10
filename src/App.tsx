@@ -46,6 +46,7 @@ import ReferralsPage from './pages/ReferralsPage';
 import AdminReferralsPage from './pages/AdminReferralsPage';
 import { CertificateVerificationPage } from './pages/CertificateVerificationPage';
 import CertificatePage from './pages/CertificatePage';
+import AdminUserDetailPage from './pages/AdminUserDetailPage';
 
 function AuthPage() {
   const [isLogin, setIsLogin] = useState(true);
@@ -246,6 +247,7 @@ function AppContent() {
         >
           <Route path="overview" element={<AdminOverview />} />
           <Route path="users" element={<UserManagement />} />
+          <Route path="users/:userSlug" element={<AdminUserDetailPage />} />
           <Route path="courses" element={<CourseManagement />} />
           <Route path="schools" element={<SchoolManagement />} />
           <Route path="progress-tracking" element={<ProgressTracking />} />

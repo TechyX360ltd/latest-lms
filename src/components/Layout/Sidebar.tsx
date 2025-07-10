@@ -70,20 +70,24 @@ export function Sidebar({}: SidebarProps) {
 
   // Instructor menu items
   const instructorMenuItems: SidebarMenuItem[] = [
-    { id: 'instructor-dashboard', label: 'Instructor Dashboard', icon: Home, path: '/instructor/dashboard' },
-    { id: 'instructor-profile', label: 'Instructor Profile', icon: UserCheck, path: '/instructor/profile' },
-    { id: 'instructor-events', label: 'My Events', icon: CalendarIcon, path: '/instructor/events' },
+    { id: 'dashboard', label: 'Dashboard', icon: Home, path: '/instructor/dashboard' },
+    { id: 'my-courses', label: 'My Courses', icon: BookOpen, path: '/instructor/courses' },
+    { id: 'enrollments', label: 'Enrollments', icon: Users, path: '/instructor/enrollments' },
+    { id: 'earnings', label: 'Earnings', icon: CreditCard, path: '/instructor/earnings' },
+    { id: 'my-events', label: 'My Events', icon: CalendarIcon, path: '/instructor/events' },
+    { id: 'notifications', label: 'Notifications', icon: Bell, path: '/instructor/notifications' },
+    { id: 'gamification', label: 'Gamification', icon: Trophy, path: '/instructor/gamification' },
+    { id: 'referrals', label: 'Referrals', icon: LinkIcon, path: '/instructor/referrals' },
+    { id: 'my-reviews', label: 'My Reviews', icon: Award, path: '/instructor/reviews' },
+    { id: 'profile', label: 'My Profile', icon: UserCheck, path: '/instructor/profile' },
   ];
 
   const menuItems =
     user?.role === 'admin'
       ? adminMenuItems
       : user?.role === 'instructor'
-      ? [
-          ...learnerMenuItems,
-          ...instructorMenuItems,
-        ]
-      : learnerMenuItems;
+        ? instructorMenuItems
+        : learnerMenuItems;
 
   const handleMenuItemClick = (path: string) => {
     navigate(path);

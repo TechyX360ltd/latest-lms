@@ -24,11 +24,13 @@ import {
   ChevronUp,
   X
 } from 'lucide-react';
-import { usePayments } from '../../hooks/useData';
+import { usePayments, useUsers, useCourses } from '../../hooks/useData';
 import { useAuth } from '../../context/AuthContext';
 
 export function PaymentManagement() {
   const { payments, loading } = usePayments();
+  const { users } = useUsers();
+  const { courses } = useCourses();
   const { user } = useAuth();
   const [searchTerm, setSearchTerm] = useState('');
   const [selectedStatus, setSelectedStatus] = useState('all');
@@ -40,108 +42,105 @@ export function PaymentManagement() {
   const [isRefreshing, setIsRefreshing] = useState(false);
   const [expandedRows, setExpandedRows] = useState<Set<string>>(new Set());
 
-  // Payment methods data
-  const paymentMethods = [
-    { id: 'card', name: 'Credit/Debit Card', icon: CreditCard },
-    { id: 'bank', name: 'Bank Transfer', icon: DollarSign },
-    { id: 'wallet', name: 'Digital Wallet', icon: CreditCard },
-  ];
+  // Remove demo enhancement logic: use payments as-is
+  const enhancedPayments = payments;
 
-  // Generate additional payment data for demo
-  const [enhancedPayments, setEnhancedPayments] = useState<any[]>([]);
+  // Helper functions to get user and course info
+  const getUserById = (userId: string) => users?.find(u => u.id === userId);
+  const getCourseById = (courseId: string) => courses?.find(c => c.id === courseId);
 
   useEffect(() => {
     if (!loading) {
-      generateEnhancedPayments();
+      // generateEnhancedPayments(); // This line is no longer needed
     }
   }, [payments, loading]);
 
-  const generateEnhancedPayments = () => {
-    const enhanced = payments.map(payment => {
-      // Generate random payment method
-      const methodIndex = Math.floor(Math.random() * paymentMethods.length);
-      const paymentMethod = paymentMethods[methodIndex];
+  // const generateEnhancedPayments = () => { // This function is no longer needed
+  //   const enhanced = payments.map(payment => {
+  //     // Generate random payment method
+  //     const methodIndex = Math.floor(Math.random() * paymentMethods.length);
+  //     const paymentMethod = paymentMethods[methodIndex];
       
-      // Generate transaction ID
-      const transactionId = `TXN-${Math.random().toString(36).substring(2, 10).toUpperCase()}`;
+  //     // Generate transaction ID
+  //     const transactionId = `TXN-${Math.random().toString(36).substring(2, 10).toUpperCase()}`;
       
-      // Generate payment details
-      const cardDetails = paymentMethod.id === 'card' 
-        ? { 
-            cardNumber: `**** **** **** ${Math.floor(1000 + Math.random() * 9000)}`,
-            cardType: ['Visa', 'Mastercard', 'Verve'][Math.floor(Math.random() * 3)],
-            expiryDate: `${Math.floor(1 + Math.random() * 12)}/${Math.floor(23 + Math.random() * 5)}`
-          }
-        : null;
+  //     // Generate payment details
+  //     const cardDetails = paymentMethod.id === 'card' 
+  //       ? { 
+  //           cardNumber: `**** **** **** ${Math.floor(1000 + Math.random() * 9000)}`,
+  //           cardType: ['Visa', 'Mastercard', 'Verve'][Math.floor(Math.random() * 3)],
+  //           expiryDate: `${Math.floor(1 + Math.random() * 12)}/${Math.floor(23 + Math.random() * 5)}`
+  //         }
+  //       : null;
       
-      // Generate bank details
-      const bankDetails = paymentMethod.id === 'bank'
-        ? {
-            bankName: ['First Bank', 'GTBank', 'Zenith Bank', 'UBA', 'Access Bank'][Math.floor(Math.random() * 5)],
-            accountNumber: `*****${Math.floor(1000 + Math.random() * 9000)}`,
-            referenceNumber: `REF-${Math.random().toString(36).substring(2, 10).toUpperCase()}`
-          }
-        : null;
+  //     // Generate bank details
+  //     const bankDetails = paymentMethod.id === 'bank'
+  //       ? {
+  //           bankName: ['First Bank', 'GTBank', 'Zenith Bank', 'UBA', 'Access Bank'][Math.floor(Math.random() * 5)],
+  //           accountNumber: `*****${Math.floor(1000 + Math.random() * 9000)}`,
+  //           referenceNumber: `REF-${Math.random().toString(36).substring(2, 10).toUpperCase()}`
+  //         }
+  //       : null;
       
-      // Generate wallet details
-      const walletDetails = paymentMethod.id === 'wallet'
-        ? {
-            provider: ['PayPal', 'Paystack', 'Flutterwave'][Math.floor(Math.random() * 3)],
-            walletId: `WALLET-${Math.random().toString(36).substring(2, 8).toUpperCase()}`,
-            email: payment.userId.includes('@') ? payment.userId : `user${payment.userId}@example.com`
-          }
-        : null;
+  //     // Generate wallet details
+  //     const walletDetails = paymentMethod.id === 'wallet'
+  //       ? {
+  //           provider: ['PayPal', 'Paystack', 'Flutterwave'][Math.floor(Math.random() * 3)],
+  //           walletId: `WALLET-${Math.random().toString(36).substring(2, 8).toUpperCase()}`,
+  //           email: payment.userId.includes('@') ? payment.userId : `user${payment.userId}@example.com`
+  //         }
+  //       : null;
       
-      // Generate receipt number
-      const receiptNumber = `RCPT-${Math.random().toString(36).substring(2, 10).toUpperCase()}`;
+  //     // Generate receipt number
+  //     const receiptNumber = `RCPT-${Math.random().toString(36).substring(2, 10).toUpperCase()}`;
       
-      // Generate invoice number
-      const invoiceNumber = `INV-${Math.random().toString(36).substring(2, 10).toUpperCase()}`;
+  //     // Generate invoice number
+  //     const invoiceNumber = `INV-${Math.random().toString(36).substring(2, 10).toUpperCase()}`;
       
-      // Generate payment processor fee (0.5% to 3%)
-      const processorFeePercentage = 0.5 + Math.random() * 2.5;
-      const processorFee = Math.round(payment.amount * (processorFeePercentage / 100));
+  //     // Generate payment processor fee (0.5% to 3%)
+  //     const processorFeePercentage = 0.5 + Math.random() * 2.5;
+  //     const processorFee = Math.round(payment.amount * (processorFeePercentage / 100));
       
-      // Generate net amount
-      const netAmount = payment.amount - processorFee;
+  //     // Generate net amount
+  //     const netAmount = payment.amount - processorFee;
       
-      // Generate payment processor
-      const paymentProcessor = ['Paystack', 'Flutterwave', 'Stripe', 'Interswitch'][Math.floor(Math.random() * 4)];
+  //     // Generate payment processor
+  //     const paymentProcessor = ['Paystack', 'Flutterwave', 'Stripe', 'Interswitch'][Math.floor(Math.random() * 4)];
       
-      // Generate payment notes
-      const paymentNotes = payment.status === 'completed' 
-        ? 'Payment processed successfully' 
-        : payment.status === 'pending' 
-          ? 'Awaiting payment confirmation' 
-          : 'Payment failed due to insufficient funds';
+  //     // Generate payment notes
+  //     const paymentNotes = payment.status === 'completed' 
+  //       ? 'Payment processed successfully' 
+  //       : payment.status === 'pending' 
+  //         ? 'Awaiting payment confirmation' 
+  //         : 'Payment failed due to insufficient funds';
       
-      return {
-        ...payment,
-        paymentMethod,
-        transactionId,
-        cardDetails,
-        bankDetails,
-        walletDetails,
-        receiptNumber,
-        invoiceNumber,
-        processorFee,
-        netAmount,
-        paymentProcessor,
-        paymentNotes,
-        customerName: `Customer ${payment.userId}`,
-        customerEmail: `customer${payment.userId}@example.com`,
-        courseName: `Course ${payment.courseId}`
-      };
-    });
-    
-    setEnhancedPayments(enhanced);
-  };
+  //     return {
+  //       ...payment,
+  //       paymentMethod,
+  //       transactionId,
+  //       cardDetails,
+  //       bankDetails,
+  //       walletDetails,
+  //       receiptNumber,
+  //       invoiceNumber,
+  //       processorFee,
+  //       netAmount,
+  //       paymentProcessor,
+  //       paymentNotes,
+  //       customerName: `Customer ${payment.userId}`,
+  //       customerEmail: `customer${payment.userId}@example.com`,
+  //       courseName: `Course ${payment.courseId}`
+  //     };
+  //   });
+      
+  //   setEnhancedPayments(enhanced);
+  // };
 
   const handleRefresh = async () => {
     setIsRefreshing(true);
     // Simulate refresh delay
     await new Promise(resolve => setTimeout(resolve, 1000));
-    generateEnhancedPayments();
+    // generateEnhancedPayments(); // This line is no longer needed
     setIsRefreshing(false);
   };
 
@@ -227,26 +226,23 @@ export function PaymentManagement() {
 
   // Filter and sort payments
   const filteredPayments = enhancedPayments.filter(payment => {
-    const matchesSearch = 
-      payment.transactionId.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      payment.customerName.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      payment.customerEmail.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      payment.courseName.toLowerCase().includes(searchTerm.toLowerCase());
-    
+    const user = getUserById(payment.userId);
+    const course = getCourseById(payment.courseId);
+    const matchesSearch =
+      (user?.first_name?.toLowerCase().includes(searchTerm.toLowerCase()) || '') ||
+      (user?.last_name?.toLowerCase().includes(searchTerm.toLowerCase()) || '') ||
+      (user?.email?.toLowerCase().includes(searchTerm.toLowerCase()) || '') ||
+      (course?.title?.toLowerCase().includes(searchTerm.toLowerCase()) || '');
     const matchesStatus = selectedStatus === 'all' || payment.status === selectedStatus;
-    
-    const matchesTimeframe = selectedTimeframe === 'all' || 
-      new Date(payment.createdAt) >= getTimeframeDate(selectedTimeframe);
-    
-    const matchesPaymentMethod = selectedPaymentMethod === 'all' || 
-      payment.paymentMethod.id === selectedPaymentMethod;
-    
-    return matchesSearch && matchesStatus && matchesTimeframe && matchesPaymentMethod;
+    const matchesTimeframe = selectedTimeframe === 'all' ||
+      new Date(payment.created_at) >= getTimeframeDate(selectedTimeframe);
+    // No payment method filter, as we don't have real data for it
+    return matchesSearch && matchesStatus && matchesTimeframe;
   }).sort((a, b) => {
     if (sortField === 'date') {
       return sortDirection === 'asc'
-        ? new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime()
-        : new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime();
+        ? new Date(a.created_at).getTime() - new Date(b.created_at).getTime()
+        : new Date(b.created_at).getTime() - new Date(a.created_at).getTime();
     } else {
       return sortDirection === 'asc'
         ? a.amount - b.amount
@@ -280,30 +276,28 @@ export function PaymentManagement() {
   // Export payment data to CSV
   const exportToCSV = () => {
     const headers = [
-      'Transaction ID',
       'Date',
-      'Customer',
+      'Customer Name',
+      'Customer Email',
       'Course',
       'Amount',
-      'Status',
-      'Payment Method',
-      'Receipt Number'
+      'Status'
     ];
-    
     const csvData = [
       headers.join(','),
-      ...filteredPayments.map(payment => [
-        payment.transactionId,
-        new Date(payment.createdAt).toISOString(),
-        payment.customerName,
-        payment.courseName,
-        payment.amount,
-        payment.status,
-        payment.paymentMethod.name,
-        payment.receiptNumber
-      ].join(','))
+      ...filteredPayments.map(payment => {
+        const user = getUserById(payment.userId);
+        const course = getCourseById(payment.courseId);
+        return [
+          new Date(payment.created_at).toISOString(),
+          `${user?.first_name || ''} ${user?.last_name || ''}`.trim(),
+          user?.email || '',
+          course?.title || '',
+          payment.amount,
+          payment.status
+        ].join(',');
+      })
     ].join('\n');
-    
     const blob = new Blob([csvData], { type: 'text/csv' });
     const url = window.URL.createObjectURL(blob);
     const a = document.createElement('a');
@@ -335,7 +329,8 @@ export function PaymentManagement() {
   if (showPaymentDetails) {
     const payment = enhancedPayments.find(p => p.id === showPaymentDetails);
     if (!payment) return null;
-    
+    const user = getUserById(payment.userId);
+    const course = getCourseById(payment.courseId);
     return (
       <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
         <div className="bg-white rounded-xl shadow-xl max-w-4xl w-full max-h-[90vh] overflow-y-auto">
@@ -347,7 +342,6 @@ export function PaymentManagement() {
                 </div>
                 <div>
                   <h2 className="text-2xl font-bold text-gray-900">Payment Details</h2>
-                  <p className="text-gray-600">Transaction ID: {payment.transactionId}</p>
                 </div>
               </div>
               <button
@@ -358,43 +352,7 @@ export function PaymentManagement() {
               </button>
             </div>
           </div>
-
           <div className="p-6 space-y-8">
-            {/* Transaction Summary */}
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-              <div className="bg-gray-50 rounded-lg p-4 border border-gray-200">
-                <h3 className="font-medium text-gray-900 mb-2">Amount</h3>
-                <p className="text-2xl font-bold text-green-600">{formatCurrency(payment.amount)}</p>
-                <div className="mt-2 text-sm text-gray-500">
-                  <p>Processor Fee: {formatCurrency(payment.processorFee)}</p>
-                  <p>Net Amount: {formatCurrency(payment.netAmount)}</p>
-                </div>
-              </div>
-              
-              <div className="bg-gray-50 rounded-lg p-4 border border-gray-200">
-                <h3 className="font-medium text-gray-900 mb-2">Status</h3>
-                <div className={`inline-flex items-center gap-2 px-3 py-1 rounded-full text-sm font-medium border ${getStatusColor(payment.status)}`}>
-                  {getStatusIcon(payment.status)}
-                  <span className="capitalize">{payment.status}</span>
-                </div>
-                <p className="mt-2 text-sm text-gray-500">
-                  {formatDate(payment.createdAt)}
-                </p>
-              </div>
-              
-              <div className="bg-gray-50 rounded-lg p-4 border border-gray-200">
-                <h3 className="font-medium text-gray-900 mb-2">Payment Method</h3>
-                <div className="flex items-center gap-2">
-                  <payment.paymentMethod.icon className="w-5 h-5 text-blue-500" />
-                  <span className="font-medium text-gray-900">{payment.paymentMethod.name}</span>
-                </div>
-                <p className="mt-2 text-sm text-gray-500">
-                  Processor: {payment.paymentProcessor}
-                </p>
-              </div>
-            </div>
-
-            {/* Customer and Course Details */}
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
               <div className="bg-white rounded-lg p-4 border border-gray-200">
                 <h3 className="font-medium text-gray-900 mb-4 flex items-center gap-2">
@@ -402,139 +360,37 @@ export function PaymentManagement() {
                   Customer Information
                 </h3>
                 <div className="space-y-2">
-                  <p><span className="font-medium">Name:</span> {payment.customerName}</p>
-                  <p><span className="font-medium">Email:</span> {payment.customerEmail}</p>
+                  <p><span className="font-medium">Name:</span> {user?.first_name} {user?.last_name}</p>
+                  <p><span className="font-medium">Email:</span> {user?.email}</p>
                   <p><span className="font-medium">User ID:</span> {payment.userId}</p>
                 </div>
               </div>
-              
               <div className="bg-white rounded-lg p-4 border border-gray-200">
                 <h3 className="font-medium text-gray-900 mb-4 flex items-center gap-2">
                   <BookOpen className="w-5 h-5 text-green-500" />
                   Course Information
                 </h3>
                 <div className="space-y-2">
-                  <p><span className="font-medium">Course:</span> {payment.courseName}</p>
+                  <p><span className="font-medium">Title:</span> {course?.title}</p>
                   <p><span className="font-medium">Course ID:</span> {payment.courseId}</p>
-                  <p><span className="font-medium">Price:</span> {formatCurrency(payment.amount)}</p>
                 </div>
               </div>
             </div>
-
-            {/* Payment Details */}
-            <div className="bg-white rounded-lg p-4 border border-gray-200">
-              <h3 className="font-medium text-gray-900 mb-4 flex items-center gap-2">
-                <CreditCard className="w-5 h-5 text-purple-500" />
-                Payment Details
-              </h3>
-              
-              <div className="space-y-4">
-                {payment.cardDetails && (
-                  <div className="grid grid-cols-1 md:grid-cols-3 gap-4 text-sm">
-                    <div>
-                      <p className="font-medium text-gray-700">Card Number</p>
-                      <p className="text-gray-900">{payment.cardDetails.cardNumber}</p>
-                    </div>
-                    <div>
-                      <p className="font-medium text-gray-700">Card Type</p>
-                      <p className="text-gray-900">{payment.cardDetails.cardType}</p>
-                    </div>
-                    <div>
-                      <p className="font-medium text-gray-700">Expiry Date</p>
-                      <p className="text-gray-900">{payment.cardDetails.expiryDate}</p>
-                    </div>
-                  </div>
-                )}
-                
-                {payment.bankDetails && (
-                  <div className="grid grid-cols-1 md:grid-cols-3 gap-4 text-sm">
-                    <div>
-                      <p className="font-medium text-gray-700">Bank Name</p>
-                      <p className="text-gray-900">{payment.bankDetails.bankName}</p>
-                    </div>
-                    <div>
-                      <p className="font-medium text-gray-700">Account Number</p>
-                      <p className="text-gray-900">{payment.bankDetails.accountNumber}</p>
-                    </div>
-                    <div>
-                      <p className="font-medium text-gray-700">Reference Number</p>
-                      <p className="text-gray-900">{payment.bankDetails.referenceNumber}</p>
-                    </div>
-                  </div>
-                )}
-                
-                {payment.walletDetails && (
-                  <div className="grid grid-cols-1 md:grid-cols-3 gap-4 text-sm">
-                    <div>
-                      <p className="font-medium text-gray-700">Provider</p>
-                      <p className="text-gray-900">{payment.walletDetails.provider}</p>
-                    </div>
-                    <div>
-                      <p className="font-medium text-gray-700">Wallet ID</p>
-                      <p className="text-gray-900">{payment.walletDetails.walletId}</p>
-                    </div>
-                    <div>
-                      <p className="font-medium text-gray-700">Email</p>
-                      <p className="text-gray-900">{payment.walletDetails.email}</p>
-                    </div>
-                  </div>
-                )}
-                
-                <div className="grid grid-cols-1 md:grid-cols-3 gap-4 text-sm pt-4 border-t border-gray-200">
-                  <div>
-                    <p className="font-medium text-gray-700">Transaction ID</p>
-                    <p className="text-gray-900">{payment.transactionId}</p>
-                  </div>
-                  <div>
-                    <p className="font-medium text-gray-700">Receipt Number</p>
-                    <p className="text-gray-900">{payment.receiptNumber}</p>
-                  </div>
-                  <div>
-                    <p className="font-medium text-gray-700">Invoice Number</p>
-                    <p className="text-gray-900">{payment.invoiceNumber}</p>
-                  </div>
-                </div>
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+              <div className="bg-gray-50 rounded-lg p-4 border border-gray-200">
+                <h3 className="font-medium text-gray-900 mb-2">Amount</h3>
+                <p className="text-2xl font-bold text-green-600">{formatCurrency(payment.amount)}</p>
               </div>
-            </div>
-
-            {/* Payment Notes */}
-            <div className="bg-blue-50 rounded-lg p-4 border border-blue-200">
-              <h3 className="font-medium text-blue-900 mb-2">Payment Notes</h3>
-              <p className="text-blue-800">{payment.paymentNotes}</p>
-            </div>
-
-            {/* Action Buttons */}
-            <div className="flex flex-wrap gap-4 justify-end">
-              <button
-                onClick={() => generateInvoice(payment)}
-                className="flex items-center gap-2 px-4 py-2 bg-purple-600 text-white rounded-lg hover:bg-purple-700 transition-colors"
-              >
-                <FileText className="w-4 h-4" />
-                Generate Invoice
-              </button>
-              
-              <button
-                onClick={() => sendReceipt(payment)}
-                className="flex items-center gap-2 px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors"
-              >
-                <Mail className="w-4 h-4" />
-                Send Receipt
-              </button>
-              
-              <button
-                onClick={() => window.print()}
-                className="flex items-center gap-2 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors"
-              >
-                <Printer className="w-4 h-4" />
-                Print Details
-              </button>
-              
-              <button
-                onClick={() => setShowPaymentDetails(null)}
-                className="flex items-center gap-2 px-4 py-2 border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50 transition-colors"
-              >
-                Close
-              </button>
+              <div className="bg-gray-50 rounded-lg p-4 border border-gray-200">
+                <h3 className="font-medium text-gray-900 mb-2">Status</h3>
+                <div className={`inline-flex items-center gap-2 px-3 py-1 rounded-full text-sm font-medium border ${getStatusColor(payment.status)}`}> 
+                  {getStatusIcon(payment.status)}
+                  <span className="capitalize">{payment.status}</span>
+                </div>
+                <p className="mt-2 text-sm text-gray-500">
+                  {formatDate(payment.created_at)}
+                </p>
+              </div>
             </div>
           </div>
         </div>
@@ -680,11 +536,11 @@ export function PaymentManagement() {
               className="px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
             >
               <option value="all">All Payment Methods</option>
-              {paymentMethods.map(method => (
-                <option key={method.id} value={method.id}>
-                  {method.name}
-                </option>
-              ))}
+              {/* paymentMethods.map(method => ( // This line is no longer needed */}
+              {/*   <option key={method.id} value={method.id}> // This line is no longer needed */}
+              {/*     {method.name} // This line is no longer needed */}
+              {/*   </option> // This line is no longer needed */}
+              {/* ))} // This line is no longer needed */}
             </select>
           </div>
         </div>
@@ -750,16 +606,16 @@ export function PaymentManagement() {
                       {payment.transactionId}
                     </td>
                     <td className="p-4 text-sm text-gray-600">
-                      {formatDate(payment.createdAt)}
+                      {formatDate(payment.created_at)}
                     </td>
                     <td className="p-4">
                       <div>
-                        <p className="font-medium text-gray-900">{payment.customerName}</p>
-                        <p className="text-sm text-gray-500">{payment.customerEmail}</p>
+                        <p className="font-medium text-gray-900">{getUserById(payment.userId)?.first_name} {getUserById(payment.userId)?.last_name}</p>
+                        <p className="text-sm text-gray-500">{getUserById(payment.userId)?.email}</p>
                       </div>
                     </td>
                     <td className="p-4">
-                      <p className="text-gray-900">{payment.courseName}</p>
+                      <p className="text-gray-900">{getCourseById(payment.courseId)?.title}</p>
                     </td>
                     <td className="p-4 font-medium text-gray-900">
                       {formatCurrency(payment.amount)}
@@ -894,34 +750,8 @@ export function PaymentManagement() {
           <div>
             <h3 className="font-medium text-gray-900 mb-4">Payment Method Distribution</h3>
             <div className="space-y-4">
-              {paymentMethods.map(method => {
-                const methodCount = filteredPayments.filter(p => p.paymentMethod.id === method.id).length;
-                const percentage = totalTransactions > 0 ? Math.round((methodCount / totalTransactions) * 100) : 0;
-                
-                return (
-                  <div key={method.id} className="space-y-2">
-                    <div className="flex items-center justify-between">
-                      <div className="flex items-center gap-2">
-                        <method.icon className="w-4 h-4 text-gray-600" />
-                        <span className="font-medium text-gray-900">{method.name}</span>
-                      </div>
-                      <div className="text-right">
-                        <span className="font-bold text-gray-900">{percentage}%</span>
-                        <span className="text-sm text-gray-500 ml-2">({methodCount})</span>
-                      </div>
-                    </div>
-                    <div className="w-full bg-gray-200 rounded-full h-2">
-                      <div 
-                        className={`h-2 rounded-full ${
-                          method.id === 'card' ? 'bg-blue-500' : 
-                          method.id === 'bank' ? 'bg-green-500' : 'bg-purple-500'
-                        }`}
-                        style={{ width: `${percentage}%` }}
-                      ></div>
-                    </div>
-                  </div>
-                );
-              })}
+              {/* Payment method distribution is unavailable because demo logic was removed. */}
+              <div className="text-gray-500 text-sm">Payment method distribution is unavailable.</div>
             </div>
           </div>
           

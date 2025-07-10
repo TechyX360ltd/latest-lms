@@ -1,8 +1,9 @@
 import React, { useState, useEffect } from 'react';
-import { LogOut, User, Bell, Search, X } from 'lucide-react';
+import { LogOut, User, Bell, Search, X, GraduationCap } from 'lucide-react';
 import { FaCoins } from 'react-icons/fa';
 import { useAuth } from '../../context/AuthContext';
-import { useNotifications } from '../../hooks/useData';
+import { useNotifications, useUsers, useCourses } from '../../hooks/useData';
+import { useNavigate } from 'react-router-dom';
 
 export function Header() {
   const { user, logout } = useAuth();
@@ -10,6 +11,42 @@ export function Header() {
   const [showLogoutModal, setShowLogoutModal] = useState(false);
   const [showNotificationDropdown, setShowNotificationDropdown] = useState(false);
   const [showSearch, setShowSearch] = useState(false);
+
+  // Global search state
+  const [searchTerm, setSearchTerm] = useState('');
+  const [searchActive, setSearchActive] = useState(false);
+  const { users } = useUsers();
+  const { courses } = useCourses();
+  const navigate = useNavigate();
+
+  // Filtered results
+  const filteredUsers = searchTerm.length > 0 ? users.filter((u: any) =>
+    (u.fullName || '').toLowerCase().includes(searchTerm.toLowerCase()) ||
+    (u.email || '').toLowerCase().includes(searchTerm.toLowerCase())
+  ) : [];
+  const filteredCourses = searchTerm.length > 0 ? courses.filter((c: any) =>
+    (c.title || '').toLowerCase().includes(searchTerm.toLowerCase())
+  ) : [];
+
+  // Close dropdown on outside click or escape
+  useEffect(() => {
+    if (!searchActive) return;
+    const handleClick = (e: MouseEvent) => {
+      const target = e.target as HTMLElement;
+      if (!target.closest('.global-search-dropdown') && !target.closest('.global-search-input')) {
+        setSearchActive(false);
+      }
+    };
+    const handleEsc = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') setSearchActive(false);
+    };
+    document.addEventListener('mousedown', handleClick);
+    document.addEventListener('keydown', handleEsc);
+    return () => {
+      document.removeEventListener('mousedown', handleClick);
+      document.removeEventListener('keydown', handleEsc);
+    };
+  }, [searchActive]);
 
   // Calculate unread notifications for current user
   const unreadCount = notifications.filter(notification =>
@@ -99,8 +136,65 @@ export function Header() {
               <input
                 type="text"
                 placeholder={user?.role === 'admin' ? 'Search users, courses...' : 'Search courses...'}
-                className="pl-10 pr-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent w-64 lg:w-80"
+                className="pl-10 pr-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent w-64 lg:w-80 global-search-input"
+                value={searchTerm}
+                onChange={e => {
+                  setSearchTerm(e.target.value);
+                  setSearchActive(true);
+                }}
+                onFocus={() => setSearchActive(true)}
+                autoComplete="off"
               />
+              {/* Autocomplete Dropdown */}
+              {searchActive && (searchTerm.length > 0) && (
+                <div className="absolute left-0 mt-2 w-full bg-white border border-gray-200 rounded-xl shadow-xl z-50 max-h-96 overflow-y-auto global-search-dropdown">
+                  {(filteredUsers.length > 0 || filteredCourses.length > 0) ? (
+                    <>
+                      {filteredUsers.length > 0 && (
+                        <div>
+                          <div className="px-4 py-2 text-xs font-semibold text-gray-500">Users</div>
+                          {filteredUsers.map((u: any) => (
+                            <button
+                              key={u.id}
+                              className="w-full text-left px-4 py-2 hover:bg-blue-50 flex items-center gap-2"
+                              onClick={() => {
+                                setSearchActive(false);
+                                setSearchTerm('');
+                                navigate(`/admin/users/${u.id}`);
+                              }}
+                            >
+                              <User className="w-4 h-4 text-blue-500" />
+                              <span className="font-medium">{u.fullName}</span>
+                              <span className="text-xs text-gray-500 ml-2">{u.email}</span>
+                            </button>
+                          ))}
+                        </div>
+                      )}
+                      {filteredCourses.length > 0 && (
+                        <div>
+                          <div className="px-4 py-2 text-xs font-semibold text-gray-500">Courses</div>
+                          {filteredCourses.map((c: any) => (
+                            <button
+                              key={c.id}
+                              className="w-full text-left px-4 py-2 hover:bg-green-50 flex items-center gap-2"
+                              onClick={() => {
+                                setSearchActive(false);
+                                setSearchTerm('');
+                                navigate(`/courses/${c.id}`);
+                              }}
+                            >
+                              <GraduationCap className="w-4 h-4 text-green-500" />
+                              <span className="font-medium">{c.title}</span>
+                            </button>
+                          ))}
+                        </div>
+                      )}
+                    </>
+                  ) : (
+                    <div className="px-4 py-6 text-center text-gray-400 text-sm">No results found</div>
+                  )}
+                </div>
+              )}
             </div>
 
             {/* Mobile Search Toggle */}
