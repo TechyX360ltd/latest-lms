@@ -47,11 +47,11 @@ function sendBoostReminderEmail(course: any, user: any) {
 
 export function InstructorDashboard() {
   const { user } = useAuth();
+  const navigate = useNavigate();
   const [showWelcome, setShowWelcome] = useState(false);
   const [showBoostModal, setShowBoostModal] = useState(false);
   const [boostCourse, setBoostCourse] = useState<any>(null);
   const [showWithdrawModal, setShowWithdrawModal] = useState(false);
-  const [withdrawDrawerOpen, setWithdrawDrawerOpen] = useState(false);
   const [withdrawStep, setWithdrawStep] = useState(1);
   const [withdrawAmount, setWithdrawAmount] = useState('');
   const [withdrawFee, setWithdrawFee] = useState(0);
@@ -95,9 +95,7 @@ export function InstructorDashboard() {
         setAccountError('');
         setAccountName('');
         try {
-          const res = await fetch(`https://api.paystack.co/bank/resolve?account_number=${accountNumber}&bank_code=${selectedBank}`, {
-            headers: { Authorization: 'Bearer pk_test_78329ea72cb43b6435a12075cb3a2bca07ec53be' }
-          });
+          const res = await fetch(`http://localhost:5001/api/resolve-account?account_number=${accountNumber}&bank_code=${selectedBank}`);
           const data = await res.json();
           if (data.status && data.data && data.data.account_name) {
             setAccountName(data.data.account_name);
@@ -168,8 +166,8 @@ export function InstructorDashboard() {
   };
 
   // Reset drawer state
-  const closeWithdrawDrawer = () => {
-    setWithdrawDrawerOpen(false);
+  const closeWithdrawModal = () => {
+    setShowWithdrawModal(false);
     setWithdrawStep(1);
     setWithdrawAmount('');
     setWithdrawFee(0);
@@ -338,7 +336,12 @@ export function InstructorDashboard() {
                   );
                 })}
               </div>
-              <button className="mt-6 bg-blue-600 text-white px-6 py-2 rounded-lg font-medium hover:bg-blue-700 transition-colors">Create New Course</button>
+              <button
+                className="mt-6 bg-blue-600 text-white px-6 py-2 rounded-lg font-medium hover:bg-blue-700 transition-colors"
+                onClick={() => navigate('/instructor/create-course')}
+              >
+                Create New Course
+              </button>
             </div>
             {/* Earnings & Payouts */}
             <div className="bg-white rounded-xl shadow-sm p-6 border border-gray-100">
@@ -346,7 +349,7 @@ export function InstructorDashboard() {
               <div className="mb-4">
                 <div className="flex items-center gap-4">
                   <div className="text-2xl font-bold text-green-700">₦150,000</div>
-                  <button className="px-4 py-2 rounded-lg bg-green-50 text-green-700 font-semibold hover:bg-green-100 border border-green-200" onClick={() => setWithdrawDrawerOpen(true)}>
+                  <button className="px-4 py-2 rounded-lg bg-green-50 text-green-700 font-semibold hover:bg-green-100 border border-green-200" onClick={() => setShowWithdrawModal(true)}>
                     Withdraw Earnings
                   </button>
                 </div>
@@ -438,12 +441,12 @@ export function InstructorDashboard() {
               </div>
             </div>
           )}
-          {/* Withdraw Drawer */}
-          {withdrawDrawerOpen && (
-            <div className="fixed inset-0 z-50 flex items-end md:items-center justify-center md:justify-end bg-black bg-opacity-40">
-              <div className="w-full md:w-[420px] h-[90vh] bg-white rounded-t-2xl md:rounded-l-2xl md:rounded-t-none shadow-2xl p-8 flex flex-col relative animate-fade-in overflow-y-auto">
+          {/* Withdraw Modal */}
+          {showWithdrawModal && (
+            <div className="fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-40">
+              <div className="bg-white rounded-xl shadow-2xl p-8 max-w-md w-full relative animate-fade-in max-h-[80vh] overflow-y-auto">
                 <button
-                  onClick={closeWithdrawDrawer}
+                  onClick={closeWithdrawModal}
                   className="absolute top-4 right-4 text-gray-400 hover:text-gray-700 text-2xl font-bold"
                   aria-label="Close"
                 >×</button>
@@ -550,7 +553,7 @@ export function InstructorDashboard() {
                       <div className="text-sm text-gray-500">You will receive an email notification shortly.</div>
                       <button
                         className="w-full py-3 rounded-lg bg-green-600 hover:bg-green-700 text-white font-semibold text-lg transition-colors mt-2"
-                        onClick={closeWithdrawDrawer}
+                        onClick={closeWithdrawModal}
                       >
                         Done
                       </button>

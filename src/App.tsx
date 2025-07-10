@@ -47,6 +47,8 @@ import AdminReferralsPage from './pages/AdminReferralsPage';
 import { CertificateVerificationPage } from './pages/CertificateVerificationPage';
 import CertificatePage from './pages/CertificatePage';
 import AdminUserDetailPage from './pages/AdminUserDetailPage';
+import InstructorMyCourses from './components/Instructor/InstructorMyCourses';
+import CreateCourse from './components/Instructor/CreateCourse';
 
 function AuthPage() {
   const [isLogin, setIsLogin] = useState(true);
@@ -213,6 +215,22 @@ function AppContent() {
         <Route
           path="/instructor/:instructorId"
           element={<InstructorProfilePage />}
+        />
+        <Route
+          path="/instructor/courses"
+          element={
+            <ProtectedRoute allowedRoles={['instructor']}>
+              <InstructorMyCourses />
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="/instructor/create-course"
+          element={
+            <ProtectedRoute allowedRoles={['instructor']}>
+              <CreateCourse />
+            </ProtectedRoute>
+          }
         />
 
         {/* Learner Dashboard Routes */}
