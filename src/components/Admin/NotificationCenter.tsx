@@ -18,7 +18,8 @@ import {
   X,
   Paperclip,
   Upload,
-  Wifi
+  Wifi,
+  GraduationCap
 } from 'lucide-react';
 import { Notification, NotificationRecipient, User as UserType, Course } from '../../types';
 import { useUsers, useCourses, useNotifications } from '../../hooks/useData';
@@ -34,6 +35,8 @@ export function NotificationCenter() {
   const [searchTerm, setSearchTerm] = useState('');
   const [filterType, setFilterType] = useState('all');
   const [isRealTimeActive, setIsRealTimeActive] = useState(true);
+  const [currentPage, setCurrentPage] = useState(1);
+  const pageSize = 5;
 
   useEffect(() => {
     const interval = setInterval(() => {
@@ -44,15 +47,11 @@ export function NotificationCenter() {
   }, []);
 
   const handleCreateNotification = (notificationData: Omit<Notification, 'id' | 'createdAt' | 'senderId' | 'senderName'>) => {
-    const newNotification: Notification = {
+    addNotification({
       ...notificationData,
-      id: Date.now().toString(),
       senderId: user!.id,
-      senderName: user!.firstName + ' ' + user!.lastName,
-      createdAt: new Date().toISOString(),
-    };
-
-    addNotification(newNotification);
+      // senderName is not needed for DB insert, will be resolved in formatting
+    });
     setShowCreateModal(false);
   };
 
@@ -113,6 +112,11 @@ export function NotificationCenter() {
     return matchesSearch && matchesType;
   });
 
+  // Sort notifications newest to oldest
+  const sortedNotifications = [...filteredNotifications].sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
+  const totalPages = Math.ceil(sortedNotifications.length / pageSize);
+  const paginatedNotifications = sortedNotifications.slice((currentPage - 1) * pageSize, currentPage * pageSize);
+
   return (
     <div className="space-y-8">
       <div className="flex items-center justify-between">
@@ -166,7 +170,7 @@ export function NotificationCenter() {
 
       {/* Notifications List */}
       <div className="space-y-4">
-        {filteredNotifications.map((notification) => (
+        {paginatedNotifications.map((notification) => (
           <div key={notification.id} className="bg-white rounded-xl shadow-sm border border-gray-100 overflow-hidden">
             <div className="p-6">
               <div className="flex items-start justify-between mb-4">
@@ -177,15 +181,10 @@ export function NotificationCenter() {
                   <div className="flex-1">
                     <div className="flex items-center gap-3 mb-2">
                       <h3 className="text-lg font-bold text-gray-900">{notification.title}</h3>
-                      <div className={`px-2 py-1 rounded-full text-xs font-medium ${getTypeColor(notification.type)}`}>
-                        {notification.type}
-                      </div>
-                      <div className={`px-2 py-1 rounded-full text-xs font-medium ${getPriorityColor(notification.priority)}`}>
-                        {notification.priority}
-                      </div>
+                      <div className={`px-2 py-1 rounded-full text-xs font-medium ${getTypeColor(notification.type)}`}>{notification.type}</div>
+                      <div className={`px-2 py-1 rounded-full text-xs font-medium ${getPriorityColor(notification.priority)}`}>{notification.priority}</div>
                     </div>
                     <p className="text-gray-600 mb-3">{notification.message}</p>
-                    
                     <div className="flex items-center gap-4 text-sm text-gray-500">
                       <div className="flex items-center gap-1">
                         <Calendar className="w-4 h-4" />
@@ -202,14 +201,13 @@ export function NotificationCenter() {
                     </div>
                   </div>
                 </div>
-                
                 <div className="flex items-center gap-2">
                   <button
                     onClick={() => setSelectedNotification(notification)}
                     className="p-2 text-gray-400 hover:text-blue-600 hover:bg-blue-50 rounded transition-colors"
                     title="View Details"
                   >
-                    <Eye className="w-4 h-4" />
+                    <Eye className="w-5 h-5" />
                   </button>
                   <button
                     onClick={() => handleDeleteNotification(notification.id)}
@@ -220,7 +218,6 @@ export function NotificationCenter() {
                   </button>
                 </div>
               </div>
-
               {/* Recipients Preview */}
               <div className="bg-gray-50 rounded-lg p-4">
                 <h4 className="font-medium text-gray-900 mb-2">Recipients:</h4>
@@ -228,11 +225,7 @@ export function NotificationCenter() {
                   {notification.recipients.slice(0, 5).map((recipient) => (
                     <span
                       key={recipient.userId}
-                      className={`px-2 py-1 rounded-full text-xs ${
-                        recipient.isRead 
-                          ? 'bg-green-100 text-green-800' 
-                          : 'bg-gray-100 text-gray-800'
-                      }`}
+                      className={`px-2 py-1 rounded-full text-xs ${recipient.isRead ? 'bg-green-100 text-green-800' : 'bg-gray-100 text-gray-800'}`}
                     >
                       {recipient.userName}
                     </span>
@@ -248,6 +241,26 @@ export function NotificationCenter() {
           </div>
         ))}
       </div>
+      {/* Pagination Controls */}
+      {totalPages > 1 && (
+        <div className="flex justify-center items-center gap-2 mt-6">
+          <button
+            onClick={() => setCurrentPage((p) => Math.max(1, p - 1))}
+            disabled={currentPage === 1}
+            className="px-3 py-2 rounded-lg bg-gray-100 text-gray-700 hover:bg-gray-200 disabled:opacity-50"
+          >
+            Previous
+          </button>
+          <span className="text-gray-700 font-medium">Page {currentPage} of {totalPages}</span>
+          <button
+            onClick={() => setCurrentPage((p) => Math.min(totalPages, p + 1))}
+            disabled={currentPage === totalPages}
+            className="px-3 py-2 rounded-lg bg-gray-100 text-gray-700 hover:bg-gray-200 disabled:opacity-50"
+          >
+            Next
+          </button>
+        </div>
+      )}
 
       {filteredNotifications.length === 0 && (
         <div className="text-center py-12">
@@ -269,10 +282,64 @@ export function NotificationCenter() {
 
       {/* Notification Details Modal */}
       {selectedNotification && (
-        <NotificationDetailsModal
-          notification={selectedNotification}
-          onClose={() => setSelectedNotification(null)}
-        />
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-40">
+          <div className="bg-white rounded-2xl shadow-2xl max-w-lg w-full p-8 relative animate-fade-in">
+            <button
+              onClick={() => setSelectedNotification(null)}
+              className="absolute top-4 right-4 text-gray-400 hover:text-gray-600"
+            >
+              <X className="w-6 h-6" />
+            </button>
+            <div className="mb-6 flex items-center gap-3">
+              {getTypeIcon(selectedNotification.type)}
+              <h2 className="text-2xl font-bold text-gray-900 flex-1">{selectedNotification.title}</h2>
+              <span className={`px-3 py-1 rounded-full text-xs font-semibold ${getTypeColor(selectedNotification.type)}`}>{selectedNotification.type}</span>
+              <span className={`px-3 py-1 rounded-full text-xs font-semibold ${getPriorityColor(selectedNotification.priority)}`}>{selectedNotification.priority}</span>
+            </div>
+            <div className="mb-4 text-gray-700 text-lg">{selectedNotification.message}</div>
+            <div className="mb-4 flex flex-col gap-2">
+              <div className="flex items-center gap-2 text-sm text-gray-500">
+                <User className="w-4 h-4" />
+                <span>Sender: <span className="font-medium text-gray-900">{selectedNotification.senderName}</span></span>
+              </div>
+              <div className="flex items-center gap-2 text-sm text-gray-500">
+                <Calendar className="w-4 h-4" />
+                <span>Date: <span className="font-medium text-gray-900">{new Date(selectedNotification.createdAt).toLocaleString()}</span></span>
+              </div>
+              {selectedNotification.courseId && (
+                <div className="flex items-center gap-2 text-sm text-gray-500">
+                  <GraduationCap className="w-4 h-4" />
+                  <span>Course ID: <span className="font-medium text-gray-900">{selectedNotification.courseId}</span></span>
+                </div>
+              )}
+            </div>
+            <div className="mb-4">
+              <h4 className="font-semibold text-gray-900 mb-2">Recipients</h4>
+              <div className="flex flex-wrap gap-2">
+                {selectedNotification.recipients.map((recipient) => (
+                  <span
+                    key={recipient.userId}
+                    className={`px-2 py-1 rounded-full text-xs ${recipient.isRead ? 'bg-green-100 text-green-800' : 'bg-gray-100 text-gray-800'}`}
+                  >
+                    {recipient.userName}
+                  </span>
+                ))}
+              </div>
+            </div>
+            {selectedNotification.attachments && selectedNotification.attachments.length > 0 && (
+              <div className="mb-4">
+                <h4 className="font-semibold text-gray-900 mb-2">Attachments</h4>
+                <ul className="list-disc pl-6">
+                  {selectedNotification.attachments.map((att) => (
+                    <li key={att.id} className="text-blue-600 hover:underline">
+                      <a href={att.url} target="_blank" rel="noopener noreferrer">{att.name}</a>
+                    </li>
+                  ))}
+                </ul>
+              </div>
+            )}
+          </div>
+        </div>
       )}
     </div>
   );
@@ -399,7 +466,7 @@ function CreateNotificationModal({
         url: URL.createObjectURL(file)
       }))
     };
-
+    console.log('Notification Recipients:', recipients);
     onSave(notificationData);
   };
 

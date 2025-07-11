@@ -52,6 +52,7 @@ import Enrollments from './components/Instructor/Enrollments';
 import CreateCourse from './components/Instructor/CreateCourse';
 import Earnings from './components/Instructor/Earnings';
 import InstructorScheduleSessionPage from './pages/InstructorScheduleSessionPage';
+import InstructorNotifications from './components/Instructor/InstructorNotifications';
 
 function AuthPage() {
   const [isLogin, setIsLogin] = useState(true);
@@ -248,6 +249,14 @@ function AppContent() {
           element={
             <ProtectedRoute allowedRoles={['instructor']}>
               <Earnings />
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="/instructor/notifications"
+          element={
+            <ProtectedRoute allowedRoles={['instructor']}>
+              <InstructorNotifications />
             </ProtectedRoute>
           }
         />

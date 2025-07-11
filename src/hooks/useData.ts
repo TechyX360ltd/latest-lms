@@ -1015,17 +1015,29 @@ export function useNotifications() {
   const formatNotifications = async (notificationsData: any[]) => {
     try {
       // Get user data for sender names and recipient names
-      // Only select columns that exist
       const { data: users, error: usersError } = await supabase
         .from('users')
         .select('id, first_name, last_name, email');
       if (usersError) throw usersError;
+      // Fetch all recipients for all notifications
+      const notificationIds = (notificationsData || []).map((n: any) => n.id);
+      let allRecipients: any[] = [];
+      if (notificationIds.length > 0) {
+        const { data: recipientsData, error: recipientsError } = await supabase
+          .from('notification_recipients')
+          .select('*')
+          .in('notification_id', notificationIds);
+        if (recipientsError) throw recipientsError;
+        allRecipients = recipientsData || [];
+      }
       // Defensive: always use arrays
       const safeNotifications = notificationsData || [];
       const safeUsers = users || [];
       // Format notifications to match our app's structure
       const formattedNotifications = safeNotifications.map((notification: any) => {
         const sender = safeUsers.find((u: any) => u.id === notification.sender_id);
+        // Attach recipients from DB
+        const recipientsForNotification = allRecipients.filter((r) => r.notification_id === notification.id);
         return {
           id: notification.id,
           title: notification.title,
@@ -1034,7 +1046,7 @@ export function useNotifications() {
           priority: notification.priority,
           senderId: notification.sender_id,
           senderName: sender ? `${sender.first_name || ''} ${sender.last_name || ''}`.trim() || sender.email || 'Unknown User' : 'Unknown User',
-          recipients: (notification.recipients || []).map((recipient: any) => {
+          recipients: recipientsForNotification.map((recipient: any) => {
             const user = safeUsers.find((u: any) => u.id === recipient.user_id);
             return {
               userId: recipient.user_id,
@@ -1047,6 +1059,7 @@ export function useNotifications() {
           }),
           courseId: notification.course_id,
           createdAt: notification.created_at,
+          created_at: notification.created_at, // for DB compatibility
           attachments: (notification.attachments || []).map((attachment: any) => ({
             id: attachment.id,
             name: attachment.name,
@@ -1170,7 +1183,62 @@ export function useNotifications() {
       )
   }, []);
 
-  return { notifications, setNotifications, loading };
+  // Add Notification to DB and real-time
+  const addNotification = async (notificationData: Notification) => {
+    try {
+      // Generate IDs
+      const notificationId = crypto.randomUUID();
+      const createdAt = new Date().toISOString();
+      // Insert notification
+      const { error: notifError } = await supabase.from('notifications').insert({
+        id: notificationId,
+        title: notificationData.title,
+        message: notificationData.message,
+        type: notificationData.type,
+        priority: notificationData.priority,
+        sender_id: notificationData.senderId,
+        course_id: notificationData.courseId || null,
+        scheduled_for: notificationData.scheduledFor || null,
+        created_at: createdAt
+      });
+      if (notifError) throw notifError;
+      // Insert recipients
+      if (notificationData.recipients && notificationData.recipients.length > 0) {
+        const recipientRows = notificationData.recipients.map((r) => ({
+          id: crypto.randomUUID(),
+          notification_id: notificationId,
+          user_id: r.userId,
+          is_read: false,
+          is_starred: false,
+          created_at: createdAt
+        }));
+        const { error: recError } = await supabase.from('notification_recipients').insert(recipientRows);
+        if (recError) throw recError;
+      }
+      // Insert attachments if any
+      if (notificationData.attachments && notificationData.attachments.length > 0) {
+        const attachmentRows = notificationData.attachments.map((a) => ({
+          id: crypto.randomUUID(),
+          notification_id: notificationId,
+          name: a.name,
+          type: a.type,
+          size: a.size,
+          url: a.url,
+          created_at: createdAt
+        }));
+        const { error: attError } = await supabase.from('notification_attachments').insert(attachmentRows);
+        if (attError) throw attError;
+      }
+      showToast('Notification sent!', 'confirmation');
+      // Optionally, fetch notifications again to update state
+      // await fetchNotifications();
+    } catch (error) {
+      console.error('Error adding notification:', error);
+      showToast('Failed to send notification', 'error');
+    }
+  };
+
+  return { notifications, setNotifications, loading, addNotification };
 }
 
 export function useCourseStructure(courseId: string) {
