@@ -50,6 +50,8 @@ import AdminUserDetailPage from './pages/AdminUserDetailPage';
 import InstructorMyCourses from './components/Instructor/InstructorMyCourses';
 import Enrollments from './components/Instructor/Enrollments';
 import CreateCourse from './components/Instructor/CreateCourse';
+import Earnings from './components/Instructor/Earnings';
+import InstructorScheduleSessionPage from './pages/InstructorScheduleSessionPage';
 
 function AuthPage() {
   const [isLogin, setIsLogin] = useState(true);
@@ -241,6 +243,14 @@ function AppContent() {
             </ProtectedRoute>
           }
         />
+        <Route
+          path="/instructor/earnings"
+          element={
+            <ProtectedRoute allowedRoles={['instructor']}>
+              <Earnings />
+            </ProtectedRoute>
+          }
+        />
 
         {/* Learner Dashboard Routes */}
         <Route
@@ -308,7 +318,7 @@ function AppContent() {
           path="/instructor/schedule-session"
           element={
             <ProtectedRoute allowedRoles={['instructor']}>
-              <AdminScheduleSessionPage />
+              <InstructorScheduleSessionPage />
             </ProtectedRoute>
           }
         />

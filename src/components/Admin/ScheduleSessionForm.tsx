@@ -43,6 +43,9 @@ export default function ScheduleSessionForm({ courses, onSessionCreated }: Sched
   const [learners, setLearners] = useState<any[]>([]);
   const [learnersLoading, setLearnersLoading] = useState(false);
 
+  // Filter to only published courses
+  const publishedCourses = courses.filter((c: any) => c.is_published);
+
   // Fetch learners for selected course
   useEffect(() => {
     if (!form.courseId) {
@@ -163,7 +166,7 @@ export default function ScheduleSessionForm({ courses, onSessionCreated }: Sched
   };
 
   return (
-    <div className="max-w-4xl mx-auto bg-white rounded-xl shadow p-8 border border-gray-100">
+    <div className="bg-white rounded-xl shadow p-6 border border-gray-100 h-full w-full mx-4 md:mx-8">
       <h2 className="text-xl font-bold mb-6">Schedule Live Session</h2>
       <form onSubmit={handleSubmit} className="grid grid-cols-1 md:grid-cols-2 gap-6">
         {/* Course - full width */}
@@ -177,10 +180,16 @@ export default function ScheduleSessionForm({ courses, onSessionCreated }: Sched
             required
             disabled={coursesLoading}
           >
-            <option value="">{coursesLoading ? 'Loading courses...' : 'Select a course'}</option>
-            {courses.map(course => (
-              <option key={course.id} value={course.id}>{course.title}</option>
-            ))}
+            {coursesLoading ? (
+              <option value="">Loading courses...</option>
+            ) : publishedCourses.length === 0 ? (
+              <option value="" disabled>No courses published</option>
+            ) : [
+              <option value="" key="select">Select a course</option>,
+              ...publishedCourses.map((course: any) => (
+                <option key={course.id} value={course.id}>{course.title}</option>
+              ))
+            ]}
           </select>
         </div>
         {/* Session Title - full width */}

@@ -75,6 +75,7 @@ export function Sidebar({}: SidebarProps) {
     { id: 'enrollments', label: 'Enrollments', icon: Users, path: '/instructor/enrollments' },
     { id: 'earnings', label: 'Earnings', icon: CreditCard, path: '/instructor/earnings' },
     { id: 'my-events', label: 'My Events', icon: CalendarIcon, path: '/instructor/events' },
+    { id: 'schedule-session', label: 'Schedule Session', icon: CalendarIcon, path: '/instructor/schedule-session' },
     { id: 'notifications', label: 'Notifications', icon: Bell, path: '/instructor/notifications' },
     { id: 'gamification', label: 'Gamification', icon: Trophy, path: '/instructor/gamification' },
     { id: 'referrals', label: 'Referrals', icon: LinkIcon, path: '/instructor/referrals' },
