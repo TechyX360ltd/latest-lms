@@ -4,10 +4,12 @@ import { FaCoins } from 'react-icons/fa';
 import { useAuth } from '../../context/AuthContext';
 import { useNotifications, useUsers, useCourses } from '../../hooks/useData';
 import { useNavigate } from 'react-router-dom';
+import { useGamification } from '../../hooks/useGamification';
 
 export function Header() {
   const { user, logout } = useAuth();
   const { notifications } = useNotifications();
+  const { stats } = useGamification();
   const [showLogoutModal, setShowLogoutModal] = useState(false);
   const [showNotificationDropdown, setShowNotificationDropdown] = useState(false);
   const [showSearch, setShowSearch] = useState(false);
@@ -212,7 +214,7 @@ export function Header() {
             {user?.role === 'learner' && (
               <div className="flex items-center gap-1 px-2 py-1 bg-yellow-50 rounded-lg border border-yellow-200 mr-2">
                 <FaCoins className="text-yellow-500 w-5 h-5" />
-                <span className="font-bold text-yellow-700 text-sm">{user.coins ?? 0}</span>
+                <span className="font-bold text-yellow-700 text-sm">{stats?.coins ?? 0}</span>
               </div>
             )}
             {/* Enhanced Notification Bell for All Users */}

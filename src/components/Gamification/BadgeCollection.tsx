@@ -198,58 +198,57 @@ export function BadgeCollection() {
           return (
             <div
               key={badge.id}
-              className={`relative bg-white rounded-xl shadow-sm border-2 transition-all duration-200 hover:shadow-md cursor-pointer ${
+              className={`relative flex flex-col items-center justify-between bg-white rounded-2xl shadow-lg border-2 transition-all duration-200 hover:shadow-xl cursor-pointer w-48 h-48 min-w-[12rem] min-h-[12rem] max-w-[12rem] max-h-[12rem] text-center p-4 ${
                 earned 
-                  ? 'border-green-200 hover:border-green-300' 
+                  ? 'border-green-300 hover:border-green-400' 
                   : 'border-gray-200 hover:border-gray-300'
               }`}
               onClick={() => setSelectedBadge(badge)}
             >
               {/* Earned Indicator */}
               {earned && (
-                <div className="absolute top-2 right-2">
-                  <CheckCircle className="w-6 h-6 text-green-500" />
+                <div className="absolute top-4 right-4">
+                  <CheckCircle className="w-7 h-7 text-green-500" />
                 </div>
               )}
 
               {/* Badge Icon */}
-              <div className="p-6 text-center">
-                <div className={`w-16 h-16 mx-auto mb-4 rounded-full flex items-center justify-center ${
-                  earned ? 'bg-gradient-to-br from-green-400 to-green-600' : 'bg-gray-100'
-                }`}>
-                  {badge.icon_url ? (
-                    <img 
-                      src={badge.icon_url} 
-                      alt={badge.name}
-                      className={`w-8 h-8 ${earned ? 'filter brightness-0 invert' : ''}`}
-                    />
-                  ) : (
-                    <Award className={`w-8 h-8 ${earned ? 'text-white' : 'text-gray-400'}`} />
-                  )}
-                </div>
+              <div className={`w-20 h-20 mx-auto mb-4 rounded-full flex items-center justify-center shadow ${
+                earned ? 'bg-gradient-to-br from-green-400 to-green-600' : 'bg-gray-100'
+              }`} style={{ aspectRatio: '1/1' }}>
+                {badge.icon_url ? (
+                  <img 
+                    src={badge.icon_url} 
+                    alt={badge.name}
+                    className={`w-10 h-10 ${earned ? 'filter brightness-0 invert' : ''}`}
+                    style={{ aspectRatio: '1/1' }}
+                  />
+                ) : (
+                  <Award className={`w-10 h-10 ${earned ? 'text-white' : 'text-gray-400'}`} />
+                )}
+              </div>
 
-                {/* Badge Info */}
-                <h3 className="font-semibold text-gray-900 mb-2">{badge.name}</h3>
-                <p className="text-sm text-gray-600 mb-3 line-clamp-2">{badge.description}</p>
+              {/* Badge Info */}
+              <h3 className="font-bold text-lg text-gray-900 mb-1 mt-2">{badge.name}</h3>
+              <p className="text-sm text-gray-600 mb-3 line-clamp-2 min-h-[40px]">{badge.description}</p>
 
-                {/* Rarity Badge */}
-                <div className={`inline-flex items-center gap-1 px-2 py-1 rounded-full text-xs font-medium border ${getRarityColor(badge.rarity)}`}>
-                  {getRarityIcon(badge.rarity)}
-                  {badge.rarity}
-                </div>
+              {/* Rarity Badge */}
+              <div className={`inline-flex items-center gap-1 px-3 py-1 rounded-full text-xs font-semibold border ${getRarityColor(badge.rarity)} mb-2`}>
+                {getRarityIcon(badge.rarity)}
+                {badge.rarity}
+              </div>
 
-                {/* Points Required */}
-                <div className="mt-3 text-xs text-gray-500">
-                  {earned ? (
-                    <div className="text-green-600">
-                      Earned {userBadge && new Date(userBadge.earned_at).toLocaleDateString()}
-                    </div>
-                  ) : (
-                    <div>
-                      Requires {badge.points_required.toLocaleString()} points
-                    </div>
-                  )}
-                </div>
+              {/* Points Required or Earned Date */}
+              <div className="mt-2 text-xs">
+                {earned ? (
+                  <div className="text-green-600 font-medium">
+                    Earned <span className="block">{userBadge && new Date(userBadge.earned_at).toLocaleDateString()}</span>
+                  </div>
+                ) : (
+                  <div className="text-gray-500 font-medium">
+                    Requires {badge.points_required.toLocaleString()} points
+                  </div>
+                )}
               </div>
             </div>
           );
@@ -281,19 +280,20 @@ export function BadgeCollection() {
             
             <div className="text-center space-y-4">
               {/* Badge Icon */}
-              <div className={`w-20 h-20 mx-auto rounded-full flex items-center justify-center ${
+              <div className={`w-24 h-24 mx-auto rounded-full flex items-center justify-center ${
                 isBadgeEarned(selectedBadge.id) 
                   ? 'bg-gradient-to-br from-green-400 to-green-600' 
                   : 'bg-gray-100'
-              }`}>
+              }`} style={{ aspectRatio: '1/1' }}>
                 {selectedBadge.icon_url ? (
                   <img 
                     src={selectedBadge.icon_url} 
                     alt={selectedBadge.name}
-                    className={`w-10 h-10 ${isBadgeEarned(selectedBadge.id) ? 'filter brightness-0 invert' : ''}`}
+                    className={`w-14 h-14 ${isBadgeEarned(selectedBadge.id) ? 'filter brightness-0 invert' : ''}`}
+                    style={{ aspectRatio: '1/1' }}
                   />
                 ) : (
-                  <Award className={`w-10 h-10 ${isBadgeEarned(selectedBadge.id) ? 'text-white' : 'text-gray-400'}`} />
+                  <Award className={`w-14 h-14 ${isBadgeEarned(selectedBadge.id) ? 'text-white' : 'text-gray-400'}`} />
                 )}
               </div>
 

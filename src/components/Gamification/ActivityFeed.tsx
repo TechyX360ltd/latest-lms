@@ -76,7 +76,7 @@ export function ActivityFeed() {
     return eventDate.toLocaleDateString();
   };
 
-  const filteredEvents = userEvents.filter(event => {
+  const filteredEvents = (userEvents || []).filter(event => {
     const matchesType = filterType === 'all' || event.event_type === filterType;
     const matchesSearch = event.description?.toLowerCase().includes(searchTerm.toLowerCase()) ||
                          getEventTitle(event.event_type).toLowerCase().includes(searchTerm.toLowerCase());
@@ -134,7 +134,7 @@ export function ActivityFeed() {
         
         {/* Stats Summary */}
         <div className="text-right">
-          <div className="text-2xl font-bold text-gray-900">{userEvents.length}</div>
+          <div className="text-2xl font-bold text-gray-900">{userEvents?.length || 0}</div>
           <div className="text-sm text-gray-600">Total Activities</div>
         </div>
       </div>

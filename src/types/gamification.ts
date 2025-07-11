@@ -104,6 +104,10 @@ export const GAMIFICATION_EVENTS = {
   EARLY_BIRD: 'early_bird',
   WEEKLY_GOAL: 'weekly_goal',
   MONTHLY_GOAL: 'monthly_goal',
+  // Instructor-specific events
+  INSTRUCTOR_COURSE_LISTED: 'instructor_course_listed',
+  INSTRUCTOR_WITHDRAWAL: 'instructor_withdrawal',
+  INSTRUCTOR_STORE_PURCHASE: 'instructor_store_purchase',
 } as const;
 
 export type GamificationEventType = typeof GAMIFICATION_EVENTS[keyof typeof GAMIFICATION_EVENTS];
@@ -124,6 +128,10 @@ export const POINT_VALUES = {
   [GAMIFICATION_EVENTS.EARLY_BIRD]: 100,
   [GAMIFICATION_EVENTS.WEEKLY_GOAL]: 150,
   [GAMIFICATION_EVENTS.MONTHLY_GOAL]: 500,
+  // Instructor-specific
+  [GAMIFICATION_EVENTS.INSTRUCTOR_COURSE_LISTED]: 0,
+  [GAMIFICATION_EVENTS.INSTRUCTOR_WITHDRAWAL]: 50,
+  [GAMIFICATION_EVENTS.INSTRUCTOR_STORE_PURCHASE]: 0,
 } as const;
 
 // Coin values for different activities
@@ -142,6 +150,10 @@ export const COIN_VALUES = {
   [GAMIFICATION_EVENTS.EARLY_BIRD]: 50,
   [GAMIFICATION_EVENTS.WEEKLY_GOAL]: 75,
   [GAMIFICATION_EVENTS.MONTHLY_GOAL]: 250,
+  // Instructor-specific
+  [GAMIFICATION_EVENTS.INSTRUCTOR_COURSE_LISTED]: 100,
+  [GAMIFICATION_EVENTS.INSTRUCTOR_WITHDRAWAL]: 0,
+  [GAMIFICATION_EVENTS.INSTRUCTOR_STORE_PURCHASE]: -1,
 } as const;
 
 // Badge categories with descriptions

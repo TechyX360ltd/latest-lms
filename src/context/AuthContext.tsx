@@ -257,6 +257,51 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     };
 
     checkAuthState();
+
+    // Subscribe to Supabase auth state changes for session restoration
+    const { data: authListener } = supabase.auth.onAuthStateChange((_event, session) => {
+      if (session && session.user) {
+        // Fetch user data and update context
+        supabase
+          .from('users')
+          .select('*, user_courses(user_id, course_id, status)')
+          .eq('id', session.user.id)
+          .single()
+          .then(({ data: userData, error }) => {
+            if (!error && userData) {
+              const formattedUser = {
+                id: userData.id,
+                firstName: userData.first_name,
+                lastName: userData.last_name,
+                email: userData.email,
+                phone: userData.phone,
+                role: userData.role,
+                bio: userData.bio || '',
+                location: userData.location || '',
+                occupation: userData.occupation || '',
+                education: userData.education || '',
+                avatar: userData.avatar_url,
+                referral_code: userData.referral_code,
+                referred_by: userData.referred_by,
+                coins: userData.coins || 0,
+                enrolledCourses: userData.user_courses
+                  ? userData.user_courses.filter((e: any) => e.status === 'enrolled').map((e: any) => e.course_id)
+                  : [],
+                completedCourses: userData.user_courses
+                  ? userData.user_courses.filter((e: any) => e.status === 'completed').map((e: any) => e.course_id)
+                  : [],
+                createdAt: userData.created_at,
+              };
+              dispatch({ type: 'LOGIN', payload: formattedUser });
+            }
+          });
+      } else {
+        dispatch({ type: 'LOGOUT' });
+      }
+    });
+    return () => {
+      authListener?.subscription.unsubscribe();
+    };
   }, []);
 
   const login = async (email: string, password: string) => {

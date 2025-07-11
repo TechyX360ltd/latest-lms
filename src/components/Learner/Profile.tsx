@@ -420,9 +420,19 @@ export function Profile() {
                     <span className="ml-4 align-middle inline-flex items-center gap-2">
                       {gamificationStats.badges.map((userBadge: any, idx: number) =>
                         userBadge.badge?.icon_url ? (
-                          <img key={userBadge.badge.id} src={userBadge.badge.icon_url} alt={userBadge.badge.name} className="inline w-8 h-8 object-contain" title={userBadge.badge.name} />
+                          <span key={userBadge.badge.id} className="inline-flex items-center justify-center w-12 h-12 rounded-full bg-gray-100 shadow mr-2" style={{ aspectRatio: '1/1' }}>
+                            <img
+                              src={userBadge.badge.icon_url}
+                              alt={userBadge.badge.name}
+                              className="w-8 h-8 object-contain"
+                              title={userBadge.badge.name}
+                              style={{ aspectRatio: '1/1' }}
+                            />
+                          </span>
                         ) : (
-                          <Award key={userBadge.badge?.id || userBadge.id} className="inline w-8 h-8 text-yellow-400" />
+                          <span key={userBadge.badge?.id || userBadge.id} className="inline-flex items-center justify-center w-12 h-12 rounded-full bg-gray-100 shadow mr-2" style={{ aspectRatio: '1/1' }}>
+                            <Award className="w-8 h-8 text-yellow-400" />
+                          </span>
                         )
                       )}
                     </span>

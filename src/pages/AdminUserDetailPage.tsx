@@ -383,9 +383,8 @@ export default function AdminUserDetailPage() {
                     <div className="font-semibold text-lg mb-2 flex items-center gap-2"><Award className="w-5 h-5 text-yellow-500" />Badges</div>
                     <ul className="flex flex-wrap gap-3">
                       {stats?.badges?.length ? stats.badges.map((badge: any) => (
-                        <li key={badge.id} className="bg-yellow-100 text-yellow-800 px-4 py-2 rounded-full text-sm font-semibold shadow flex items-center gap-2">
-                          <Star className="w-4 h-4 text-yellow-500" />
-                          {badge.badge?.name || badge.name}
+                        <li key={badge.id} className="flex flex-col items-center justify-center w-16 h-16 rounded-xl bg-yellow-100 text-yellow-800 shadow mr-2" style={{ aspectRatio: '1/1' }}>
+                          <span className="font-bold text-xs mb-1">{badge.badge?.name || badge.name}</span>
                         </li>
                       )) : <li className="text-gray-500">No badges earned.</li>}
                     </ul>

@@ -457,4 +457,40 @@ export class GamificationService {
       throw err;
     }
   }
+
+  /**
+   * Award coins for instructor listing a course
+   */
+  static async instructorListedCourse(userId: string, courseId: string) {
+    return this.awardPoints(
+      userId,
+      'instructor_course_listed',
+      'Listed a new course',
+      { course_id: courseId }
+    );
+  }
+
+  /**
+   * Award points for instructor withdrawal
+   */
+  static async instructorWithdrawal(userId: string, withdrawalId: string, amount: number) {
+    return this.awardPoints(
+      userId,
+      'instructor_withdrawal',
+      'Withdrew earnings',
+      { withdrawal_id: withdrawalId, amount }
+    );
+  }
+
+  /**
+   * Record instructor store purchase
+   */
+  static async instructorStorePurchase(userId: string, itemId: string, itemName: string) {
+    return this.awardPoints(
+      userId,
+      'instructor_store_purchase',
+      `Purchased ${itemName}`,
+      { item_id: itemId }
+    );
+  }
 } 

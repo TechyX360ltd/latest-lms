@@ -49,7 +49,7 @@ export function useRatings() {
         .from('instructor_ratings')
         .select(`
           *,
-          learner:users!instructor_ratings_learner_id_fkey(firstName, lastName, avatar),
+          learner:users!instructor_ratings_learner_id_fkey(first_name, last_name, avatar),
           course:courses(title)
         `)
         .eq('instructor_id', instructorId)

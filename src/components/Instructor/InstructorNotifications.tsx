@@ -6,7 +6,7 @@ import { supabase } from '../../lib/supabase';
 import { useAuth } from '../../context/AuthContext';
 import { useToast } from '../Auth/ToastContext';
 import { useUsers } from '../../hooks/useData';
-import { Eye, X, Users, User, Calendar, CheckCircle, GraduationCap } from 'lucide-react';
+import { Eye, X, Users, User, Calendar, CheckCircle, GraduationCap, Star, Trash2, MessageCircle } from 'lucide-react';
 
 const TABS = [
   { id: 'all', label: 'All' },
@@ -208,8 +208,32 @@ export default function InstructorNotifications() {
       if (!user) return;
       if (action === 'read') {
         await supabase.from('notification_recipients').update({ is_read: true, read_at: new Date().toISOString() }).eq('notification_id', notificationId).eq('user_id', user.id);
+        // Update local state for instant UI feedback
+        setNotifications((prev: any) => prev.map((n: any) =>
+          n.id === notificationId
+            ? {
+                ...n,
+                recipients: n.recipients?.map((r: any) =>
+                  r.userId === user.id ? { ...r, isRead: true, readAt: new Date().toISOString() } : r
+                )
+              }
+            : n
+        ));
       } else if (action === 'star') {
-        await supabase.from('notification_recipients').update({ is_starred: true, starred_at: new Date().toISOString() }).eq('notification_id', notificationId).eq('user_id', user.id);
+        // Toggle star state
+        const notification = notifications.find((n: any) => n.id === notificationId);
+        const isCurrentlyStarred = notification?.recipients?.some?.((r: any) => r.userId === user.id && r.isStarred);
+        await supabase.from('notification_recipients').update({ is_starred: !isCurrentlyStarred, starred_at: new Date().toISOString() }).eq('notification_id', notificationId).eq('user_id', user.id);
+        setNotifications((prev: any) => prev.map((n: any) =>
+          n.id === notificationId
+            ? {
+                ...n,
+                recipients: n.recipients?.map((r: any) =>
+                  r.userId === user.id ? { ...r, isStarred: !isCurrentlyStarred, starredAt: new Date().toISOString() } : r
+                )
+              }
+            : n
+        ));
       }
       // Optionally, refresh notifications
     } catch (err) {
@@ -360,37 +384,52 @@ export default function InstructorNotifications() {
                         </div>
                       )}
                     </div>
-                    <div className="flex flex-col items-end gap-2 min-w-[120px]">
-                      {/* Status */}
+                    <div className="flex flex-col items-end gap-2 min-w-[120px] md:min-w-[180px] w-full md:w-auto">
+                      {/* Status badge */}
                       {notification.recipients?.some?.((r: any) => r.userId === user?.id && r.isRead) ? (
-                        <span className="inline-block px-3 py-1 rounded-full text-xs font-semibold bg-green-100 text-green-700">Read</span>
+                        <span className="inline-block px-3 py-1 rounded-full text-xs font-semibold bg-green-100 text-green-700 mb-2">Read</span>
                       ) : (
-                        <button className="inline-block px-3 py-1 rounded-full text-xs font-semibold bg-blue-100 text-blue-700" onClick={() => handleMark(notification.id, 'read')}>Mark as Read</button>
+                        <button className="inline-block px-3 py-1 rounded-full text-xs font-semibold bg-blue-100 text-blue-700 mb-2" onClick={() => handleMark(notification.id, 'read')}>Mark as Read</button>
                       )}
-                      {/* Star */}
-                      <button className="text-yellow-500 hover:text-yellow-600 text-sm" onClick={() => handleMark(notification.id, 'star')}>★</button>
-                      {/* Reply (functionalized) */}
-                      <button
-                        className="text-blue-600 hover:underline text-sm"
-                        onClick={() => setReplyingToId(replyingToId === notification.id ? null : notification.id)}
-                      >
-                        Reply
-                      </button>
-                      {/* Delete */}
-                      <button
-                        className="text-red-600 hover:text-red-800 text-sm font-semibold border border-red-200 bg-red-50 rounded px-3 py-1 mt-1"
-                        onClick={() => setDeleteTargetId(notification.id)}
-                      >
-                        Delete
-                      </button>
-                      {/* View Details */}
-                      <button
-                        onClick={() => setSelectedNotification(notification)}
-                        className="text-gray-400 hover:text-blue-600 hover:bg-blue-50 rounded-full p-2 transition-colors"
-                        title="View Details"
-                      >
-                        <Eye className="w-5 h-5" />
-                      </button>
+                      {/* Modern horizontal action row, wraps on mobile */}
+                      <div className="flex flex-row flex-wrap items-center gap-2 mt-1 w-full md:w-auto justify-end">
+                        {/* Star */}
+                        <button
+                          className={`p-2 rounded-full hover:bg-yellow-100 ${notification.recipients?.some?.((r: any) => r.userId === user?.id && r.isStarred) ? 'text-yellow-500' : 'text-gray-400'} hover:text-yellow-600 transition`}
+                          title={notification.recipients?.some?.((r: any) => r.userId === user?.id && r.isStarred) ? 'Unstar' : 'Star'}
+                          onClick={async () => {
+                            const isStarred = notification.recipients?.some?.((r: any) => r.userId === user?.id && r.isStarred);
+                            await handleMark(notification.id, 'star');
+                            showToast(isStarred ? 'Unstarred' : 'Starred', 'confirmation');
+                          }}
+                        >
+                          <Star className="w-5 h-5" fill={notification.recipients?.some?.((r: any) => r.userId === user?.id && r.isStarred) ? '#facc15' : 'none'} />
+                        </button>
+                        {/* Reply */}
+                        <button
+                          className="p-2 rounded-full hover:bg-blue-100 text-blue-600 hover:text-blue-700 transition"
+                          title="Reply"
+                          onClick={() => setReplyingToId(replyingToId === notification.id ? null : notification.id)}
+                        >
+                          <MessageCircle className="w-5 h-5" />
+                        </button>
+                        {/* Delete */}
+                        <button
+                          className="p-2 rounded-full hover:bg-red-100 text-red-600 hover:text-red-700 transition border border-red-200"
+                          title="Delete"
+                          onClick={() => setDeleteTargetId(notification.id)}
+                        >
+                          <Trash2 className="w-5 h-5" />
+                        </button>
+                        {/* View Details */}
+                        <button
+                          onClick={() => setSelectedNotification(notification)}
+                          className="p-2 rounded-full hover:bg-gray-100 text-gray-400 hover:text-blue-600 transition"
+                          title="View Details"
+                        >
+                          <Eye className="w-5 h-5" />
+                        </button>
+                      </div>
                     </div>
                   </div>
                 ))

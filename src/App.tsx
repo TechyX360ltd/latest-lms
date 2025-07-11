@@ -24,7 +24,7 @@ import { Analytics } from './components/Admin/Analytics';
 import { Settings } from './components/Admin/Settings';
 import { PaymentManagement } from './components/Admin/PaymentManagement';
 import { SupabaseConnectionStatus } from './components/SupabaseConnectionStatus';
-import { InstructorProfile } from './components/Learner/InstructorProfile';
+import InstructorProfile from './components/Instructor/InstructorProfile';
 import { InstructorDashboard } from './components/Instructor/InstructorDashboard';
 import { ToastProvider } from './components/Auth/ToastContext';
 import { CategoryManagement } from './components/Admin/CategoryManagement';
@@ -53,6 +53,8 @@ import CreateCourse from './components/Instructor/CreateCourse';
 import Earnings from './components/Instructor/Earnings';
 import InstructorScheduleSessionPage from './pages/InstructorScheduleSessionPage';
 import InstructorNotifications from './components/Instructor/InstructorNotifications';
+import MyReviews from './components/Instructor/MyReviews';
+import InstructorGamificationDashboard from './components/Instructor/InstructorGamificationDashboard';
 
 function AuthPage() {
   const [isLogin, setIsLogin] = useState(true);
@@ -168,6 +170,7 @@ function AppContent() {
   const [loginError, setLoginError] = useState('');
   const [showPassword, setShowPassword] = useState(false);
   const handleToggleForm = () => {};
+  const { user } = useAuth();
 
   return (
     <Router>
@@ -177,7 +180,6 @@ function AppContent() {
           path="/login"
           element={
             <LoginForm
-              onToggleForm={handleToggleForm}
               formData={loginFormData}
               setFormData={setLoginFormData}
               error={loginError}
@@ -187,7 +189,7 @@ function AppContent() {
             />
           }
         />
-        <Route path="/signup" element={<RegisterForm onToggleForm={handleToggleForm} />} />
+        <Route path="/signup" element={<RegisterForm />} />
 
         {/* Certificate Verification Route (public) */}
         <Route path="/verification" element={<CertificateVerificationPage />} />
@@ -260,6 +262,46 @@ function AppContent() {
             </ProtectedRoute>
           }
         />
+        <Route
+          path="/instructor/referrals"
+          element={
+            <ProtectedRoute allowedRoles={['instructor']}>
+              <ReferralsPage />
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="/instructor/reviews"
+          element={
+            <ProtectedRoute allowedRoles={['instructor']}>
+              <MyReviews />
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="/instructor/events"
+          element={
+            <ProtectedRoute allowedRoles={['instructor']}>
+              <AdminEventsPage />
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="/instructor/schedule-session"
+          element={
+            <ProtectedRoute allowedRoles={['instructor']}>
+              <InstructorScheduleSessionPage />
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="/instructor/gamification"
+          element={
+            <ProtectedRoute allowedRoles={['instructor']}>
+              <InstructorGamificationDashboard />
+            </ProtectedRoute>
+          }
+        />
 
         {/* Learner Dashboard Routes */}
         <Route
@@ -313,24 +355,6 @@ function AppContent() {
           <Route path="rating-test" element={<RatingTest />} />
           <Route path="referrals" element={<AdminReferralsPage />} />
         </Route>
-
-        {/* Instructor Routes */}
-        <Route
-          path="/instructor/events"
-          element={
-            <ProtectedRoute allowedRoles={['instructor']}>
-              <AdminEventsPage />
-            </ProtectedRoute>
-          }
-        />
-        <Route
-          path="/instructor/schedule-session"
-          element={
-            <ProtectedRoute allowedRoles={['instructor']}>
-              <InstructorScheduleSessionPage />
-            </ProtectedRoute>
-          }
-        />
 
         {/* Course Viewer Route */}
         <Route path="/course/:courseSlug" element={<CourseViewer />} />

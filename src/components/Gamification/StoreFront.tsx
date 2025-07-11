@@ -19,6 +19,7 @@ import { useGamification } from '../../hooks/useGamification';
 import { StoreItem, UserPurchase } from '../../types/gamification';
 import { STORE_ITEM_TYPES } from '../../types/gamification';
 import { GiftModal } from './GiftModal';
+import Confetti from 'react-confetti';
 
 export function StoreFront() {
   const { 
@@ -44,6 +45,7 @@ export function StoreFront() {
   const [showEarnMoreModal, setShowEarnMoreModal] = useState(false);
   const [earnMoreAmount, setEarnMoreAmount] = useState(0);
   const [earnMoreItem, setEarnMoreItem] = useState<StoreItem | null>(null);
+  const [showConfetti, setShowConfetti] = useState(false);
 
   useEffect(() => {
     loadStoreItems();
@@ -97,6 +99,8 @@ export function StoreFront() {
       await purchaseItem(item.id, quantity);
       setPurchaseSuccess(`Successfully purchased ${item.name}!`);
       setSelectedItem(null);
+      setShowConfetti(true);
+      setTimeout(() => setShowConfetti(false), 4000);
     } catch (err: any) {
       setPurchaseError(err.message || 'Purchase failed. Please try again.');
     } finally {
@@ -131,6 +135,7 @@ export function StoreFront() {
 
   return (
     <div className="space-y-6">
+      {showConfetti && <Confetti width={window.innerWidth} height={window.innerHeight} numberOfPieces={300} recycle={false} />}
       {/* Header */}
       <div className="flex items-center justify-between">
         <div>

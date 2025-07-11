@@ -108,6 +108,17 @@ export function useGamification() {
     }
   }, [user?.id]);
 
+  // Load user events for activity feed
+  const loadUserEvents = useCallback(async () => {
+    if (!user?.id) return [];
+    try {
+      return await GamificationService.getUserEvents(user.id);
+    } catch (err) {
+      setError('Failed to load user events');
+      return [];
+    }
+  }, [user?.id]);
+
   // Award points
   const awardPoints = useCallback(async (
     eventType: keyof typeof GAMIFICATION_EVENTS,
@@ -320,5 +331,6 @@ export function useGamification() {
 
     // Utility functions
     clearError: () => setError(null),
+    loadUserEvents,
   };
 } 
