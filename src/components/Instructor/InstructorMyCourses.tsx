@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Sidebar } from '../Layout/Sidebar';
 import { Header } from '../Layout/Header';
@@ -13,6 +13,16 @@ export default function InstructorMyCourses() {
   const navigate = useNavigate();
   const [activeTab, setActiveTab] = useState<'Active' | 'Inactive'>('Active');
   const filteredCourses = demoCourses.filter(c => c.status === activeTab);
+
+  useEffect(() => {
+    const handlePopState = () => {
+      window.location.reload();
+    };
+    window.addEventListener('popstate', handlePopState);
+    return () => {
+      window.removeEventListener('popstate', handlePopState);
+    };
+  }, []);
 
   return (
     <div className="min-h-screen bg-gray-50 flex">

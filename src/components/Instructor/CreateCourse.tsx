@@ -1,4 +1,4 @@
-import React, { useState, useRef, Suspense } from 'react';
+import React, { useState, useRef, Suspense, useEffect } from 'react';
 import { Sidebar } from '../Layout/Sidebar';
 import { Header } from '../Layout/Header';
 import { useCategories } from '../../hooks/useData';
@@ -240,6 +240,16 @@ export default function CreateCourse() {
   const [showCelebration, setShowCelebration] = useState(false);
   // TODO: Replace with real check for instructor's first course
   const isFirstCourse = true; // Set to false if not first course
+
+  useEffect(() => {
+    const handlePopState = () => {
+      window.location.reload();
+    };
+    window.addEventListener('popstate', handlePopState);
+    return () => {
+      window.removeEventListener('popstate', handlePopState);
+    };
+  }, []);
 
   return (
     <div className="min-h-screen bg-gray-50 flex">

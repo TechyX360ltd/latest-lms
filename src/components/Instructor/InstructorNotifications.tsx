@@ -6,6 +6,7 @@ import { supabase } from '../../lib/supabase';
 import { useAuth } from '../../context/AuthContext';
 import { useToast } from '../Auth/ToastContext';
 import { useUsers } from '../../hooks/useData';
+import { Eye, X, Users, User, Calendar, CheckCircle, GraduationCap } from 'lucide-react';
 
 const TABS = [
   { id: 'all', label: 'All' },
@@ -39,6 +40,30 @@ export default function InstructorNotifications() {
   const { notifications, loading, setNotifications } = useNotifications();
   const { user } = useAuth();
   const { showToast } = useToast();
+  const [selectedNotification, setSelectedNotification] = useState<any | null>(null);
+  const [currentPage, setCurrentPage] = useState(1);
+  const pageSize = 5;
+  const [showReplyEditor, setShowReplyEditor] = useState(false);
+  const [replyText, setReplyText] = useState('');
+  const [replyAttachments, setReplyAttachments] = useState<File[]>([]);
+  const fileInputRef = useRef<HTMLInputElement | null>(null);
+  const [replyingToId, setReplyingToId] = useState<string | null>(null);
+  const [cardReplyText, setCardReplyText] = useState('');
+  const [cardReplyAttachments, setCardReplyAttachments] = useState<File[]>([]);
+  const cardFileInputRef = useRef<HTMLInputElement | null>(null);
+  const [deleteTargetId, setDeleteTargetId] = useState<string | null>(null);
+  const [deleteLoading, setDeleteLoading] = useState(false);
+
+  // Reload page on browser back navigation
+  useEffect(() => {
+    const handlePopState = () => {
+      window.location.reload();
+    };
+    window.addEventListener('popstate', handlePopState);
+    return () => {
+      window.removeEventListener('popstate', handlePopState);
+    };
+  }, []);
 
   // Filter notifications by tab and instructor
   const filtered = React.useMemo(() => {
@@ -61,6 +86,11 @@ export default function InstructorNotifications() {
     }
     return notifications;
   }, [notifications, activeTab, user]);
+
+  // Sort notifications newest to oldest
+  const sortedNotifications = [...filtered].sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
+  const totalPages = Math.ceil(sortedNotifications.length / pageSize);
+  const paginatedNotifications = sortedNotifications.slice((currentPage - 1) * pageSize, currentPage * pageSize);
 
   // Fetch instructor's courses
   useEffect(() => {
@@ -199,6 +229,25 @@ export default function InstructorNotifications() {
     }
   };
 
+  // Delete notification for this user (in-app modal)
+  const handleDeleteNotification = async (notificationId: string) => {
+    setDeleteLoading(true);
+    try {
+      if (!user) return;
+      await supabase.from('notification_recipients')
+        .delete()
+        .eq('notification_id', notificationId)
+        .eq('user_id', user.id);
+      showToast('Notification deleted', 'confirmation');
+      setNotifications((prev: any) => prev.filter((n: any) => n.id !== notificationId));
+      setDeleteTargetId(null);
+    } catch (err) {
+      showToast('Failed to delete notification', 'error');
+    } finally {
+      setDeleteLoading(false);
+    }
+  };
+
   return (
     <div className="min-h-screen bg-gray-50 flex">
       <Sidebar />
@@ -235,39 +284,138 @@ export default function InstructorNotifications() {
             <div className="space-y-4">
               {loading ? (
                 <div className="text-gray-400 text-center py-12">Loading notifications...</div>
-              ) : filtered.length === 0 ? (
+              ) : paginatedNotifications.length === 0 ? (
                 <div className="text-gray-400 text-center py-12">No notifications found.</div>
               ) : (
-                filtered.map((n) => (
+                paginatedNotifications.map((notification) => (
                   <div
-                    key={n.id}
+                    key={notification.id}
                     className="bg-white rounded-xl shadow border border-gray-100 p-6 flex flex-col md:flex-row md:items-center md:justify-between gap-4"
                   >
                     <div>
-                      <h2 className="text-lg font-bold text-gray-900 mb-1">{n.title}</h2>
-                      <p className="text-gray-700 mb-2">{n.message}</p>
-                      <div className="text-xs text-gray-500 mb-1">Recipients: {n.recipients?.map?.((r: any) => r.userName).join(', ') || ''}</div>
-                      <div className="text-xs text-gray-400">{n.created_at ? new Date(n.created_at).toLocaleString() : ''}</div>
+                      <h2 className="text-lg font-bold text-gray-900 mb-1">{notification.title}</h2>
+                      <p className="text-gray-700 mb-2">{notification.message}</p>
+                      <div className="text-xs text-gray-500 mb-1">Recipients: {notification.recipients?.map?.((r: any) => r.userName).join(', ') || ''}</div>
+                      <div className="text-xs text-gray-400">{notification.created_at ? new Date(notification.created_at).toLocaleString() : ''}</div>
+                      {/* Inline Reply Editor */}
+                      {replyingToId === notification.id && (
+                        <div className="mt-3 space-y-3">
+                          <textarea
+                            className="w-full max-w-3xl border border-gray-300 rounded-lg px-3 py-2 focus:ring-2 focus:ring-blue-500"
+                            style={{ minWidth: '90%' }}
+                            rows={4}
+                            placeholder="Type your reply..."
+                            value={cardReplyText}
+                            onChange={e => setCardReplyText(e.target.value)}
+                          />
+                          <div className="flex items-center gap-3">
+                            <input
+                              type="file"
+                              multiple
+                              ref={cardFileInputRef}
+                              style={{ display: 'none' }}
+                              onChange={e => {
+                                if (e.target.files) {
+                                  setCardReplyAttachments(Array.from(e.target.files));
+                                }
+                              }}
+                            />
+                            <button
+                              type="button"
+                              className="px-3 py-1 bg-gray-100 rounded hover:bg-gray-200 text-sm"
+                              onClick={() => cardFileInputRef.current?.click()}
+                            >
+                              Attach Files
+                            </button>
+                            {cardReplyAttachments.length > 0 && (
+                              <span className="text-xs text-gray-600">{cardReplyAttachments.length} file(s) attached</span>
+                            )}
+                          </div>
+                          <div className="flex gap-2">
+                            <button
+                              className="px-4 py-2 bg-blue-600 text-white rounded-lg font-medium hover:bg-blue-700 transition-colors"
+                              onClick={async () => {
+                                await handleReply(notification.id, cardReplyText);
+                                // Placeholder: handle file uploads here if needed
+                                setCardReplyText('');
+                                setCardReplyAttachments([]);
+                                setReplyingToId(null);
+                                showToast('Reply sent!', 'confirmation');
+                              }}
+                              disabled={!cardReplyText.trim()}
+                            >
+                              Send
+                            </button>
+                            <button
+                              className="px-4 py-2 bg-gray-200 text-gray-700 rounded-lg font-medium hover:bg-gray-300 transition-colors"
+                              onClick={() => {
+                                setReplyingToId(null);
+                                setCardReplyText('');
+                                setCardReplyAttachments([]);
+                              }}
+                            >
+                              Cancel
+                            </button>
+                          </div>
+                        </div>
+                      )}
                     </div>
                     <div className="flex flex-col items-end gap-2 min-w-[120px]">
                       {/* Status */}
-                      {n.recipients?.some?.((r: any) => r.userId === user?.id && r.isRead) ? (
+                      {notification.recipients?.some?.((r: any) => r.userId === user?.id && r.isRead) ? (
                         <span className="inline-block px-3 py-1 rounded-full text-xs font-semibold bg-green-100 text-green-700">Read</span>
                       ) : (
-                        <button className="inline-block px-3 py-1 rounded-full text-xs font-semibold bg-blue-100 text-blue-700" onClick={() => handleMark(n.id, 'read')}>Mark as Read</button>
+                        <button className="inline-block px-3 py-1 rounded-full text-xs font-semibold bg-blue-100 text-blue-700" onClick={() => handleMark(notification.id, 'read')}>Mark as Read</button>
                       )}
                       {/* Star */}
-                      <button className="text-yellow-500 hover:text-yellow-600 text-sm" onClick={() => handleMark(n.id, 'star')}>★</button>
-                      {/* Reply */}
-                      <button className="text-blue-600 hover:underline text-sm" onClick={() => {
-                        const reply = prompt('Enter your reply:');
-                        if (reply) handleReply(n.id, reply);
-                      }}>Reply</button>
+                      <button className="text-yellow-500 hover:text-yellow-600 text-sm" onClick={() => handleMark(notification.id, 'star')}>★</button>
+                      {/* Reply (functionalized) */}
+                      <button
+                        className="text-blue-600 hover:underline text-sm"
+                        onClick={() => setReplyingToId(replyingToId === notification.id ? null : notification.id)}
+                      >
+                        Reply
+                      </button>
+                      {/* Delete */}
+                      <button
+                        className="text-red-600 hover:text-red-800 text-sm font-semibold border border-red-200 bg-red-50 rounded px-3 py-1 mt-1"
+                        onClick={() => setDeleteTargetId(notification.id)}
+                      >
+                        Delete
+                      </button>
+                      {/* View Details */}
+                      <button
+                        onClick={() => setSelectedNotification(notification)}
+                        className="text-gray-400 hover:text-blue-600 hover:bg-blue-50 rounded-full p-2 transition-colors"
+                        title="View Details"
+                      >
+                        <Eye className="w-5 h-5" />
+                      </button>
                     </div>
                   </div>
                 ))
               )}
             </div>
+            {/* Pagination Controls */}
+            {totalPages > 1 && (
+              <div className="flex justify-center items-center gap-2 mt-6">
+                <button
+                  onClick={() => setCurrentPage((p) => Math.max(1, p - 1))}
+                  disabled={currentPage === 1}
+                  className="px-3 py-2 rounded-lg bg-gray-100 text-gray-700 hover:bg-gray-200 disabled:opacity-50"
+                >
+                  Previous
+                </button>
+                <span className="text-gray-700 font-medium">Page {currentPage} of {totalPages}</span>
+                <button
+                  onClick={() => setCurrentPage((p) => Math.min(totalPages, p + 1))}
+                  disabled={currentPage === totalPages}
+                  className="px-3 py-2 rounded-lg bg-gray-100 text-gray-700 hover:bg-gray-200 disabled:opacity-50"
+                >
+                  Next
+                </button>
+              </div>
+            )}
           </div>
           {/* Send Notification Modal */}
           {showModal && (
@@ -411,6 +559,166 @@ export default function InstructorNotifications() {
           )}
         </main>
       </div>
+      {/* Modern Notification Details Modal */}
+      {selectedNotification && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-40">
+          <div className="bg-white rounded-2xl shadow-2xl max-w-lg w-full p-8 relative animate-fade-in">
+            <button
+              onClick={() => {
+                setSelectedNotification(null);
+                setShowReplyEditor(false);
+                setReplyText('');
+                setReplyAttachments([]);
+              }}
+              className="absolute top-4 right-4 text-gray-400 hover:text-gray-600"
+            >
+              <X className="w-6 h-6" />
+            </button>
+            <div className="mb-6 flex items-center gap-3">
+              <h2 className="text-2xl font-bold text-gray-900 flex-1">{selectedNotification.title}</h2>
+              <span className={`px-3 py-1 rounded-full text-xs font-semibold bg-blue-100 text-blue-800`}>{selectedNotification.type}</span>
+              <span className={`px-3 py-1 rounded-full text-xs font-semibold bg-yellow-100 text-yellow-800`}>{selectedNotification.priority}</span>
+            </div>
+            <div className="mb-4 text-gray-700 text-lg">{selectedNotification.message}</div>
+            <div className="mb-4 flex flex-col gap-2">
+              <div className="flex items-center gap-2 text-sm text-gray-500">
+                <User className="w-4 h-4" />
+                <span>Sender: <span className="font-medium text-gray-900">{selectedNotification.senderName}</span></span>
+              </div>
+              <div className="flex items-center gap-2 text-sm text-gray-500">
+                <Calendar className="w-4 h-4" />
+                <span>Date: <span className="font-medium text-gray-900">{selectedNotification.created_at ? new Date(selectedNotification.created_at).toLocaleString() : ''}</span></span>
+              </div>
+              {selectedNotification.courseId && (
+                <div className="flex items-center gap-2 text-sm text-gray-500">
+                  <GraduationCap className="w-4 h-4" />
+                  <span>Course ID: <span className="font-medium text-gray-900">{selectedNotification.courseId}</span></span>
+                </div>
+              )}
+            </div>
+            <div className="mb-4">
+              <h4 className="font-semibold text-gray-900 mb-2">Recipients</h4>
+              <div className="flex flex-wrap gap-2">
+                {selectedNotification.recipients.map((recipient: any) => (
+                  <span
+                    key={recipient.userId}
+                    className={`px-2 py-1 rounded-full text-xs ${recipient.isRead ? 'bg-green-100 text-green-800' : 'bg-gray-100 text-gray-800'}`}
+                  >
+                    {recipient.userName}
+                  </span>
+                ))}
+              </div>
+            </div>
+            {selectedNotification.attachments && selectedNotification.attachments.length > 0 && (
+              <div className="mb-4">
+                <h4 className="font-semibold text-gray-900 mb-2">Attachments</h4>
+                <ul className="list-disc pl-6">
+                  {selectedNotification.attachments.map((att: any) => (
+                    <li key={att.id} className="text-blue-600 hover:underline">
+                      <a href={att.url} target="_blank" rel="noopener noreferrer">{att.name}</a>
+                    </li>
+                  ))}
+                </ul>
+              </div>
+            )}
+            {/* Reply Button and Editor */}
+            <div className="mt-6">
+              {!showReplyEditor ? (
+                <button
+                  className="px-4 py-2 bg-blue-600 text-white rounded-lg font-medium hover:bg-blue-700 transition-colors"
+                  onClick={() => setShowReplyEditor(true)}
+                >
+                  Reply
+                </button>
+              ) : (
+                <div className="space-y-3">
+                  <textarea
+                    className="w-full max-w-3xl border border-gray-300 rounded-lg px-3 py-2 focus:ring-2 focus:ring-blue-500"
+                    style={{ minWidth: '90%' }}
+                    rows={4}
+                    placeholder="Type your reply..."
+                    value={replyText}
+                    onChange={e => setReplyText(e.target.value)}
+                  />
+                  <div className="flex items-center gap-3">
+                    <input
+                      type="file"
+                      multiple
+                      ref={fileInputRef}
+                      style={{ display: 'none' }}
+                      onChange={e => {
+                        if (e.target.files) {
+                          setReplyAttachments(Array.from(e.target.files));
+                        }
+                      }}
+                    />
+                    <button
+                      type="button"
+                      className="px-3 py-1 bg-gray-100 rounded hover:bg-gray-200 text-sm"
+                      onClick={() => fileInputRef.current?.click()}
+                    >
+                      Attach Files
+                    </button>
+                    {replyAttachments.length > 0 && (
+                      <span className="text-xs text-gray-600">{replyAttachments.length} file(s) attached</span>
+                    )}
+                  </div>
+                  <div className="flex gap-2">
+                    <button
+                      className="px-4 py-2 bg-blue-600 text-white rounded-lg font-medium hover:bg-blue-700 transition-colors"
+                      onClick={async () => {
+                        await handleReply(selectedNotification.id, replyText);
+                        // Placeholder: handle file uploads here if needed
+                        setReplyText('');
+                        setReplyAttachments([]);
+                        setShowReplyEditor(false);
+                        showToast('Reply sent!', 'confirmation');
+                      }}
+                      disabled={!replyText.trim()}
+                    >
+                      Send
+                    </button>
+                    <button
+                      className="px-4 py-2 bg-gray-200 text-gray-700 rounded-lg font-medium hover:bg-gray-300 transition-colors"
+                      onClick={() => {
+                        setShowReplyEditor(false);
+                        setReplyText('');
+                        setReplyAttachments([]);
+                      }}
+                    >
+                      Cancel
+                    </button>
+                  </div>
+                </div>
+              )}
+            </div>
+          </div>
+        </div>
+      )}
+      {deleteTargetId && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-40">
+          <div className="bg-white rounded-2xl shadow-2xl max-w-sm w-full p-8 relative animate-fade-in">
+            <h3 className="text-xl font-bold text-gray-900 mb-4">Delete Notification</h3>
+            <p className="mb-6 text-gray-700">Are you sure you want to delete this notification? This action cannot be undone.</p>
+            <div className="flex gap-3 justify-end">
+              <button
+                className="px-4 py-2 bg-gray-200 text-gray-700 rounded-lg font-medium hover:bg-gray-300 transition-colors"
+                onClick={() => setDeleteTargetId(null)}
+                disabled={deleteLoading}
+              >
+                Cancel
+              </button>
+              <button
+                className="px-4 py-2 bg-red-600 text-white rounded-lg font-medium hover:bg-red-700 transition-colors"
+                onClick={() => handleDeleteNotification(deleteTargetId)}
+                disabled={deleteLoading}
+              >
+                {deleteLoading ? 'Deleting...' : 'Delete'}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 } 

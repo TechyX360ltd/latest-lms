@@ -388,6 +388,16 @@ export default function Enrollments() {
     return 'bg-red-500';
   };
 
+  useEffect(() => {
+    const handlePopState = () => {
+      window.location.reload();
+    };
+    window.addEventListener('popstate', handlePopState);
+    return () => {
+      window.removeEventListener('popstate', handlePopState);
+    };
+  }, []);
+
   return (
     <div className="min-h-screen bg-gray-50 flex">
       <Sidebar />

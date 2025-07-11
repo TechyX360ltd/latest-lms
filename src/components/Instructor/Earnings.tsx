@@ -32,6 +32,16 @@ export default function Earnings() {
     }).catch(e => setError(e.message)).finally(() => setLoading(false));
   }, [user?.id]);
 
+  useEffect(() => {
+    const handlePopState = () => {
+      window.location.reload();
+    };
+    window.addEventListener('popstate', handlePopState);
+    return () => {
+      window.removeEventListener('popstate', handlePopState);
+    };
+  }, []);
+
   // Calculate earnings
   const courseEarnings = transactions.filter(tx => tx.type === 'earn').reduce((sum, tx) => sum + tx.amount, 0);
   const goldCoinEarnings = transactions.filter(tx => tx.type === 'gift_received').reduce((sum, tx) => sum + tx.amount, 0);

@@ -246,6 +246,16 @@ export function InstructorDashboard() {
 
   const PAYSTACK_PUBLIC_KEY = 'pk_test_78329ea72cb43b6435a12075cb3a2bca07ec53be'; // TODO: Replace with your real key
 
+  useEffect(() => {
+    const handlePopState = () => {
+      window.location.reload();
+    };
+    window.addEventListener('popstate', handlePopState);
+    return () => {
+      window.removeEventListener('popstate', handlePopState);
+    };
+  }, []);
+
   return (
     <div className="min-h-screen bg-gray-50 flex">
       <Sidebar />
