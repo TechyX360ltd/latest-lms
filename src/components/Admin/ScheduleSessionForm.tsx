@@ -187,7 +187,7 @@ export default function ScheduleSessionForm({ courses, onSessionCreated }: Sched
             ) : [
               <option value="" key="select">Select a course</option>,
               ...publishedCourses.map((course: any) => (
-                <option key={course.id} value={course.id}>{course.title}</option>
+              <option key={course.id} value={course.id}>{course.title}</option>
               ))
             ]}
           </select>

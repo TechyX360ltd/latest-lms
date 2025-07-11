@@ -55,6 +55,7 @@ import InstructorScheduleSessionPage from './pages/InstructorScheduleSessionPage
 import InstructorNotifications from './components/Instructor/InstructorNotifications';
 import MyReviews from './components/Instructor/MyReviews';
 import InstructorGamificationDashboard from './components/Instructor/InstructorGamificationDashboard';
+import InstructorManagement from './components/Admin/InstructorManagement';
 
 function AuthPage() {
   const [isLogin, setIsLogin] = useState(true);
@@ -354,6 +355,14 @@ function AppContent() {
           <Route path="ratings" element={<RatingManagement />} />
           <Route path="rating-test" element={<RatingTest />} />
           <Route path="referrals" element={<AdminReferralsPage />} />
+          <Route
+            path="instructors"
+            element={
+              <ProtectedRoute allowedRoles={['admin']}>
+                <InstructorManagement />
+              </ProtectedRoute>
+            }
+          />
         </Route>
 
         {/* Course Viewer Route */}

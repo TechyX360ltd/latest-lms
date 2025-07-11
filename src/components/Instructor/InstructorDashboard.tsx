@@ -69,6 +69,14 @@ export function InstructorDashboard() {
   const [accountResolving, setAccountResolving] = useState(false);
   const [accountError, setAccountError] = useState('');
 
+  // Helper: is the instructor verified?
+  const isVerified = user?.verification_status === 'verified';
+
+  // Helper: show error if not verified
+  function showVerifyError(feature: string) {
+    alert(`You must verify your account to ${feature}. Please upload your ID in your profile.`);
+  }
+
   // Fetch bank list from Paystack API
   useEffect(() => {
     const fetchBanks = async () => {
@@ -263,6 +271,71 @@ export function InstructorDashboard() {
         <Header />
         <main className="flex-1 p-4 lg:p-8 overflow-auto">
           {showWelcome && <WelcomeInstructorModal onClose={handleCloseWelcome} />}
+          {/* Verification Banner */}
+          {!isVerified && (
+            <div className="mb-6 bg-yellow-50 border-l-4 border-yellow-400 p-4 rounded flex items-center gap-4 shadow animate-pulse">
+              <AlertCircle className="w-6 h-6 text-yellow-500" />
+              <div className="flex-1">
+                <span className="font-semibold text-yellow-900">Your instructor account is not verified.</span>
+                <span className="ml-2 text-yellow-800">To unlock all features, please verify your profile.</span>
+              </div>
+              <button
+                className="bg-yellow-500 text-white px-4 py-2 rounded-lg font-medium hover:bg-yellow-600 transition-colors"
+                onClick={() => navigate('/instructor/profile')}
+              >
+                Verify Now
+              </button>
+            </div>
+          )}
+
+          {/* Example: Publish Course Button (replace with your actual publish logic) */}
+          <button
+            className={`px-4 py-2 rounded-lg font-medium mb-4 ${isVerified ? 'bg-blue-600 text-white hover:bg-blue-700' : 'bg-gray-200 text-gray-400 cursor-not-allowed'}`}
+            disabled={!isVerified}
+            onClick={() => {
+              if (!isVerified) return showVerifyError('publish courses');
+              // ...actual publish logic...
+            }}
+          >
+            Publish Course
+          </button>
+
+          {/* Example: Withdraw Button (replace with your actual withdraw logic) */}
+          <button
+            className={`px-4 py-2 rounded-lg font-medium mb-4 ${isVerified ? 'bg-green-600 text-white hover:bg-green-700' : 'bg-gray-200 text-gray-400 cursor-not-allowed'}`}
+            disabled={!isVerified}
+            onClick={() => {
+              if (!isVerified) return showVerifyError('withdraw earnings');
+              // ...actual withdraw logic...
+            }}
+          >
+            Withdraw Earnings
+          </button>
+
+          {/* Example: Schedule Session Button (replace with your actual schedule logic) */}
+          <button
+            className={`px-4 py-2 rounded-lg font-medium mb-4 ${isVerified ? 'bg-purple-600 text-white hover:bg-purple-700' : 'bg-gray-200 text-gray-400 cursor-not-allowed'}`}
+            disabled={!isVerified}
+            onClick={() => {
+              if (!isVerified) return showVerifyError('schedule live sessions');
+              // ...actual schedule logic...
+            }}
+          >
+            Schedule Live Session
+          </button>
+
+          {/* Example: Store Access (replace with your actual store link/component) */}
+          <button
+            className={`px-4 py-2 rounded-lg font-medium mb-4 ${isVerified ? 'bg-orange-600 text-white hover:bg-orange-700' : 'bg-gray-200 text-gray-400 cursor-not-allowed'}`}
+            disabled={!isVerified}
+            onClick={() => {
+              if (!isVerified) return showVerifyError('access the store');
+              // ...actual store logic...
+            }}
+          >
+            Go to Store
+          </button>
+
           {/* Welcome and Stats */}
           <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 mb-8">
             <div>

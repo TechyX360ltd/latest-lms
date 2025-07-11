@@ -68,6 +68,18 @@ export function AdminSidebar() {
           <Users className="w-5 h-5" /> User Management
         </NavLink>
 
+        {/* Instructor Management */}
+        <NavLink
+          to="/admin/instructors"
+          className={({ isActive }) =>
+            `flex items-center gap-3 px-4 py-2 rounded-lg font-medium transition-colors ${
+              isActive ? 'bg-orange-100 text-orange-700' : 'text-gray-700 hover:bg-gray-50'
+            }`
+          }
+        >
+          <Users className="w-5 h-5" /> Instructor Management
+        </NavLink>
+
         {/* Course Management */}
         <NavLink
           to="/admin/courses"

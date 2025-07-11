@@ -19,11 +19,17 @@ import {
   GraduationCap,
   Award,
   Clock,
-  BookOpen
+  BookOpen,
+  XCircle,
+  Star,
+  Users,
+  DollarSign,
+  ShieldAlert
 } from 'lucide-react';
 import { useAuth } from '../../context/AuthContext';
 import { uploadToCloudinary } from '../../lib/cloudinary';
 import { useGamification } from '../../hooks/useGamification';
+import InstructorStatsCard from '../Instructor/InstructorStatsCard';
 
 interface ProfileData {
   firstName: string;
@@ -41,6 +47,20 @@ interface PasswordData {
   currentPassword: string;
   newPassword: string;
   confirmPassword: string;
+}
+
+// Add a helper for badge rendering
+function VerificationBadge({ status }: { status: string }) {
+  if (status === 'verified') {
+    return <span className="inline-flex items-center gap-1 px-3 py-1 rounded-full bg-green-100 text-green-700 text-xs font-semibold mt-2"> <CheckCircle className="w-4 h-4 text-green-500" /> Verified </span>;
+  }
+  if (status === 'pending') {
+    return <span className="inline-flex items-center gap-1 px-3 py-1 rounded-full bg-yellow-100 text-yellow-700 text-xs font-semibold mt-2"> <Clock className="w-4 h-4 text-yellow-500" /> Verification in progress </span>;
+  }
+  if (status === 'rejected') {
+    return <span className="inline-flex items-center gap-1 px-3 py-1 rounded-full bg-red-100 text-red-700 text-xs font-semibold mt-2"> <XCircle className="w-4 h-4 text-red-500" /> Verification rejected </span>;
+  }
+  return <span className="inline-flex items-center gap-1 px-3 py-1 rounded-full bg-gray-100 text-gray-700 text-xs font-semibold mt-2"> <AlertCircle className="w-4 h-4 text-gray-500" /> Unverified </span>;
 }
 
 export function Profile() {
@@ -77,6 +97,12 @@ export function Profile() {
   const [errors, setErrors] = useState<Record<string, string>>({});
 
   const { stats: gamificationStats, loading: gamificationLoading } = useGamification();
+
+  // Add state for ID upload
+  const [verificationIdFile, setVerificationIdFile] = useState<File | null>(null);
+  const [verificationIdUrl, setVerificationIdUrl] = useState((user as any)?.verification_id_url || '');
+  const [verificationUploading, setVerificationUploading] = useState(false);
+  const [verificationError, setVerificationError] = useState('');
 
   const validateProfileForm = () => {
     const newErrors: Record<string, string> = {};
@@ -249,6 +275,25 @@ export function Profile() {
     }
   };
 
+  // Handle ID upload
+  const handleVerificationIdUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    setVerificationUploading(true);
+    setVerificationError('');
+    try {
+      // Assume uploadToCloudinary returns a URL
+      const result = await uploadToCloudinary(file, 'lms-verification-ids');
+      setVerificationIdUrl(result.secure_url);
+      setVerificationIdFile(file);
+      setSuccessMessage('ID uploaded! Click Save Changes to submit for verification.');
+    } catch (err) {
+      setVerificationError('Failed to upload ID. Please try again.');
+    } finally {
+      setVerificationUploading(false);
+    }
+  };
+
   const handleInputChange = (field: keyof ProfileData, value: string) => {
     setProfileData(prev => ({ ...prev, [field]: value }));
     // Clear error when user starts typing
@@ -364,7 +409,7 @@ export function Profile() {
       {activeTab === 'profile' && (
         <div className="bg-white rounded-xl shadow-sm border border-gray-100 overflow-hidden">
           {/* Profile Header */}
-          <div className="bg-gradient-to-r from-blue-500 to-indigo-600 px-8 py-12 text-white">
+          <div className="bg-gradient-to-r from-blue-500 to-indigo-600 px-8 py-6 text-white">
             <div className="flex items-center gap-8">
               {/* Avatar Section */}
               <div className="relative">
@@ -415,35 +460,47 @@ export function Profile() {
               {/* User Info */}
               <div className="flex-1">
                 <h2 className="text-3xl font-bold mb-2">
-                  {profileData.firstName} {profileData.lastName}
+                  {(
+                    (profileData.firstName && profileData.lastName)
+                      ? `${profileData.firstName} ${profileData.lastName}`
+                      : (user?.firstName && user?.lastName)
+                        ? `${user.firstName} ${user.lastName}`
+                        : (profileData.firstName || profileData.lastName || user?.firstName || user?.lastName)
+                          ? `${profileData.firstName || user?.firstName || ''}${(profileData.lastName || user?.lastName) ? ' ' + (profileData.lastName || user?.lastName) : ''}`
+                          : 'Unnamed User'
+                  )}
                   {gamificationStats?.badges && gamificationStats.badges.length > 0 && (
-                    <span className="ml-4 align-middle inline-flex items-center gap-2">
+                    <span className="ml-2 align-middle inline-flex items-center gap-1">
                       {gamificationStats.badges.map((userBadge: any, idx: number) =>
                         userBadge.badge?.icon_url ? (
-                          <span key={userBadge.badge.id} className="inline-flex items-center justify-center w-12 h-12 rounded-full bg-gray-100 shadow mr-2" style={{ aspectRatio: '1/1' }}>
+                          <span key={userBadge.badge.id} className="inline-flex items-center justify-center w-7 h-7 rounded-full bg-gray-100 shadow mr-1" style={{ aspectRatio: '1/1' }}>
                             <img
                               src={userBadge.badge.icon_url}
                               alt={userBadge.badge.name}
-                              className="w-8 h-8 object-contain"
+                              className="w-5 h-5 object-contain"
                               title={userBadge.badge.name}
                               style={{ aspectRatio: '1/1' }}
                             />
                           </span>
                         ) : (
-                          <span key={userBadge.badge?.id || userBadge.id} className="inline-flex items-center justify-center w-12 h-12 rounded-full bg-gray-100 shadow mr-2" style={{ aspectRatio: '1/1' }}>
-                            <Award className="w-8 h-8 text-yellow-400" />
+                          <span key={userBadge.badge?.id || userBadge.id} className="inline-flex items-center justify-center w-7 h-7 rounded-full bg-gray-100 shadow mr-1" style={{ aspectRatio: '1/1' }}>
+                            <Award className="w-5 h-5 text-yellow-400" />
                           </span>
                         )
                       )}
                     </span>
                   )}
                 </h2>
+                {/* Verification badge for instructors */}
+                {user?.role === 'instructor' && (
+                  <VerificationBadge status={(user as any)?.verification_status || 'unverified'} />
+                )}
                 <p className="text-blue-100 text-lg mb-1">{profileData.email}</p>
                 <p className="text-blue-200">{profileData.phone}</p>
                 <div className="mt-4 flex items-center gap-4">
                   <div className="flex items-center gap-2">
                     <Calendar className="w-4 h-4" />
-                    <span className="text-sm">Joined {new Date(user?.createdAt || '').toLocaleDateString()}</span>
+                    <span className="text-sm">Joined {new Date(user?.created_at || '').toLocaleDateString()}</span>
                   </div>
                   <div className="flex items-center gap-2">
                     <BookOpen className="w-4 h-4" />
@@ -655,19 +712,60 @@ export function Profile() {
                   </div>
                 </div>
 
-                {/* Profile Completion Tips */}
-                {profileCompletion < 100 && (
-                  <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
-                    <h4 className="font-medium text-blue-900 mb-2">Complete Your Profile</h4>
-                    <p className="text-sm text-blue-700 mb-3">
-                      Add the missing information to reach 100% profile completion:
+                {/* Move the instructor verification card here, above the profile completion card */}
+                {user?.role === 'instructor' && (
+                  <div className="bg-yellow-50 border-2 border-yellow-300 rounded-xl p-5 flex flex-col gap-3 shadow-md relative animate-pulse focus-within:animate-none">
+                    <div className="flex items-center gap-3 mb-2">
+                      <ShieldAlert className="w-7 h-7 text-yellow-500 animate-bounce" />
+                      <span className="text-lg font-bold text-yellow-800">Verify Your Instructor Profile</span>
+                    </div>
+                    <p className="text-yellow-900 text-sm mb-2">
+                      To unlock all instructor features, please upload a valid government-issued ID for verification.<br/>
+                      <span className="font-medium">Accepted: NIN, Driver's License, Voter's Card, Int'l Passport</span>
                     </p>
-                    <ul className="text-sm text-blue-700 space-y-1">
-                      {!profileData.bio && <li>• Add a bio to tell others about yourself</li>}
-                      {!profileData.location && <li>• Add your location</li>}
-                      {!profileData.occupation && <li>• Add your occupation</li>}
-                      {!profileData.education && <li>• Add your education background</li>}
-                      {!profileData.avatar && <li>• Upload a profile photo</li>}
+                    <label className="block">
+                      <span className="text-sm font-medium text-yellow-900 mb-1 block">Upload ID Document</span>
+                      <div className="flex items-center gap-3">
+                        <input
+                          type="file"
+                          accept="image/*,application/pdf"
+                          onChange={handleVerificationIdUpload}
+                          className={`block w-full text-sm text-yellow-900 border border-yellow-300 rounded-lg ${isEditing ? 'cursor-pointer bg-yellow-100' : 'cursor-not-allowed bg-yellow-50 opacity-60'} focus:outline-none focus:ring-2 focus:ring-yellow-400`}
+                          disabled={!isEditing || verificationUploading || isLoading}
+                        />
+                        <Upload className="w-6 h-6 text-yellow-500" />
+                      </div>
+                    </label>
+                    {verificationIdUrl && (
+                      <div className="mt-2 text-xs text-yellow-800">Uploaded: <a href={verificationIdUrl} target="_blank" rel="noopener noreferrer" className="underline">View ID</a></div>
+                    )}
+                    {verificationUploading && <div className="text-xs text-yellow-700 mt-1">Uploading...</div>}
+                    {verificationError && <div className="text-xs text-red-600 mt-1">{verificationError}</div>}
+                    {(user as any)?.verification_status === 'rejected' && (
+                      <div className="text-xs text-red-600 mt-1">Your previous verification was rejected. Please upload a valid ID.</div>
+                    )}
+                    {(user as any)?.verification_status === 'unverified' && !verificationIdUrl && (
+                      <div className="mt-2 text-xs text-yellow-900 font-semibold animate-pulse">You have not uploaded any ID yet. Please verify to continue as an instructor.</div>
+                    )}
+                    {(user as any)?.verification_status === 'pending' && (
+                      <div className="mt-2 text-xs text-yellow-700 font-semibold">Your verification is in progress. You will be notified once reviewed.</div>
+                    )}
+                    {(user as any)?.verification_status === 'verified' && (
+                      <div className="mt-2 text-xs text-green-700 font-semibold flex items-center gap-1"><CheckCircle className="w-4 h-4 text-green-500" /> You are verified!</div>
+                    )}
+                  </div>
+                )}
+
+                {/* Profile Completion Tips - now compact */}
+                {profileCompletion < 100 && (
+                  <div className="bg-blue-50 border border-blue-200 rounded-lg p-3 text-sm">
+                    <h4 className="font-semibold text-blue-900 mb-1">Complete Your Profile</h4>
+                    <ul className="list-disc pl-5 text-blue-700 space-y-0.5">
+                      {!profileData.bio && <li>Add a bio</li>}
+                      {!profileData.location && <li>Add your location</li>}
+                      {!profileData.occupation && <li>Add your occupation</li>}
+                      {!profileData.education && <li>Add your education</li>}
+                      {!profileData.avatar && <li>Upload a profile photo</li>}
                     </ul>
                   </div>
                 )}
@@ -821,10 +919,21 @@ export function Profile() {
             <div className="w-16 h-16 bg-purple-100 rounded-full flex items-center justify-center mx-auto mb-4">
               <GraduationCap className="w-8 h-8 text-purple-600" />
             </div>
-            <h2 className="text-2xl font-bold text-gray-900 mb-2">Learning Statistics</h2>
-            <p className="text-gray-600">Your learning journey at a glance</p>
+            <h2 className="text-2xl font-bold text-gray-900 mb-2">
+              {user?.role === 'instructor' ? 'Instructor Statistics' : 'Learning Statistics'}
+            </h2>
+            <p className="text-gray-600">
+              {user?.role === 'instructor'
+                ? 'Your instructor journey at a glance'
+                : 'Your learning journey at a glance'}
+            </p>
           </div>
 
+          {/* Instructor Stats (only for instructors) */}
+          {user?.role === 'instructor' && <InstructorStatsCard />}
+
+          {/* Learner Stats (only for learners) */}
+          {user?.role !== 'instructor' && (
           <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
             <div className="text-center p-6 bg-blue-50 rounded-lg border border-blue-100">
               <div className="w-12 h-12 bg-blue-500 rounded-full flex items-center justify-center mx-auto mb-3">
@@ -833,7 +942,6 @@ export function Profile() {
               <p className="text-2xl font-bold text-blue-600">{user?.enrolledCourses?.length || 0}</p>
               <p className="text-sm text-blue-700">Enrolled Courses</p>
             </div>
-            
             <div className="text-center p-6 bg-green-50 rounded-lg border border-green-100">
               <div className="w-12 h-12 bg-green-500 rounded-full flex items-center justify-center mx-auto mb-3">
                 <CheckCircle className="w-6 h-6 text-white" />
@@ -841,7 +949,6 @@ export function Profile() {
               <p className="text-2xl font-bold text-green-600">{user?.completedCourses?.length || 0}</p>
               <p className="text-sm text-green-700">Completed Courses</p>
             </div>
-            
             <div className="text-center p-6 bg-purple-50 rounded-lg border border-purple-100">
               <div className="w-12 h-12 bg-purple-500 rounded-full flex items-center justify-center mx-auto mb-3">
                 <Award className="w-6 h-6 text-white" />
@@ -850,6 +957,7 @@ export function Profile() {
               <p className="text-sm text-purple-700">Certificates Earned</p>
             </div>
           </div>
+          )}
 
           <div className="mt-8 p-6 bg-gradient-to-r from-indigo-50 to-purple-50 rounded-lg border border-indigo-100">
             <div className="flex items-center gap-3 mb-4">
@@ -859,7 +967,7 @@ export function Profile() {
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4 text-sm">
               <div>
                 <span className="font-medium text-indigo-800">Member Since:</span>
-                <p className="text-indigo-700">{new Date(user?.createdAt || '').toLocaleDateString()}</p>
+                <p className="text-indigo-700">{new Date(user?.created_at || '').toLocaleDateString()}</p>
               </div>
               <div>
                 <span className="font-medium text-indigo-800">Account Type:</span>

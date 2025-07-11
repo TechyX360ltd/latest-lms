@@ -214,41 +214,41 @@ export function BadgeCollection() {
 
               {/* Badge Icon */}
               <div className={`w-20 h-20 mx-auto mb-4 rounded-full flex items-center justify-center shadow ${
-                earned ? 'bg-gradient-to-br from-green-400 to-green-600' : 'bg-gray-100'
+                  earned ? 'bg-gradient-to-br from-green-400 to-green-600' : 'bg-gray-100'
               }`} style={{ aspectRatio: '1/1' }}>
-                {badge.icon_url ? (
-                  <img 
-                    src={badge.icon_url} 
-                    alt={badge.name}
+                  {badge.icon_url ? (
+                    <img 
+                      src={badge.icon_url} 
+                      alt={badge.name}
                     className={`w-10 h-10 ${earned ? 'filter brightness-0 invert' : ''}`}
                     style={{ aspectRatio: '1/1' }}
-                  />
-                ) : (
+                    />
+                  ) : (
                   <Award className={`w-10 h-10 ${earned ? 'text-white' : 'text-gray-400'}`} />
-                )}
-              </div>
+                  )}
+                </div>
 
-              {/* Badge Info */}
+                {/* Badge Info */}
               <h3 className="font-bold text-lg text-gray-900 mb-1 mt-2">{badge.name}</h3>
               <p className="text-sm text-gray-600 mb-3 line-clamp-2 min-h-[40px]">{badge.description}</p>
 
-              {/* Rarity Badge */}
+                {/* Rarity Badge */}
               <div className={`inline-flex items-center gap-1 px-3 py-1 rounded-full text-xs font-semibold border ${getRarityColor(badge.rarity)} mb-2`}>
-                {getRarityIcon(badge.rarity)}
-                {badge.rarity}
-              </div>
+                  {getRarityIcon(badge.rarity)}
+                  {badge.rarity}
+                </div>
 
               {/* Points Required or Earned Date */}
               <div className="mt-2 text-xs">
-                {earned ? (
+                  {earned ? (
                   <div className="text-green-600 font-medium">
                     Earned <span className="block">{userBadge && new Date(userBadge.earned_at).toLocaleDateString()}</span>
-                  </div>
-                ) : (
+                    </div>
+                  ) : (
                   <div className="text-gray-500 font-medium">
-                    Requires {badge.points_required.toLocaleString()} points
-                  </div>
-                )}
+                      Requires {badge.points_required.toLocaleString()} points
+                    </div>
+                  )}
               </div>
             </div>
           );
