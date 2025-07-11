@@ -798,43 +798,43 @@ export function Profile() {
                       </p>
                     </div>
                   ) : (
-                    <div className="bg-yellow-50 border-2 border-yellow-300 rounded-xl p-5 flex flex-col gap-3 shadow-md relative animate-pulse focus-within:animate-none">
-                      <div className="flex items-center gap-3 mb-2">
-                        <ShieldAlert className="w-7 h-7 text-yellow-500 animate-bounce" />
-                        <span className="text-lg font-bold text-yellow-800">Verify Your Instructor Profile</span>
-                      </div>
-                      <p className="text-yellow-900 text-sm mb-2">
-                        To unlock all instructor features, please upload a valid government-issued ID for verification.<br/>
-                        <span className="font-medium">Accepted: NIN, Driver's License, Voter's Card, Int'l Passport</span>
-                      </p>
-                      <label className="block">
-                        <span className="text-sm font-medium text-yellow-900 mb-1 block">Upload ID Document</span>
-                        <div className="flex items-center gap-3">
-                          <input
-                            type="file"
-                            accept="image/*,application/pdf"
-                            onChange={handleVerificationIdUpload}
-                            className={`block w-full text-sm text-yellow-900 border border-yellow-300 rounded-lg ${isEditing ? 'cursor-pointer bg-yellow-100' : 'cursor-not-allowed bg-yellow-50 opacity-60'} focus:outline-none focus:ring-2 focus:ring-yellow-400`}
-                            disabled={!isEditing || verificationUploading || isLoading}
-                          />
-                          <Upload className="w-6 h-6 text-yellow-500" />
-                        </div>
-                      </label>
-                      {verificationIdUrl && (
-                        <div className="mt-2 text-xs text-yellow-800">Uploaded: <a href={verificationIdUrl} target="_blank" rel="noopener noreferrer" className="underline">View ID</a></div>
-                      )}
-                      {verificationUploading && <div className="text-xs text-yellow-700 mt-1">Uploading...</div>}
-                      {verificationError && <div className="text-xs text-red-600 mt-1">{verificationError}</div>}
-                      {(user as any)?.verification_status === 'rejected' && (
-                        <div className="text-xs text-red-600 mt-1">Your previous verification was rejected. Please upload a valid ID.</div>
-                      )}
-                      {(user as any)?.verification_status === 'unverified' && !verificationIdUrl && (
-                        <div className="mt-2 text-xs text-yellow-900 font-semibold animate-pulse">You have not uploaded any ID yet. Please verify to continue as an instructor.</div>
-                      )}
-                      {(user as any)?.verification_status === 'pending' && (
-                        <div className="mt-2 text-xs text-yellow-700 font-semibold">Your verification is in progress. You will be notified once reviewed.</div>
-                      )}
+                  <div className="bg-yellow-50 border-2 border-yellow-300 rounded-xl p-5 flex flex-col gap-3 shadow-md relative animate-pulse focus-within:animate-none">
+                    <div className="flex items-center gap-3 mb-2">
+                      <ShieldAlert className="w-7 h-7 text-yellow-500 animate-bounce" />
+                      <span className="text-lg font-bold text-yellow-800">Verify Your Instructor Profile</span>
                     </div>
+                    <p className="text-yellow-900 text-sm mb-2">
+                      To unlock all instructor features, please upload a valid government-issued ID for verification.<br/>
+                      <span className="font-medium">Accepted: NIN, Driver's License, Voter's Card, Int'l Passport</span>
+                    </p>
+                    <label className="block">
+                      <span className="text-sm font-medium text-yellow-900 mb-1 block">Upload ID Document</span>
+                      <div className="flex items-center gap-3">
+                        <input
+                          type="file"
+                          accept="image/*,application/pdf"
+                          onChange={handleVerificationIdUpload}
+                          className={`block w-full text-sm text-yellow-900 border border-yellow-300 rounded-lg ${isEditing ? 'cursor-pointer bg-yellow-100' : 'cursor-not-allowed bg-yellow-50 opacity-60'} focus:outline-none focus:ring-2 focus:ring-yellow-400`}
+                          disabled={!isEditing || verificationUploading || isLoading}
+                        />
+                        <Upload className="w-6 h-6 text-yellow-500" />
+                      </div>
+                    </label>
+                    {verificationIdUrl && (
+                      <div className="mt-2 text-xs text-yellow-800">Uploaded: <a href={verificationIdUrl} target="_blank" rel="noopener noreferrer" className="underline">View ID</a></div>
+                    )}
+                    {verificationUploading && <div className="text-xs text-yellow-700 mt-1">Uploading...</div>}
+                    {verificationError && <div className="text-xs text-red-600 mt-1">{verificationError}</div>}
+                    {(user as any)?.verification_status === 'rejected' && (
+                      <div className="text-xs text-red-600 mt-1">Your previous verification was rejected. Please upload a valid ID.</div>
+                    )}
+                    {(user as any)?.verification_status === 'unverified' && !verificationIdUrl && (
+                      <div className="mt-2 text-xs text-yellow-900 font-semibold animate-pulse">You have not uploaded any ID yet. Please verify to continue as an instructor.</div>
+                    )}
+                    {(user as any)?.verification_status === 'pending' && (
+                      <div className="mt-2 text-xs text-yellow-700 font-semibold">Your verification is in progress. You will be notified once reviewed.</div>
+                    )}
+                  </div>
                   )
                 )}
 

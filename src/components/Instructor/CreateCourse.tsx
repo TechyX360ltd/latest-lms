@@ -360,17 +360,18 @@ export default function CreateCourse() {
         coverUrl = cover;
       }
       const courseData = {
-        id: courseId || undefined,
-        title,
-        slug,
-        category,
-        price: price ? Number(price) : null,
-        description,
-        duration: duration ? Number(duration) : null,
-        cover: coverUrl,
-        format,
-        modules,
+        ...(courseId ? { id: courseId } : {}),
+        title: title || '',
+        slug: slug || '',
+        category: category || '',
+        price: price ? Number(price) : 0,
+        description: description || '',
+        duration: duration ? Number(duration) : 0,
+        cover: coverUrl || '',
+        format: format || '',
+        modules: modules || [],
         instructor_id: user?.id,
+        instructor: user?.id, // for NOT NULL constraint
         status: 'draft',
         updated_at: new Date().toISOString(),
       };
@@ -378,12 +379,16 @@ export default function CreateCourse() {
         .from('courses')
         .upsert([courseData], { onConflict: ['id'] })
         .select();
-      if (error) throw error;
+      if (error) {
+        toast.error('Failed to save draft. ' + (error.message || ''));
+        throw error;
+      }
       if (data && data[0]?.id) setCourseId(data[0].id);
       toast.success('Draft saved!');
     } catch (err: any) {
       setError('Failed to save draft. ' + (err.message || ''));
-      toast.error('Failed to save draft.');
+      toast.error('Failed to save draft. ' + (err.message || ''));
+      console.error(err);
     } finally {
       setSavingDraft(false);
     }
@@ -403,17 +408,18 @@ export default function CreateCourse() {
         coverUrl = cover;
       }
       const courseData = {
-        id: courseId || undefined,
-        title,
-        slug,
-        category,
-        price: price ? Number(price) : null,
-        description,
-        duration: duration ? Number(duration) : null,
-        cover: coverUrl,
-        format,
-        modules,
+        ...(courseId ? { id: courseId } : {}),
+        title: title || '',
+        slug: slug || '',
+        category: category || '',
+        price: price ? Number(price) : 0,
+        description: description || '',
+        duration: duration ? Number(duration) : 0,
+        cover: coverUrl || '',
+        format: format || '',
+        modules: modules || [],
         instructor_id: user?.id,
+        instructor: user?.id, // for NOT NULL constraint
         status: 'published',
         published_at: new Date().toISOString(),
         updated_at: new Date().toISOString(),
@@ -422,14 +428,18 @@ export default function CreateCourse() {
         .from('courses')
         .upsert([courseData], { onConflict: ['id'] })
         .select();
-      if (error) throw error;
+      if (error) {
+        toast.error('Failed to publish course. ' + (error.message || ''));
+        throw error;
+      }
       if (data && data[0]?.id) setCourseId(data[0].id);
       setShowPublishConfirm(false);
       setShowCelebration(true);
       toast.success('Course published successfully!');
     } catch (err: any) {
       setError('Failed to publish course. ' + (err.message || ''));
-      toast.error('Failed to publish course.');
+      toast.error('Failed to publish course. ' + (err.message || ''));
+      console.error(err);
     } finally {
       setSavingDraft(false);
     }

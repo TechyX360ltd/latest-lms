@@ -56,6 +56,7 @@ import InstructorNotifications from './components/Instructor/InstructorNotificat
 import MyReviews from './components/Instructor/MyReviews';
 import InstructorGamificationDashboard from './components/Instructor/InstructorGamificationDashboard';
 import InstructorManagement from './components/Admin/InstructorManagement';
+import AIChatWidget from './components/AIChatWidget';
 
 function AuthPage() {
   const [isLogin, setIsLogin] = useState(true);
@@ -399,6 +400,7 @@ function App() {
   return (
     <AuthProvider>
       <ToastProvider>
+        <AIChatWidget />
         <AppContent />
       </ToastProvider>
     </AuthProvider>

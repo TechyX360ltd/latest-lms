@@ -2,7 +2,7 @@ import React, { useState, useEffect, useRef } from 'react';
 import { Header } from '../Layout/Header';
 import { Sidebar } from '../Layout/Sidebar';
 import { useAuth } from '../../context/AuthContext';
-import { CheckCircle, BookOpen, Users, DollarSign, Clock, AlertCircle, Download, Rocket, Edit, Eye, Lock } from 'lucide-react';
+import { CheckCircle, BookOpen, Users, DollarSign, Clock, AlertCircle, Download, Rocket, Edit, Eye, Lock, XCircle } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { PaystackButton } from 'react-paystack';
 import dayjs from 'dayjs';
@@ -79,6 +79,14 @@ export function InstructorDashboard() {
   const [draftsLoading, setDraftsLoading] = useState(false);
   const [draftsError, setDraftsError] = useState('');
   const [boostLoading, setBoostLoading] = useState(false);
+
+  // Notifications state
+  const [notifications, setNotifications] = useState<any[]>([]);
+  const [notificationsLoading, setNotificationsLoading] = useState(false);
+  const [notificationsError, setNotificationsError] = useState('');
+
+  // Add tab state for course filtering
+  const [courseTab, setCourseTab] = useState<'active' | 'inactive' | 'drafts'>('active');
 
   // Helper: is the instructor verified?
   const isVerified = user?.verification_status === 'verified';
@@ -292,6 +300,46 @@ export function InstructorDashboard() {
     // eslint-disable-next-line
   }, [courses]);
 
+  // Fetch notifications for the instructor
+  useEffect(() => {
+    const fetchNotifications = async () => {
+      if (!user?.id) return;
+      setNotificationsLoading(true);
+      setNotificationsError('');
+      try {
+        const { data, error } = await supabase
+          .from('notifications')
+          .select('*')
+          .eq('user_id', user.id)
+          .order('created_at', { ascending: false });
+        if (error) throw error;
+        setNotifications(data || []);
+      } catch (err: any) {
+        setNotificationsError('Failed to load notifications.');
+        setNotifications([]);
+      } finally {
+        setNotificationsLoading(false);
+      }
+    };
+    fetchNotifications();
+  }, [user?.id]);
+
+  // Mark all notifications as read
+  const markAllAsRead = async () => {
+    if (!user?.id) return;
+    try {
+      await supabase
+        .from('notifications')
+        .update({ read: true })
+        .eq('user_id', user.id)
+        .eq('read', false);
+      setNotifications(notifications.map(n => ({ ...n, read: true })));
+      toast.success('All notifications marked as read!');
+    } catch (err) {
+      toast.error('Failed to mark notifications as read.');
+    }
+  };
+
   // Placeholder stats
   const stats = [
     { title: 'Courses', value: courses.length, icon: BookOpen, color: 'bg-blue-500' },
@@ -414,90 +462,118 @@ export function InstructorDashboard() {
             })}
           </div>
           {/* Main Sections */}
-          <div className="grid grid-cols-1 lg:grid-cols-2 gap-8 mb-8">
-            {/* My Courses */}
-            <div className="bg-white rounded-xl shadow-sm p-6 border border-gray-100">
+          <div className="bg-white rounded-xl shadow-sm p-6 border border-gray-100 mb-8">
               <h2 className="text-xl font-bold text-gray-900 mb-6">My Courses</h2>
-              {coursesLoading ? (
+            {/* Tabs */}
+            <div className="flex gap-6 border-b border-gray-200 mb-6">
+              <button
+                className={`py-2 px-4 font-semibold border-b-2 transition-colors ${courseTab === 'active' ? 'border-blue-600 text-blue-700' : 'border-transparent text-gray-500 hover:text-blue-600'}`}
+                onClick={() => setCourseTab('active')}
+              >
+                Active
+              </button>
+              <button
+                className={`py-2 px-4 font-semibold border-b-2 transition-colors ${courseTab === 'inactive' ? 'border-blue-600 text-blue-700' : 'border-transparent text-gray-500 hover:text-blue-600'}`}
+                onClick={() => setCourseTab('inactive')}
+              >
+                Inactive
+              </button>
+              <button
+                className={`py-2 px-4 font-semibold border-b-2 transition-colors ${courseTab === 'drafts' ? 'border-yellow-500 text-yellow-700' : 'border-transparent text-gray-500 hover:text-yellow-600'}`}
+                onClick={() => setCourseTab('drafts')}
+              >
+                Drafts
+              </button>
+            </div>
+            {/* Tab Content */}
+            {courseTab === 'active' && (
+              coursesLoading ? (
                 <p>Loading courses...</p>
               ) : coursesError ? (
                 <p className="text-red-600">{coursesError}</p>
               ) : courses.length === 0 ? (
-                <p>You haven't published any courses yet. <a href="/instructor/create-course" className="text-blue-600 underline">Create one now!</a></p>
-              ) : (
-                <div className="space-y-4">
-                  {courses.map((course) => {
-                    const boostedDate = course.boostedAt ? dayjs(course.boostedAt) : null;
-                    const now = dayjs();
-                    const daysSinceBoost = boostedDate ? now.diff(boostedDate, 'day') : null;
-                    const isBoosted = course.featured && boostedDate && daysSinceBoost < 30;
-                    const isExpiringSoon = isBoosted && daysSinceBoost >= 23;
-                    const isExpired = !isBoosted && boostedDate;
-                    return (
-                      <div key={course.id} className="flex items-center justify-between bg-gray-50 rounded-lg p-4 hover:shadow transition">
-                        <div>
-                          <div className="font-semibold text-lg text-gray-900 flex items-center gap-2">
-                            {course.title}
-                            {isBoosted && <Rocket className="w-4 h-4 text-yellow-500" title="Featured" />}
-                          </div>
-                          <div className="text-xs text-gray-500">{course.status} • {course.enrollments} enrollments • {new Date(course.date).toLocaleDateString()}</div>
-                          {isExpiringSoon && (
-                            <div className="mt-1 text-xs text-yellow-700 bg-yellow-50 rounded px-2 py-1 inline-block">Boost expires in {30 - daysSinceBoost} days</div>
-                          )}
-                          {isExpired && (
-                            <div className="mt-1 text-xs text-red-700 bg-red-50 rounded px-2 py-1 inline-block">Boost expired</div>
-                          )}
-                        </div>
-                        <div className="flex gap-2">
-                          <button className="px-3 py-1 rounded bg-blue-50 text-blue-700 hover:bg-blue-100 text-sm flex items-center gap-1"><Eye className="w-4 h-4" />View</button>
-                          <button className="px-3 py-1 rounded bg-gray-50 text-gray-700 hover:bg-gray-100 text-sm flex items-center gap-1"><Edit className="w-4 h-4" />Edit</button>
-                          {(!isBoosted || isExpiringSoon) && (
-                            <button
-                              className={`px-3 py-1 rounded text-sm flex items-center gap-1 bg-green-50 text-green-700 hover:bg-green-100`}
-                              onClick={() => { setBoostCourse(course); setShowBoostModal(true); }}
-                            >
-                              <Rocket className="w-4 h-4" />Renew Boost
-                            </button>
-                          )}
-                          {isBoosted && !isExpiringSoon && (
-                            <button
-                              className={`px-3 py-1 rounded text-sm flex items-center gap-1 bg-yellow-100 text-yellow-700 cursor-not-allowed`}
-                              disabled
-                            >
-                              <Rocket className="w-4 h-4" />Featured
-                            </button>
-                          )}
-                        </div>
-                      </div>
-                    );
-                  })}
+                <div className="flex flex-col items-center justify-center py-12">
+                  <img src="/public/3d-icons/3dicons-book-dynamic-color.png" alt="No courses" className="h-16 w-16 mb-4" />
+                  <p className="text-gray-500 mb-2">No courses found</p>
+                  <button
+                    className="bg-blue-600 text-white px-6 py-2 rounded-lg font-medium hover:bg-blue-700 transition-colors"
+                    onClick={() => navigate('/instructor/create-course')}
+                  >
+                    + Create New Course
+                  </button>
                 </div>
-              )}
-              <div className="flex gap-3 mt-6">
-              <button
-                  className="bg-blue-600 text-white px-6 py-2 rounded-lg font-medium hover:bg-blue-700 transition-colors"
-                onClick={() => navigate('/instructor/create-course')}
-              >
-                Create New Course
-              </button>
-                <button
-                  className="bg-green-600 text-white px-6 py-2 rounded-lg font-medium hover:bg-green-700 transition-colors"
-                  onClick={() => navigate('/instructor/enrollments')}
-                >
-                  View Enrollments
-                </button>
+              ) : (
+              <div className="space-y-4">
+                {courses.map((course) => {
+                  const boostedDate = course.boostedAt ? dayjs(course.boostedAt) : null;
+                  const now = dayjs();
+                  const daysSinceBoost = boostedDate ? now.diff(boostedDate, 'day') : null;
+                  const isBoosted = course.featured && boostedDate && daysSinceBoost < 30;
+                  const isExpiringSoon = isBoosted && daysSinceBoost >= 23;
+                  const isExpired = !isBoosted && boostedDate;
+                  return (
+                    <div key={course.id} className="flex items-center justify-between bg-gray-50 rounded-lg p-4 hover:shadow transition">
+                      <div>
+                        <div className="font-semibold text-lg text-gray-900 flex items-center gap-2">
+                          {course.title}
+                          {isBoosted && <Rocket className="w-4 h-4 text-yellow-500" title="Featured" />}
+                        </div>
+                        <div className="text-xs text-gray-500">{course.status} • {course.enrollments} enrollments • {new Date(course.date).toLocaleDateString()}</div>
+                        {isExpiringSoon && (
+                          <div className="mt-1 text-xs text-yellow-700 bg-yellow-50 rounded px-2 py-1 inline-block">Boost expires in {30 - daysSinceBoost} days</div>
+                        )}
+                        {isExpired && (
+                          <div className="mt-1 text-xs text-red-700 bg-red-50 rounded px-2 py-1 inline-block">Boost expired</div>
+                        )}
+                      </div>
+                      <div className="flex gap-2">
+                        <button className="px-3 py-1 rounded bg-blue-50 text-blue-700 hover:bg-blue-100 text-sm flex items-center gap-1"><Eye className="w-4 h-4" />View</button>
+                        <button className="px-3 py-1 rounded bg-gray-50 text-gray-700 hover:bg-gray-100 text-sm flex items-center gap-1"><Edit className="w-4 h-4" />Edit</button>
+                        {(!isBoosted || isExpiringSoon) && (
+                          <button
+                            className={`px-3 py-1 rounded text-sm flex items-center gap-1 bg-green-50 text-green-700 hover:bg-green-100`}
+                            onClick={() => { setBoostCourse(course); setShowBoostModal(true); }}
+                          >
+                            <Rocket className="w-4 h-4" />Renew Boost
+                          </button>
+                        )}
+                        {isBoosted && !isExpiringSoon && (
+                          <button
+                            className={`px-3 py-1 rounded text-sm flex items-center gap-1 bg-yellow-100 text-yellow-700 cursor-not-allowed`}
+                            disabled
+                          >
+                            <Rocket className="w-4 h-4" />Featured
+                          </button>
+                        )}
+                      </div>
+                    </div>
+                  );
+                })}
               </div>
-            </div>
-
-            {/* Drafts Section */}
-            <div className="bg-white rounded-xl shadow-sm p-6 border border-gray-100">
-              <h2 className="text-xl font-bold text-gray-900 mb-6">Drafts</h2>
-              {draftsLoading ? (
+              )
+            )}
+            {courseTab === 'inactive' && (
+              <div className="flex flex-col items-center justify-center py-12">
+                <img src="/public/3d-icons/3dicons-book-dynamic-color.png" alt="No inactive courses" className="h-16 w-16 mb-4" />
+                <p className="text-gray-500 mb-2">No inactive courses found</p>
+              </div>
+            )}
+            {courseTab === 'drafts' && (
+              draftsLoading ? (
                 <p>Loading drafts...</p>
               ) : draftsError ? (
                 <p className="text-red-600">{draftsError}</p>
               ) : drafts.length === 0 ? (
-                <p className="text-gray-500">No drafts yet. Start creating a course to save drafts!</p>
+                <div className="flex flex-col items-center justify-center py-12">
+                  <img src="/public/3d-icons/3dicons-book-dynamic-color.png" alt="No drafts" className="h-16 w-16 mb-4" />
+                  <p className="text-gray-500 mb-2">No drafts yet. Start creating a course to save drafts!</p>
+              <button
+                    className="bg-yellow-600 text-white px-6 py-2 rounded-lg font-medium hover:bg-yellow-700 transition-colors"
+                onClick={() => navigate('/instructor/create-course')}
+              >
+                    + Create New Draft
+                  </button>
+                </div>
               ) : (
                 <div className="space-y-4">
                   {drafts.map((draft) => (
@@ -520,8 +596,8 @@ export function InstructorDashboard() {
                           onClick={() => navigate(`/instructor/create-course?draft=${draft.id}`)}
                         >
                           <Edit className="w-4 h-4" />Edit Draft
-                        </button>
-                        <button 
+              </button>
+                <button
                           className="px-3 py-1 rounded bg-red-50 text-red-700 hover:bg-red-100 text-sm flex items-center gap-1"
                           onClick={async () => {
                             if (confirm('Are you sure you want to delete this draft? This action cannot be undone.')) {
@@ -537,55 +613,47 @@ export function InstructorDashboard() {
                           }}
                         >
                           <Lock className="w-4 h-4" />Delete
-                        </button>
-                      </div>
+                </button>
+              </div>
                     </div>
                   ))}
                 </div>
-              )}
-              <div className="flex gap-3 mt-6">
-                <button
-                  className="bg-yellow-600 text-white px-6 py-2 rounded-lg font-medium hover:bg-yellow-700 transition-colors"
-                  onClick={() => navigate('/instructor/create-course')}
-                >
-                  Create New Draft
-                </button>
-              </div>
+              )
+            )}
             </div>
-          </div>
-          {/* Earnings & Payouts */}
-          <div className="bg-white rounded-xl shadow-sm p-6 border border-gray-100">
-            <h2 className="text-xl font-bold text-gray-900 mb-6">Earnings & Payouts</h2>
-            <div className="mb-4">
-              <div className="flex items-center gap-4">
-                <div className="text-2xl font-bold text-green-700">₦150,000</div>
-                <button className="px-4 py-2 rounded-lg bg-green-50 text-green-700 font-semibold hover:bg-green-100 border border-green-200" onClick={() => setShowWithdrawModal(true)}>
-                  Withdraw Earnings
-                </button>
+            {/* Earnings & Payouts */}
+            <div className="bg-white rounded-xl shadow-sm p-6 border border-gray-100">
+              <h2 className="text-xl font-bold text-gray-900 mb-6">Earnings & Payouts</h2>
+              <div className="mb-4">
+                <div className="flex items-center gap-4">
+                  <div className="text-2xl font-bold text-green-700">₦150,000</div>
+                  <button className="px-4 py-2 rounded-lg bg-green-50 text-green-700 font-semibold hover:bg-green-100 border border-green-200" onClick={() => setShowWithdrawModal(true)}>
+                    Withdraw Earnings
+                  </button>
+                </div>
+                <div className="text-xs text-gray-500 mt-1">Total earnings to date</div>
               </div>
-              <div className="text-xs text-gray-500 mt-1">Total earnings to date</div>
-            </div>
-            <div className="overflow-x-auto rounded-xl shadow mt-4">
-              <table className="min-w-full bg-white rounded-xl">
-                <thead>
-                  <tr className="bg-gray-50 text-gray-700 text-left">
-                    <th className="py-3 px-4 font-semibold">Date</th>
-                    <th className="py-3 px-4 font-semibold">Amount</th>
-                    <th className="py-3 px-4 font-semibold">Status</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {demoPayouts.map(p => (
-                    <tr key={p.id} className="border-b last:border-b-0 hover:bg-blue-50 transition">
-                      <td className="py-3 px-4">{new Date(p.date).toLocaleDateString()}</td>
-                      <td className="py-3 px-4 font-bold text-green-700">₦{p.amount.toLocaleString()}</td>
-                      <td className="py-3 px-4">
-                        <span className={`px-3 py-1 rounded-full text-xs font-semibold ${p.status === 'Paid' ? 'bg-green-100 text-green-700' : 'bg-yellow-100 text-yellow-700'}`}>{p.status}</span>
-                      </td>
+              <div className="overflow-x-auto rounded-xl shadow mt-4">
+                <table className="min-w-full bg-white rounded-xl">
+                  <thead>
+                    <tr className="bg-gray-50 text-gray-700 text-left">
+                      <th className="py-3 px-4 font-semibold">Date</th>
+                      <th className="py-3 px-4 font-semibold">Amount</th>
+                      <th className="py-3 px-4 font-semibold">Status</th>
                     </tr>
-                  ))}
-                </tbody>
-              </table>
+                  </thead>
+                  <tbody>
+                    {demoPayouts.map(p => (
+                      <tr key={p.id} className="border-b last:border-b-0 hover:bg-blue-50 transition">
+                        <td className="py-3 px-4">{new Date(p.date).toLocaleDateString()}</td>
+                        <td className="py-3 px-4 font-bold text-green-700">₦{p.amount.toLocaleString()}</td>
+                        <td className="py-3 px-4">
+                          <span className={`px-3 py-1 rounded-full text-xs font-semibold ${p.status === 'Paid' ? 'bg-green-100 text-green-700' : 'bg-yellow-100 text-yellow-700'}`}>{p.status}</span>
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
             </div>
           </div>
           {/* Boost Modal */}
@@ -777,13 +845,64 @@ export function InstructorDashboard() {
             {/* Notifications */}
             <div className="bg-white rounded-xl shadow-sm p-6 border border-gray-100">
               <h2 className="text-xl font-bold text-gray-900 mb-6">Notifications</h2>
-              <div className="flex items-center gap-2 text-yellow-600 mb-2"><AlertCircle className="w-5 h-5" /> (Notifications and messages coming soon...)</div>
+              {notificationsLoading ? (
+                <div className="text-yellow-600 flex items-center gap-2"><AlertCircle className="w-5 h-5" /> Loading notifications...</div>
+              ) : notificationsError ? (
+                <div className="text-red-600 flex items-center gap-2"><XCircle className="w-5 h-5" /> {notificationsError}</div>
+              ) : notifications.length === 0 ? (
+                <div className="text-gray-500 flex items-center gap-2"><AlertCircle className="w-5 h-5" /> No notifications yet.</div>
+              ) : (
+                <>
+                  <ul className="divide-y divide-gray-100 mb-4">
+                    {notifications.slice(0, 5).map((n, idx) => (
+                      <li key={n.id || idx} className={`py-3 flex items-start gap-3 ${n.read ? 'opacity-60' : ''}`}>
+                        {n.type === 'success' && <CheckCircle className="w-5 h-5 text-green-500 mt-1" />}
+                        {n.type === 'warning' && <AlertCircle className="w-5 h-5 text-yellow-500 mt-1" />}
+                        {n.type === 'error' && <XCircle className="w-5 h-5 text-red-500 mt-1" />}
+                        <div>
+                          <div className="font-medium text-gray-900">{n.title || 'Notification'}</div>
+                          <div className="text-gray-700 text-sm">{n.message}</div>
+                          <div className="text-xs text-gray-400 mt-1">{n.created_at ? new Date(n.created_at).toLocaleString() : ''}</div>
+                        </div>
+                      </li>
+                    ))}
+                  </ul>
+                  <button className="text-blue-600 underline text-sm font-medium" onClick={markAllAsRead}>Mark all as read</button>
+                </>
+              )}
             </div>
             {/* Profile & Verification */}
             <div className="bg-white rounded-xl shadow-sm p-6 border border-gray-100">
               <h2 className="text-xl font-bold text-gray-900 mb-6">Profile & Verification</h2>
-              <div className="mb-2">Profile status: <span className="font-medium text-blue-700">{user?.isApproved ? 'Verified' : 'Pending Verification'}</span></div>
-              <a href="/instructor/profile" className="text-blue-600 underline">Edit Profile / Upload ID</a>
+              {user?.verification_status === 'verified' ? (
+                <div className="flex items-center gap-2 mb-2">
+                  <CheckCircle className="w-5 h-5 text-green-600" />
+                  <span className="font-medium text-green-700">Verified Instructor</span>
+                </div>
+              ) : user?.verification_status === 'rejected' ? (
+                <div className="flex items-center gap-2 mb-2">
+                  <XCircle className="w-5 h-5 text-red-600" />
+                  <span className="font-medium text-red-700">Verification Rejected</span>
+                </div>
+              ) : (
+                <div className="flex items-center gap-2 mb-2">
+                  <AlertCircle className="w-5 h-5 text-yellow-600" />
+                  <span className="font-medium text-yellow-700">Pending Verification</span>
+                </div>
+              )}
+              {user?.verification_status === 'verified' ? (
+                <div className="text-green-700 mb-2">Congratulations! Your profile is verified and you have full instructor access.</div>
+              ) : user?.verification_status === 'rejected' ? (
+                <div className="text-red-700 mb-2">Your verification was rejected. Please review your documents and try again.</div>
+              ) : (
+                <div className="text-yellow-700 mb-2">Please upload your ID to get verified and unlock all features.</div>
+              )}
+              <button
+                className="text-blue-600 underline font-medium"
+                onClick={() => navigate('/instructor/profile')}
+              >
+                {user?.verification_status === 'verified' ? 'Edit Profile' : 'Edit Profile / Upload ID'}
+              </button>
             </div>
           </div>
           {/* Toast Notification */}
