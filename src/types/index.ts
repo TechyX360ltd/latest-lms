@@ -26,6 +26,10 @@ export interface User {
   // Referral fields
   referral_code?: string;
   referred_by?: string;
+  // Instructor verification fields
+  verification_status?: 'unverified' | 'pending' | 'verified' | 'rejected';
+  verification_id_url?: string;
+  verification_rejection_reason?: string;
 }
 
 export interface Course {

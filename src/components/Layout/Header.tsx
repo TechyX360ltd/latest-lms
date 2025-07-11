@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { LogOut, User, Bell, Search, X, GraduationCap } from 'lucide-react';
+import { LogOut, User, Bell, Search, X, GraduationCap, CheckCircle } from 'lucide-react';
 import { FaCoins } from 'react-icons/fa';
 import { useAuth } from '../../context/AuthContext';
 import { useNotifications, useUsers, useCourses } from '../../hooks/useData';
@@ -311,12 +311,21 @@ export function Header() {
             {/* User Profile - Responsive */}
             <div className="flex items-center gap-2 lg:gap-3">
               <div className="flex items-center gap-2">
-                <div className="w-10 h-10 bg-gradient-to-r from-blue-500 to-indigo-600 rounded-full flex items-center justify-center overflow-hidden">
+                <div className="w-10 h-10 bg-gradient-to-r from-blue-500 to-indigo-600 rounded-full flex items-center justify-center overflow-hidden relative">
                   {user?.avatar ? (
                     <img src={user.avatar} alt="Profile" className="w-full h-full object-cover rounded-full" />
                   ) : (
                     <span className="text-white font-bold text-lg">
                       {(user?.firstName?.[0] || '').toUpperCase()}{(user?.lastName?.[0] || '').toUpperCase()}
+                    </span>
+                  )}
+                  {/* Facebook-style verification badge overlay (on top of the avatar) */}
+                  {user?.role === 'instructor' && user?.verification_status === 'verified' && (
+                    <span className="absolute -top-2 -right-2 z-20 bg-blue-600 rounded-full flex items-center justify-center shadow-lg" style={{ width: '18px', height: '18px' }}>
+                      <svg viewBox="0 0 16 16" fill="none" className="w-3.5 h-3.5">
+                        <circle cx="8" cy="8" r="8" fill="#2563eb" />
+                        <path d="M5.5 8.5l2 2 3-3" stroke="white" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/>
+                      </svg>
                     </span>
                   )}
                 </div>

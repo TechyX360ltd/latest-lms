@@ -2,11 +2,14 @@ import React, { useState, useRef, Suspense, useEffect } from 'react';
 import { Sidebar } from '../Layout/Sidebar';
 import { Header } from '../Layout/Header';
 import { useCategories } from '../../hooks/useData';
+import { useAuth } from '../../context/AuthContext';
 const ReactQuill = React.lazy(() => import('react-quill').then(module => ({ default: module.default })));
 import 'react-quill/dist/quill.snow.css';
 import { uploadToCloudinary } from '../../lib/cloudinary';
 import Confetti from 'react-confetti';
 import { FaTrophy } from 'react-icons/fa';
+import { supabase } from '../../lib/supabase';
+import { toast } from 'react-hot-toast';
 
 const courseTypes = [
   { label: 'Text Only', value: 'text' },
@@ -90,6 +93,7 @@ interface Module {
 }
 
 export default function CreateCourse() {
+  const { user } = useAuth();
   const [step, setStep] = useState(1);
   const [title, setTitle] = useState('');
   const [category, setCategory] = useState('');
@@ -112,6 +116,11 @@ export default function CreateCourse() {
 
   // Accordion state for modules
   const [openModuleIdx, setOpenModuleIdx] = useState<number | null>(0);
+
+  // Draft loading states
+  const [loadingDraft, setLoadingDraft] = useState(false);
+  const [courseId, setCourseId] = useState<string | null>(null);
+  const [savingDraft, setSavingDraft] = useState(false);
 
   // Slugify helper
   function slugify(text: string) {
@@ -251,6 +260,181 @@ export default function CreateCourse() {
     };
   }, []);
 
+  // Load draft if draft ID is provided in URL
+  useEffect(() => {
+    const loadDraft = async () => {
+      const urlParams = new URLSearchParams(window.location.search);
+      const draftId = urlParams.get('draft');
+      
+      if (draftId && user?.id) {
+        setLoadingDraft(true);
+        setError('');
+        try {
+          const { data, error } = await supabase
+            .from('courses')
+            .select('*')
+            .eq('id', draftId)
+            .eq('instructor_id', user.id)
+            .eq('status', 'draft')
+            .single();
+          
+          if (error) throw error;
+          
+          if (data) {
+            setCourseId(data.id);
+            setTitle(data.title || '');
+            setCategory(data.category || '');
+            setDescription(data.description || '');
+            setSlug(data.slug || '');
+            setPrice(data.price ? data.price.toString() : '');
+            setDuration(data.duration ? data.duration.toString() : '');
+            setFormat(data.format || 'mixed');
+            setModules(data.modules || []);
+            
+            // Set cover if it exists
+            if (data.cover) {
+              setCover(data.cover);
+            }
+            
+            // Determine which step to show based on content
+            if (data.modules && data.modules.length > 0) {
+              setStep(2); // Go to content step if modules exist
+            } else if (data.title && data.description) {
+              setStep(1); // Stay on basics step
+            }
+            
+            toast.success('Draft loaded successfully!');
+          }
+        } catch (err: any) {
+          setError('Failed to load draft. ' + (err.message || ''));
+          toast.error('Failed to load draft.');
+        } finally {
+          setLoadingDraft(false);
+        }
+      }
+    };
+    
+    loadDraft();
+  }, [user?.id]);
+
+  // Restrict unverified instructors
+  if (user?.role === 'instructor' && user?.verification_status !== 'verified') {
+    return (
+      <div className="max-w-2xl mx-auto mt-16 p-8 bg-red-50 border border-red-200 rounded-xl text-center">
+        <h2 className="text-2xl font-bold text-red-700 mb-2">Account Not Verified</h2>
+        <p className="text-red-700 mb-4">You must verify your instructor account before you can create or publish courses.</p>
+        <a href="/instructor/profile" className="inline-block px-6 py-2 bg-blue-600 text-white rounded-lg font-medium hover:bg-blue-700 transition">Verify Now</a>
+      </div>
+    );
+  }
+
+  // Show loading state while draft is being loaded
+  if (loadingDraft) {
+    return (
+      <div className="min-h-screen bg-gray-50 flex">
+        <Sidebar />
+        <div className="flex-1 flex flex-col min-w-0">
+          <Header />
+          <main className="flex-1 p-4 lg:p-8 overflow-auto flex flex-col items-center justify-center">
+            <div className="text-center">
+              <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600 mx-auto mb-4"></div>
+              <p className="text-gray-600">Loading draft...</p>
+            </div>
+          </main>
+        </div>
+      </div>
+    );
+  }
+
+  // Save as Draft handler
+  const handleSaveDraft = async () => {
+    setSavingDraft(true);
+    setError('');
+    try {
+      let coverUrl = '';
+      if (cover && typeof cover !== 'string') {
+        // Upload cover image if it's a File
+        const result = await uploadToCloudinary(cover, 'lms-covers');
+        coverUrl = result.secure_url;
+      } else if (typeof cover === 'string') {
+        coverUrl = cover;
+      }
+      const courseData = {
+        id: courseId || undefined,
+        title,
+        slug,
+        category,
+        price: price ? Number(price) : null,
+        description,
+        duration: duration ? Number(duration) : null,
+        cover: coverUrl,
+        format,
+        modules,
+        instructor_id: user?.id,
+        status: 'draft',
+        updated_at: new Date().toISOString(),
+      };
+      const { data, error } = await supabase
+        .from('courses')
+        .upsert([courseData], { onConflict: ['id'] })
+        .select();
+      if (error) throw error;
+      if (data && data[0]?.id) setCourseId(data[0].id);
+      toast.success('Draft saved!');
+    } catch (err: any) {
+      setError('Failed to save draft. ' + (err.message || ''));
+      toast.error('Failed to save draft.');
+    } finally {
+      setSavingDraft(false);
+    }
+  };
+
+  // Publish course handler
+  const handlePublish = async () => {
+    setSavingDraft(true); // Reuse the same loading state
+    setError('');
+    try {
+      let coverUrl = '';
+      if (cover && typeof cover !== 'string') {
+        // Upload cover image if it's a File
+        const result = await uploadToCloudinary(cover, 'lms-covers');
+        coverUrl = result.secure_url;
+      } else if (typeof cover === 'string') {
+        coverUrl = cover;
+      }
+      const courseData = {
+        id: courseId || undefined,
+        title,
+        slug,
+        category,
+        price: price ? Number(price) : null,
+        description,
+        duration: duration ? Number(duration) : null,
+        cover: coverUrl,
+        format,
+        modules,
+        instructor_id: user?.id,
+        status: 'published',
+        published_at: new Date().toISOString(),
+        updated_at: new Date().toISOString(),
+      };
+      const { data, error } = await supabase
+        .from('courses')
+        .upsert([courseData], { onConflict: ['id'] })
+        .select();
+      if (error) throw error;
+      if (data && data[0]?.id) setCourseId(data[0].id);
+      setShowPublishConfirm(false);
+      setShowCelebration(true);
+      toast.success('Course published successfully!');
+    } catch (err: any) {
+      setError('Failed to publish course. ' + (err.message || ''));
+      toast.error('Failed to publish course.');
+    } finally {
+      setSavingDraft(false);
+    }
+  };
+
   return (
     <div className="min-h-screen bg-gray-50 flex">
       <Sidebar />
@@ -370,7 +554,13 @@ export default function CreateCourse() {
                   </div>
                 </div>
                 {error && <div className="text-red-600 mb-4 font-medium">{error}</div>}
-                <div className="flex justify-end gap-4">
+                <div className="flex justify-between gap-4">
+                  <button
+                    className="px-6 py-3 rounded-lg bg-gray-200 text-gray-700 font-semibold hover:bg-gray-300 transition text-lg disabled:opacity-60"
+                    onClick={handleSaveDraft}
+                    disabled={savingDraft}
+                    type="button"
+                  >{savingDraft ? 'Saving...' : 'Save as Draft'}</button>
                   <button
                     className="px-6 py-3 rounded-lg bg-blue-600 text-white font-semibold hover:bg-blue-700 transition text-lg"
                     onClick={handleNext}
@@ -627,6 +817,12 @@ export default function CreateCourse() {
                 {error && <div className="text-red-600 mt-4 font-medium">{error}</div>}
                 <div className="flex justify-between mt-8">
                   <button
+                    className="px-6 py-3 rounded-lg bg-gray-200 text-gray-700 font-semibold hover:bg-gray-300 transition text-lg disabled:opacity-60"
+                    onClick={handleSaveDraft}
+                    disabled={savingDraft}
+                    type="button"
+                  >{savingDraft ? 'Saving...' : 'Save as Draft'}</button>
+                  <button
                     className="px-6 py-3 rounded-lg bg-gray-100 text-gray-700 font-semibold hover:bg-gray-200 transition text-lg"
                     onClick={handleBack}
                   >
@@ -698,6 +894,12 @@ export default function CreateCourse() {
                   </div>
                 </div>
                 <div className="flex justify-end gap-4">
+                  <button
+                    className="px-6 py-3 rounded-lg bg-gray-200 text-gray-700 font-semibold hover:bg-gray-300 transition text-lg disabled:opacity-60"
+                    onClick={handleSaveDraft}
+                    disabled={savingDraft}
+                    type="button"
+                  >{savingDraft ? 'Saving...' : 'Save as Draft'}</button>
                   <button className="px-6 py-3 rounded-lg bg-gray-100 text-gray-700 font-semibold hover:bg-gray-200 transition text-lg" onClick={handleBack}>Back</button>
                   <button className="px-6 py-3 rounded-lg bg-green-600 text-white font-semibold hover:bg-green-700 transition text-lg" onClick={() => setShowPublishConfirm(true)}>Publish</button>
                 </div>
@@ -709,7 +911,7 @@ export default function CreateCourse() {
                       <p className="mb-6">Are you sure you want to publish this course?</p>
                       <div className="flex justify-center gap-4">
                         <button className="px-6 py-3 bg-gray-200 text-gray-800 rounded-lg font-semibold shadow hover:bg-gray-300 transition" onClick={() => setShowPublishConfirm(false)}>Cancel</button>
-                        <button className="px-6 py-3 bg-green-600 text-white rounded-lg font-semibold shadow hover:bg-green-700 transition" onClick={() => { setShowPublishConfirm(false); setShowCelebration(true); }}>Yes, Publish</button>
+                        <button className="px-6 py-3 bg-green-600 text-white rounded-lg font-semibold shadow hover:bg-green-700 transition" onClick={handlePublish}>Yes, Publish</button>
                       </div>
                     </div>
                   </div>

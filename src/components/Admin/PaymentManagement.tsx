@@ -317,6 +317,17 @@ export function PaymentManagement() {
     alert(`Receipt for transaction ${payment.transactionId} has been sent to ${payment.customerEmail}.`);
   };
 
+  // Restrict unverified instructors
+  if (user?.role === 'instructor' && user?.verification_status !== 'verified') {
+    return (
+      <div className="max-w-2xl mx-auto mt-16 p-8 bg-red-50 border border-red-200 rounded-xl text-center">
+        <h2 className="text-2xl font-bold text-red-700 mb-2">Account Not Verified</h2>
+        <p className="text-red-700 mb-4">You must verify your instructor account before you can access earnings or request cashout.</p>
+        <a href="/instructor/profile" className="inline-block px-6 py-2 bg-blue-600 text-white rounded-lg font-medium hover:bg-blue-700 transition">Verify Now</a>
+      </div>
+    );
+  }
+
   if (loading) {
     return (
       <div className="flex items-center justify-center h-64">

@@ -1,4 +1,4 @@
-import React, { useState, useRef } from 'react';
+import React, { useState, useRef, useEffect } from 'react';
 import { 
   User, 
   Mail, 
@@ -30,6 +30,7 @@ import { useAuth } from '../../context/AuthContext';
 import { uploadToCloudinary } from '../../lib/cloudinary';
 import { useGamification } from '../../hooks/useGamification';
 import InstructorStatsCard from '../Instructor/InstructorStatsCard';
+import { supabase } from '../../lib/supabase';
 
 interface ProfileData {
   firstName: string;
@@ -74,6 +75,7 @@ export function Profile() {
   const [successMessage, setSuccessMessage] = useState('');
   const [errorMessage, setErrorMessage] = useState('');
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const [refreshing, setRefreshing] = useState(false);
 
   // Load user profile data
   const [profileData, setProfileData] = useState<ProfileData>({
@@ -103,6 +105,53 @@ export function Profile() {
   const [verificationIdUrl, setVerificationIdUrl] = useState((user as any)?.verification_id_url || '');
   const [verificationUploading, setVerificationUploading] = useState(false);
   const [verificationError, setVerificationError] = useState('');
+
+  // Fetch latest user data from Supabase
+  const fetchLatestUser = async () => {
+    if (!user?.id) return;
+    setRefreshing(true);
+    const { data, error } = await supabase
+      .from('users')
+      .select('*')
+      .eq('id', user.id)
+      .single();
+    if (data) {
+      setProfileData({
+        firstName: data.first_name,
+        lastName: data.last_name,
+        email: data.email,
+        phone: data.phone,
+        bio: data.bio,
+        location: data.location,
+        occupation: data.occupation,
+        education: data.education,
+        avatar: data.avatar_url || null,
+      });
+      setVerificationIdUrl(data.verification_id_url || '');
+      if (updateUserProfile) {
+        updateUserProfile({
+          firstName: data.first_name,
+          lastName: data.last_name,
+          email: data.email,
+          phone: data.phone,
+          bio: data.bio,
+          location: data.location,
+          occupation: data.occupation,
+          education: data.education,
+          avatar: data.avatar_url || null,
+          verification_status: data.verification_status,
+          verification_id_url: data.verification_id_url,
+          verification_rejection_reason: data.verification_rejection_reason,
+        });
+      }
+    }
+    setRefreshing(false);
+  };
+
+  useEffect(() => {
+    fetchLatestUser();
+    // eslint-disable-next-line
+  }, [user?.id]);
 
   const validateProfileForm = () => {
     const newErrors: Record<string, string> = {};
@@ -349,6 +398,24 @@ export function Profile() {
             <span className="text-sm font-bold text-gray-900">{profileCompletion}%</span>
           </div>
         </div>
+        {/* Refresh Button for Instructors */}
+        {user?.role === 'instructor' && (
+          <button
+            onClick={fetchLatestUser}
+            disabled={refreshing}
+            className="ml-4 flex items-center gap-2 px-4 py-2 bg-blue-100 text-blue-700 rounded-lg font-medium hover:bg-blue-200 disabled:opacity-60 disabled:cursor-not-allowed"
+            title="Refresh profile from server"
+          >
+            {refreshing ? (
+              <svg className="animate-spin h-5 w-5 text-blue-600" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24"><circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle><path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v4l5-5-5-5v4a10 10 0 00-10 10h4z"></path></svg>
+            ) : (
+              <>
+                <svg className="h-5 w-5" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" d="M4 4v5h.582M20 20v-5h-.581M5.635 19.364A9 9 0 104.582 9.582" /></svg>
+                Refresh
+              </>
+            )}
+          </button>
+        )}
       </div>
 
       {/* Success/Error Messages */}
@@ -413,7 +480,7 @@ export function Profile() {
             <div className="flex items-center gap-8">
               {/* Avatar Section */}
               <div className="relative">
-                <div className="w-32 h-32 rounded-full overflow-hidden bg-white/20 border-4 border-white/30 shadow-xl">
+                <div className="w-32 h-32 rounded-full overflow-hidden bg-white/20 border-4 border-white/30 shadow-xl relative">
                   {profileData.avatar ? (
                     <img
                       src={profileData.avatar}
@@ -424,6 +491,12 @@ export function Profile() {
                     <div className="w-full h-full flex items-center justify-center bg-white/10">
                       <User className="w-16 h-16 text-white/70" />
                     </div>
+                  )}
+                  {/* Verification tick overlay */}
+                  {user?.role === 'instructor' && user?.verification_status === 'verified' && (
+                    <span className="absolute bottom-2 right-2 bg-green-500 rounded-full p-1 border-2 border-white">
+                      <CheckCircle className="w-6 h-6 text-white" />
+                    </span>
                   )}
                 </div>
                 
@@ -714,46 +787,55 @@ export function Profile() {
 
                 {/* Move the instructor verification card here, above the profile completion card */}
                 {user?.role === 'instructor' && (
-                  <div className="bg-yellow-50 border-2 border-yellow-300 rounded-xl p-5 flex flex-col gap-3 shadow-md relative animate-pulse focus-within:animate-none">
-                    <div className="flex items-center gap-3 mb-2">
-                      <ShieldAlert className="w-7 h-7 text-yellow-500 animate-bounce" />
-                      <span className="text-lg font-bold text-yellow-800">Verify Your Instructor Profile</span>
-                    </div>
-                    <p className="text-yellow-900 text-sm mb-2">
-                      To unlock all instructor features, please upload a valid government-issued ID for verification.<br/>
-                      <span className="font-medium">Accepted: NIN, Driver's License, Voter's Card, Int'l Passport</span>
-                    </p>
-                    <label className="block">
-                      <span className="text-sm font-medium text-yellow-900 mb-1 block">Upload ID Document</span>
-                      <div className="flex items-center gap-3">
-                        <input
-                          type="file"
-                          accept="image/*,application/pdf"
-                          onChange={handleVerificationIdUpload}
-                          className={`block w-full text-sm text-yellow-900 border border-yellow-300 rounded-lg ${isEditing ? 'cursor-pointer bg-yellow-100' : 'cursor-not-allowed bg-yellow-50 opacity-60'} focus:outline-none focus:ring-2 focus:ring-yellow-400`}
-                          disabled={!isEditing || verificationUploading || isLoading}
-                        />
-                        <Upload className="w-6 h-6 text-yellow-500" />
+                  user?.verification_status === 'verified' ? (
+                    <div className="bg-green-50 border-2 border-green-400 rounded-xl p-5 flex flex-col gap-3 shadow-md relative">
+                      <div className="flex items-center gap-3 mb-2">
+                        <CheckCircle className="w-7 h-7 text-green-500 animate-bounce" />
+                        <span className="text-lg font-bold text-green-800">You are a Verified Instructor!</span>
                       </div>
-                    </label>
-                    {verificationIdUrl && (
-                      <div className="mt-2 text-xs text-yellow-800">Uploaded: <a href={verificationIdUrl} target="_blank" rel="noopener noreferrer" className="underline">View ID</a></div>
-                    )}
-                    {verificationUploading && <div className="text-xs text-yellow-700 mt-1">Uploading...</div>}
-                    {verificationError && <div className="text-xs text-red-600 mt-1">{verificationError}</div>}
-                    {(user as any)?.verification_status === 'rejected' && (
-                      <div className="text-xs text-red-600 mt-1">Your previous verification was rejected. Please upload a valid ID.</div>
-                    )}
-                    {(user as any)?.verification_status === 'unverified' && !verificationIdUrl && (
-                      <div className="mt-2 text-xs text-yellow-900 font-semibold animate-pulse">You have not uploaded any ID yet. Please verify to continue as an instructor.</div>
-                    )}
-                    {(user as any)?.verification_status === 'pending' && (
-                      <div className="mt-2 text-xs text-yellow-700 font-semibold">Your verification is in progress. You will be notified once reviewed.</div>
-                    )}
-                    {(user as any)?.verification_status === 'verified' && (
-                      <div className="mt-2 text-xs text-green-700 font-semibold flex items-center gap-1"><CheckCircle className="w-4 h-4 text-green-500" /> You are verified!</div>
-                    )}
-                  </div>
+                      <p className="text-green-900 text-sm mb-2">
+                        Congratulations! Your instructor profile has been verified. You now have access to all instructor features.
+                      </p>
+                    </div>
+                  ) : (
+                    <div className="bg-yellow-50 border-2 border-yellow-300 rounded-xl p-5 flex flex-col gap-3 shadow-md relative animate-pulse focus-within:animate-none">
+                      <div className="flex items-center gap-3 mb-2">
+                        <ShieldAlert className="w-7 h-7 text-yellow-500 animate-bounce" />
+                        <span className="text-lg font-bold text-yellow-800">Verify Your Instructor Profile</span>
+                      </div>
+                      <p className="text-yellow-900 text-sm mb-2">
+                        To unlock all instructor features, please upload a valid government-issued ID for verification.<br/>
+                        <span className="font-medium">Accepted: NIN, Driver's License, Voter's Card, Int'l Passport</span>
+                      </p>
+                      <label className="block">
+                        <span className="text-sm font-medium text-yellow-900 mb-1 block">Upload ID Document</span>
+                        <div className="flex items-center gap-3">
+                          <input
+                            type="file"
+                            accept="image/*,application/pdf"
+                            onChange={handleVerificationIdUpload}
+                            className={`block w-full text-sm text-yellow-900 border border-yellow-300 rounded-lg ${isEditing ? 'cursor-pointer bg-yellow-100' : 'cursor-not-allowed bg-yellow-50 opacity-60'} focus:outline-none focus:ring-2 focus:ring-yellow-400`}
+                            disabled={!isEditing || verificationUploading || isLoading}
+                          />
+                          <Upload className="w-6 h-6 text-yellow-500" />
+                        </div>
+                      </label>
+                      {verificationIdUrl && (
+                        <div className="mt-2 text-xs text-yellow-800">Uploaded: <a href={verificationIdUrl} target="_blank" rel="noopener noreferrer" className="underline">View ID</a></div>
+                      )}
+                      {verificationUploading && <div className="text-xs text-yellow-700 mt-1">Uploading...</div>}
+                      {verificationError && <div className="text-xs text-red-600 mt-1">{verificationError}</div>}
+                      {(user as any)?.verification_status === 'rejected' && (
+                        <div className="text-xs text-red-600 mt-1">Your previous verification was rejected. Please upload a valid ID.</div>
+                      )}
+                      {(user as any)?.verification_status === 'unverified' && !verificationIdUrl && (
+                        <div className="mt-2 text-xs text-yellow-900 font-semibold animate-pulse">You have not uploaded any ID yet. Please verify to continue as an instructor.</div>
+                      )}
+                      {(user as any)?.verification_status === 'pending' && (
+                        <div className="mt-2 text-xs text-yellow-700 font-semibold">Your verification is in progress. You will be notified once reviewed.</div>
+                      )}
+                    </div>
+                  )
                 )}
 
                 {/* Profile Completion Tips - now compact */}

@@ -138,16 +138,25 @@ function DashboardLayout() {
 
 // Protected Route Component
 function ProtectedRoute({ children, allowedRoles }: { children: React.ReactNode, allowedRoles: string[] }) {
-  const { isAuthenticated, user } = useAuth();
-  
+  const { isAuthenticated, user, isLoading } = useAuth();
+
+  if (isLoading) {
+    // Show a loading spinner or splash screen
+    return (
+      <div className="flex items-center justify-center h-screen">
+        <div className="animate-spin h-10 w-10 border-b-2 border-blue-500 rounded-full"></div>
+      </div>
+    );
+  }
+
   if (!isAuthenticated) {
-    return <Navigate to="/" replace />;
+    return <Navigate to="/login" replace />;
   }
-  
+
   if (!allowedRoles.includes(user?.role || '')) {
-    return <Navigate to="/" replace />;
+    return <Navigate to="/login" replace />;
   }
-  
+
   return <>{children}</>;
 }
 

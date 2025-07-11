@@ -43,6 +43,17 @@ export default function ScheduleSessionForm({ courses, onSessionCreated }: Sched
   const [learners, setLearners] = useState<any[]>([]);
   const [learnersLoading, setLearnersLoading] = useState(false);
 
+  // Restrict unverified instructors
+  if (user?.role === 'instructor' && user?.verification_status !== 'verified') {
+    return (
+      <div className="max-w-2xl mx-auto mt-16 p-8 bg-red-50 border border-red-200 rounded-xl text-center">
+        <h2 className="text-2xl font-bold text-red-700 mb-2">Account Not Verified</h2>
+        <p className="text-red-700 mb-4">You must verify your instructor account before you can schedule live sessions.</p>
+        <a href="/instructor/profile" className="inline-block px-6 py-2 bg-blue-600 text-white rounded-lg font-medium hover:bg-blue-700 transition">Verify Now</a>
+      </div>
+    );
+  }
+
   // Filter to only published courses
   const publishedCourses = courses.filter((c: any) => c.is_published);
 

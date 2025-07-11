@@ -129,7 +129,6 @@ export function BadgeCollection() {
           </h2>
           <p className="text-gray-600">Unlock badges by completing achievements</p>
         </div>
-        
         {/* Progress */}
         <div className="text-right">
           <div className="text-2xl font-bold text-gray-900">{earnedBadges}/{totalBadges}</div>

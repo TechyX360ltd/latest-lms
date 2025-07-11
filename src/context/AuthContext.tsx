@@ -222,6 +222,10 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
                 ? userData.user_courses.filter((e: any) => e.status === 'completed').map((e: any) => e.course_id)
                 : [],
               createdAt: userData.created_at,
+              // Add verification fields
+              verification_status: userData.verification_status,
+              verification_id_url: userData.verification_id_url,
+              verification_rejection_reason: userData.verification_rejection_reason,
             };
             // Debug: log mapped formattedUser
             console.log('Mapped formattedUser for context:', formattedUser);
@@ -249,6 +253,10 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
           avatar: user.avatar || null,
           coins: user.coins || 0,
           created_at: user.created_at || new Date().toISOString(),
+          // Add verification fields
+          verification_status: user.verification_status,
+          verification_id_url: user.verification_id_url,
+          verification_rejection_reason: user.verification_rejection_reason,
         };
         dispatch({ type: 'LOGIN', payload: updatedUser });
       } else {
@@ -291,6 +299,10 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
                   ? userData.user_courses.filter((e: any) => e.status === 'completed').map((e: any) => e.course_id)
                   : [],
                 createdAt: userData.created_at,
+                // Add verification fields
+                verification_status: userData.verification_status,
+                verification_id_url: userData.verification_id_url,
+                verification_rejection_reason: userData.verification_rejection_reason,
               };
               dispatch({ type: 'LOGIN', payload: formattedUser });
             }

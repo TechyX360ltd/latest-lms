@@ -58,19 +58,26 @@ export default function InstructorManagement() {
 
   async function handleAction(user_id: string, status: string) {
     setActionLoading(true);
-    await fetch('/functions/v1/update-instructor-verification', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        user_id,
-        verification_status: status,
-        verification_rejection_reason: status === 'rejected' ? rejectionReason : null,
-      }),
-    });
-    setActionLoading(false);
-    setSelected(null);
-    setRejectionReason('');
-    fetchInstructors();
+    try {
+      const { data, error } = await supabase.functions.invoke('update-instructor-verification', {
+        body: {
+          user_id,
+          verification_status: status,
+          verification_rejection_reason: status === 'rejected' ? rejectionReason : null,
+        },
+      });
+      if (error) {
+        alert('Failed to update verification status: ' + error.message);
+      } else {
+        setSelected(null);
+        setRejectionReason('');
+        fetchInstructors();
+      }
+    } catch (err: any) {
+      alert('Failed to update verification status: ' + (err.message || err));
+    } finally {
+      setActionLoading(false);
+    }
   }
 
   async function openInstructorDetails(i: any) {

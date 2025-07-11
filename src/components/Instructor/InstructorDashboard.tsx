@@ -6,6 +6,8 @@ import { CheckCircle, BookOpen, Users, DollarSign, Clock, AlertCircle, Download,
 import { useNavigate } from 'react-router-dom';
 import { PaystackButton } from 'react-paystack';
 import dayjs from 'dayjs';
+import { supabase } from '../../lib/supabase';
+import { toast } from 'react-hot-toast';
 
 function WelcomeInstructorModal({ onClose }: { onClose: () => void }) {
   const navigate = useNavigate();
@@ -69,8 +71,20 @@ export function InstructorDashboard() {
   const [accountResolving, setAccountResolving] = useState(false);
   const [accountError, setAccountError] = useState('');
 
+  // Course and draft states
+  const [courses, setCourses] = useState<any[]>([]);
+  const [coursesLoading, setCoursesLoading] = useState(false);
+  const [coursesError, setCoursesError] = useState('');
+  const [drafts, setDrafts] = useState<any[]>([]);
+  const [draftsLoading, setDraftsLoading] = useState(false);
+  const [draftsError, setDraftsError] = useState('');
+  const [boostLoading, setBoostLoading] = useState(false);
+
   // Helper: is the instructor verified?
   const isVerified = user?.verification_status === 'verified';
+
+  // Persistent banner for unverified instructors
+  const showVerificationBanner = user?.role === 'instructor' && user?.verification_status !== 'verified';
 
   // Helper: show error if not verified
   function showVerifyError(feature: string) {
@@ -195,7 +209,6 @@ export function InstructorDashboard() {
     toastTimeout.current = setTimeout(() => setToast(null), 4000);
   };
   // Payment loading state
-  const [boostLoading, setBoostLoading] = useState(false);
 
   useEffect(() => {
     if (user?.role === 'instructor') {
@@ -209,13 +222,55 @@ export function InstructorDashboard() {
     localStorage.setItem('instructorWelcomeModalDismissed', 'true');
   };
 
-  // Demo courses
-  const demoCourses = [
-    { id: 1, title: 'React for Beginners', featured: false, boostedAt: null, enrollments: 40, status: 'Active', date: '2024-07-01' },
-    { id: 2, title: 'Advanced TypeScript', featured: true, boostedAt: dayjs().subtract(20, 'day').toISOString(), enrollments: 20, status: 'Active', date: '2024-06-15' },
-    { id: 3, title: 'UI/UX Design', featured: false, boostedAt: null, enrollments: 30, status: 'Inactive', date: '2024-06-10' },
-  ];
-  const [courses, setCourses] = useState(demoCourses);
+  // Fetch instructor's courses from Supabase
+  useEffect(() => {
+    const fetchCourses = async () => {
+      if (!user?.id) return;
+      setCoursesLoading(true);
+      setCoursesError('');
+      try {
+        const { data, error } = await supabase
+          .from('courses')
+          .select('*')
+          .eq('instructor_id', user.id)
+          .eq('status', 'published')
+          .order('created_at', { ascending: false });
+        if (error) throw error;
+        setCourses(data || []);
+      } catch (err: any) {
+        setCoursesError('Failed to load courses.');
+        setCourses([]);
+      } finally {
+        setCoursesLoading(false);
+      }
+    };
+    fetchCourses();
+  }, [user?.id]);
+
+  // Fetch drafts
+  useEffect(() => {
+    const fetchDrafts = async () => {
+      if (!user?.id) return;
+      setDraftsLoading(true);
+      setDraftsError('');
+      try {
+        const { data, error } = await supabase
+          .from('courses')
+          .select('*')
+          .eq('instructor_id', user.id)
+          .eq('status', 'draft')
+          .order('updated_at', { ascending: false });
+        if (error) throw error;
+        setDrafts(data || []);
+      } catch (err: any) {
+        setDraftsError('Failed to load drafts.');
+        setDrafts([]);
+      } finally {
+        setDraftsLoading(false);
+      }
+    };
+    fetchDrafts();
+  }, [user?.id]);
 
   // Check for boost expiry and send reminder toast
   useEffect(() => {
@@ -240,6 +295,7 @@ export function InstructorDashboard() {
   // Placeholder stats
   const stats = [
     { title: 'Courses', value: courses.length, icon: BookOpen, color: 'bg-blue-500' },
+    { title: 'Drafts', value: drafts.length, icon: Edit, color: 'bg-yellow-500' },
     { title: 'Enrollments', value: courses.reduce((a, c) => a + c.enrollments, 0), icon: Users, color: 'bg-green-500' },
     { title: 'Earnings', value: '₦150,000', icon: DollarSign, color: 'bg-purple-500' },
     { title: 'Pending Payouts', value: '₦20,000', icon: Clock, color: 'bg-orange-500' },
@@ -271,73 +327,16 @@ export function InstructorDashboard() {
         <Header />
         <main className="flex-1 p-4 lg:p-8 overflow-auto">
           {showWelcome && <WelcomeInstructorModal onClose={handleCloseWelcome} />}
-          {/* Verification Banner */}
-          {!isVerified && (
-            <div className="mb-6 bg-yellow-50 border-l-4 border-yellow-400 p-4 rounded flex items-center gap-4 shadow animate-pulse">
-              <AlertCircle className="w-6 h-6 text-yellow-500" />
-              <div className="flex-1">
-                <span className="font-semibold text-yellow-900">Your instructor account is not verified.</span>
-                <span className="ml-2 text-yellow-800">To unlock all features, please verify your profile.</span>
+          {showVerificationBanner && (
+            <div className="bg-yellow-100 border-l-4 border-yellow-500 text-yellow-800 p-4 mb-6 rounded flex items-center justify-between">
+              <div>
+                <strong>Action Required:</strong> Your instructor account is not verified. Please verify your profile to unlock all features.
               </div>
-              <button
-                className="bg-yellow-500 text-white px-4 py-2 rounded-lg font-medium hover:bg-yellow-600 transition-colors"
-                onClick={() => navigate('/instructor/profile')}
-              >
-                Verify Now
-              </button>
+              <a href="/instructor/profile" className="ml-4 px-4 py-2 bg-blue-600 text-white rounded hover:bg-blue-700 transition">Verify Now</a>
             </div>
           )}
-
-          {/* Example: Publish Course Button (replace with your actual publish logic) */}
-          <button
-            className={`px-4 py-2 rounded-lg font-medium mb-4 ${isVerified ? 'bg-blue-600 text-white hover:bg-blue-700' : 'bg-gray-200 text-gray-400 cursor-not-allowed'}`}
-            disabled={!isVerified}
-            onClick={() => {
-              if (!isVerified) return showVerifyError('publish courses');
-              // ...actual publish logic...
-            }}
-          >
-            Publish Course
-          </button>
-
-          {/* Example: Withdraw Button (replace with your actual withdraw logic) */}
-          <button
-            className={`px-4 py-2 rounded-lg font-medium mb-4 ${isVerified ? 'bg-green-600 text-white hover:bg-green-700' : 'bg-gray-200 text-gray-400 cursor-not-allowed'}`}
-            disabled={!isVerified}
-            onClick={() => {
-              if (!isVerified) return showVerifyError('withdraw earnings');
-              // ...actual withdraw logic...
-            }}
-          >
-            Withdraw Earnings
-          </button>
-
-          {/* Example: Schedule Session Button (replace with your actual schedule logic) */}
-          <button
-            className={`px-4 py-2 rounded-lg font-medium mb-4 ${isVerified ? 'bg-purple-600 text-white hover:bg-purple-700' : 'bg-gray-200 text-gray-400 cursor-not-allowed'}`}
-            disabled={!isVerified}
-            onClick={() => {
-              if (!isVerified) return showVerifyError('schedule live sessions');
-              // ...actual schedule logic...
-            }}
-          >
-            Schedule Live Session
-          </button>
-
-          {/* Example: Store Access (replace with your actual store link/component) */}
-          <button
-            className={`px-4 py-2 rounded-lg font-medium mb-4 ${isVerified ? 'bg-orange-600 text-white hover:bg-orange-700' : 'bg-gray-200 text-gray-400 cursor-not-allowed'}`}
-            disabled={!isVerified}
-            onClick={() => {
-              if (!isVerified) return showVerifyError('access the store');
-              // ...actual store logic...
-            }}
-          >
-            Go to Store
-          </button>
-
           {/* Welcome and Stats */}
-          <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 mb-8">
+          <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 mb-2">
             <div>
               <h1 className="text-2xl lg:text-3xl font-bold text-gray-900 mb-2">
                 Welcome, {user?.firstName} {user?.isApproved && <CheckCircle className="inline w-6 h-6 text-green-600 ml-1" />}
@@ -346,6 +345,53 @@ export function InstructorDashboard() {
             </div>
             <div className="flex items-center gap-4">
               <img src="/BLACK-1-removebg-preview.png" alt="TECHYX 360" className="h-10 w-auto opacity-60" />
+            </div>
+          </div>
+
+          {/* Quick Actions Section */}
+          <div className="mb-8">
+            <h3 className="text-lg font-semibold text-gray-800 mb-3">Quick Actions</h3>
+            <div className="flex flex-wrap gap-3">
+              <button
+                className={`px-4 py-2 rounded-lg font-medium ${isVerified ? 'bg-blue-600 text-white hover:bg-blue-700' : 'bg-gray-200 text-gray-400 cursor-not-allowed'}`}
+                disabled={!isVerified}
+                onClick={() => {
+                  if (!isVerified) return showVerifyError('publish courses');
+                  navigate('/instructor/create-course');
+                }}
+              >
+                Publish Course
+              </button>
+              <button
+                className={`px-4 py-2 rounded-lg font-medium ${isVerified ? 'bg-green-600 text-white hover:bg-green-700' : 'bg-gray-200 text-gray-400 cursor-not-allowed'}`}
+                disabled={!isVerified}
+                onClick={() => {
+                  if (!isVerified) return showVerifyError('withdraw earnings');
+                  setShowWithdrawModal(true);
+                }}
+              >
+                Withdraw Earnings
+              </button>
+              <button
+                className={`px-4 py-2 rounded-lg font-medium ${isVerified ? 'bg-purple-600 text-white hover:bg-purple-700' : 'bg-gray-200 text-gray-400 cursor-not-allowed'}`}
+                disabled={!isVerified}
+                onClick={() => {
+                  if (!isVerified) return showVerifyError('schedule live sessions');
+                  navigate('/instructor/schedule-session');
+                }}
+              >
+                Schedule Live Session
+              </button>
+              <button
+                className={`px-4 py-2 rounded-lg font-medium ${isVerified ? 'bg-orange-600 text-white hover:bg-orange-700' : 'bg-gray-200 text-gray-400 cursor-not-allowed'}`}
+                disabled={!isVerified}
+                onClick={() => {
+                  if (!isVerified) return showVerifyError('access the store');
+                  navigate('/dashboard/gamification?tab=store');
+                }}
+              >
+                Go to Store
+              </button>
             </div>
           </div>
           {/* Stats Cards */}
@@ -372,53 +418,61 @@ export function InstructorDashboard() {
             {/* My Courses */}
             <div className="bg-white rounded-xl shadow-sm p-6 border border-gray-100">
               <h2 className="text-xl font-bold text-gray-900 mb-6">My Courses</h2>
-              <div className="space-y-4">
-                {courses.map((course) => {
-                  const boostedDate = course.boostedAt ? dayjs(course.boostedAt) : null;
-                  const now = dayjs();
-                  const daysSinceBoost = boostedDate ? now.diff(boostedDate, 'day') : null;
-                  const isBoosted = course.featured && boostedDate && daysSinceBoost < 30;
-                  const isExpiringSoon = isBoosted && daysSinceBoost >= 23;
-                  const isExpired = !isBoosted && boostedDate;
-                  return (
-                    <div key={course.id} className="flex items-center justify-between bg-gray-50 rounded-lg p-4 hover:shadow transition">
-                      <div>
-                        <div className="font-semibold text-lg text-gray-900 flex items-center gap-2">
-                          {course.title}
-                          {isBoosted && <Rocket className="w-4 h-4 text-yellow-500" title="Featured" />}
+              {coursesLoading ? (
+                <p>Loading courses...</p>
+              ) : coursesError ? (
+                <p className="text-red-600">{coursesError}</p>
+              ) : courses.length === 0 ? (
+                <p>You haven't published any courses yet. <a href="/instructor/create-course" className="text-blue-600 underline">Create one now!</a></p>
+              ) : (
+                <div className="space-y-4">
+                  {courses.map((course) => {
+                    const boostedDate = course.boostedAt ? dayjs(course.boostedAt) : null;
+                    const now = dayjs();
+                    const daysSinceBoost = boostedDate ? now.diff(boostedDate, 'day') : null;
+                    const isBoosted = course.featured && boostedDate && daysSinceBoost < 30;
+                    const isExpiringSoon = isBoosted && daysSinceBoost >= 23;
+                    const isExpired = !isBoosted && boostedDate;
+                    return (
+                      <div key={course.id} className="flex items-center justify-between bg-gray-50 rounded-lg p-4 hover:shadow transition">
+                        <div>
+                          <div className="font-semibold text-lg text-gray-900 flex items-center gap-2">
+                            {course.title}
+                            {isBoosted && <Rocket className="w-4 h-4 text-yellow-500" title="Featured" />}
+                          </div>
+                          <div className="text-xs text-gray-500">{course.status} • {course.enrollments} enrollments • {new Date(course.date).toLocaleDateString()}</div>
+                          {isExpiringSoon && (
+                            <div className="mt-1 text-xs text-yellow-700 bg-yellow-50 rounded px-2 py-1 inline-block">Boost expires in {30 - daysSinceBoost} days</div>
+                          )}
+                          {isExpired && (
+                            <div className="mt-1 text-xs text-red-700 bg-red-50 rounded px-2 py-1 inline-block">Boost expired</div>
+                          )}
                         </div>
-                        <div className="text-xs text-gray-500">{course.status} • {course.enrollments} enrollments • {new Date(course.date).toLocaleDateString()}</div>
-                        {isExpiringSoon && (
-                          <div className="mt-1 text-xs text-yellow-700 bg-yellow-50 rounded px-2 py-1 inline-block">Boost expires in {30 - daysSinceBoost} days</div>
-                        )}
-                        {isExpired && (
-                          <div className="mt-1 text-xs text-red-700 bg-red-50 rounded px-2 py-1 inline-block">Boost expired</div>
-                        )}
+                        <div className="flex gap-2">
+                          <button className="px-3 py-1 rounded bg-blue-50 text-blue-700 hover:bg-blue-100 text-sm flex items-center gap-1"><Eye className="w-4 h-4" />View</button>
+                          <button className="px-3 py-1 rounded bg-gray-50 text-gray-700 hover:bg-gray-100 text-sm flex items-center gap-1"><Edit className="w-4 h-4" />Edit</button>
+                          {(!isBoosted || isExpiringSoon) && (
+                            <button
+                              className={`px-3 py-1 rounded text-sm flex items-center gap-1 bg-green-50 text-green-700 hover:bg-green-100`}
+                              onClick={() => { setBoostCourse(course); setShowBoostModal(true); }}
+                            >
+                              <Rocket className="w-4 h-4" />Renew Boost
+                            </button>
+                          )}
+                          {isBoosted && !isExpiringSoon && (
+                            <button
+                              className={`px-3 py-1 rounded text-sm flex items-center gap-1 bg-yellow-100 text-yellow-700 cursor-not-allowed`}
+                              disabled
+                            >
+                              <Rocket className="w-4 h-4" />Featured
+                            </button>
+                          )}
+                        </div>
                       </div>
-                      <div className="flex gap-2">
-                        <button className="px-3 py-1 rounded bg-blue-50 text-blue-700 hover:bg-blue-100 text-sm flex items-center gap-1"><Eye className="w-4 h-4" />View</button>
-                        <button className="px-3 py-1 rounded bg-gray-50 text-gray-700 hover:bg-gray-100 text-sm flex items-center gap-1"><Edit className="w-4 h-4" />Edit</button>
-                        {(!isBoosted || isExpiringSoon) && (
-                          <button
-                            className={`px-3 py-1 rounded text-sm flex items-center gap-1 bg-green-50 text-green-700 hover:bg-green-100`}
-                            onClick={() => { setBoostCourse(course); setShowBoostModal(true); }}
-                          >
-                            <Rocket className="w-4 h-4" />Renew Boost
-                          </button>
-                        )}
-                        {isBoosted && !isExpiringSoon && (
-                          <button
-                            className={`px-3 py-1 rounded text-sm flex items-center gap-1 bg-yellow-100 text-yellow-700 cursor-not-allowed`}
-                            disabled
-                          >
-                            <Rocket className="w-4 h-4" />Featured
-                          </button>
-                        )}
-                      </div>
-                    </div>
-                  );
-                })}
-              </div>
+                    );
+                  })}
+                </div>
+              )}
               <div className="flex gap-3 mt-6">
               <button
                   className="bg-blue-600 text-white px-6 py-2 rounded-lg font-medium hover:bg-blue-700 transition-colors"
@@ -434,40 +488,104 @@ export function InstructorDashboard() {
                 </button>
               </div>
             </div>
-            {/* Earnings & Payouts */}
+
+            {/* Drafts Section */}
             <div className="bg-white rounded-xl shadow-sm p-6 border border-gray-100">
-              <h2 className="text-xl font-bold text-gray-900 mb-6">Earnings & Payouts</h2>
-              <div className="mb-4">
-                <div className="flex items-center gap-4">
-                  <div className="text-2xl font-bold text-green-700">₦150,000</div>
-                  <button className="px-4 py-2 rounded-lg bg-green-50 text-green-700 font-semibold hover:bg-green-100 border border-green-200" onClick={() => setShowWithdrawModal(true)}>
-                    Withdraw Earnings
-                  </button>
+              <h2 className="text-xl font-bold text-gray-900 mb-6">Drafts</h2>
+              {draftsLoading ? (
+                <p>Loading drafts...</p>
+              ) : draftsError ? (
+                <p className="text-red-600">{draftsError}</p>
+              ) : drafts.length === 0 ? (
+                <p className="text-gray-500">No drafts yet. Start creating a course to save drafts!</p>
+              ) : (
+                <div className="space-y-4">
+                  {drafts.map((draft) => (
+                    <div key={draft.id} className="flex items-center justify-between bg-yellow-50 rounded-lg p-4 hover:shadow transition border border-yellow-200">
+                      <div>
+                        <div className="font-semibold text-lg text-gray-900 flex items-center gap-2">
+                          {draft.title || 'Untitled Course'}
+                          <span className="px-2 py-1 bg-yellow-100 text-yellow-700 text-xs rounded-full">Draft</span>
+                        </div>
+                        <div className="text-xs text-gray-500">
+                          Last updated: {new Date(draft.updated_at).toLocaleDateString()}
+                          {draft.modules && draft.modules.length > 0 && (
+                            <span> • {draft.modules.length} modules</span>
+                          )}
+                        </div>
+                      </div>
+                      <div className="flex gap-2">
+                        <button 
+                          className="px-3 py-1 rounded bg-blue-50 text-blue-700 hover:bg-blue-100 text-sm flex items-center gap-1"
+                          onClick={() => navigate(`/instructor/create-course?draft=${draft.id}`)}
+                        >
+                          <Edit className="w-4 h-4" />Edit Draft
+                        </button>
+                        <button 
+                          className="px-3 py-1 rounded bg-red-50 text-red-700 hover:bg-red-100 text-sm flex items-center gap-1"
+                          onClick={async () => {
+                            if (confirm('Are you sure you want to delete this draft? This action cannot be undone.')) {
+                              try {
+                                const { error } = await supabase.from('courses').delete().eq('id', draft.id);
+                                if (error) throw error;
+                                setDrafts(drafts => drafts.filter(d => d.id !== draft.id));
+                                toast.success('Draft deleted successfully!');
+                              } catch (err) {
+                                toast.error('Failed to delete draft.');
+                              }
+                            }
+                          }}
+                        >
+                          <Lock className="w-4 h-4" />Delete
+                        </button>
+                      </div>
+                    </div>
+                  ))}
                 </div>
-                <div className="text-xs text-gray-500 mt-1">Total earnings to date</div>
+              )}
+              <div className="flex gap-3 mt-6">
+                <button
+                  className="bg-yellow-600 text-white px-6 py-2 rounded-lg font-medium hover:bg-yellow-700 transition-colors"
+                  onClick={() => navigate('/instructor/create-course')}
+                >
+                  Create New Draft
+                </button>
               </div>
-              <div className="overflow-x-auto rounded-xl shadow mt-4">
-                <table className="min-w-full bg-white rounded-xl">
-                  <thead>
-                    <tr className="bg-gray-50 text-gray-700 text-left">
-                      <th className="py-3 px-4 font-semibold">Date</th>
-                      <th className="py-3 px-4 font-semibold">Amount</th>
-                      <th className="py-3 px-4 font-semibold">Status</th>
+            </div>
+          </div>
+          {/* Earnings & Payouts */}
+          <div className="bg-white rounded-xl shadow-sm p-6 border border-gray-100">
+            <h2 className="text-xl font-bold text-gray-900 mb-6">Earnings & Payouts</h2>
+            <div className="mb-4">
+              <div className="flex items-center gap-4">
+                <div className="text-2xl font-bold text-green-700">₦150,000</div>
+                <button className="px-4 py-2 rounded-lg bg-green-50 text-green-700 font-semibold hover:bg-green-100 border border-green-200" onClick={() => setShowWithdrawModal(true)}>
+                  Withdraw Earnings
+                </button>
+              </div>
+              <div className="text-xs text-gray-500 mt-1">Total earnings to date</div>
+            </div>
+            <div className="overflow-x-auto rounded-xl shadow mt-4">
+              <table className="min-w-full bg-white rounded-xl">
+                <thead>
+                  <tr className="bg-gray-50 text-gray-700 text-left">
+                    <th className="py-3 px-4 font-semibold">Date</th>
+                    <th className="py-3 px-4 font-semibold">Amount</th>
+                    <th className="py-3 px-4 font-semibold">Status</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {demoPayouts.map(p => (
+                    <tr key={p.id} className="border-b last:border-b-0 hover:bg-blue-50 transition">
+                      <td className="py-3 px-4">{new Date(p.date).toLocaleDateString()}</td>
+                      <td className="py-3 px-4 font-bold text-green-700">₦{p.amount.toLocaleString()}</td>
+                      <td className="py-3 px-4">
+                        <span className={`px-3 py-1 rounded-full text-xs font-semibold ${p.status === 'Paid' ? 'bg-green-100 text-green-700' : 'bg-yellow-100 text-yellow-700'}`}>{p.status}</span>
+                      </td>
                     </tr>
-                  </thead>
-                  <tbody>
-                    {demoPayouts.map(p => (
-                      <tr key={p.id} className="border-b last:border-b-0 hover:bg-blue-50 transition">
-                        <td className="py-3 px-4">{new Date(p.date).toLocaleDateString()}</td>
-                        <td className="py-3 px-4 font-bold text-green-700">₦{p.amount.toLocaleString()}</td>
-                        <td className="py-3 px-4">
-                          <span className={`px-3 py-1 rounded-full text-xs font-semibold ${p.status === 'Paid' ? 'bg-green-100 text-green-700' : 'bg-yellow-100 text-yellow-700'}`}>{p.status}</span>
-                        </td>
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
-              </div>
+                  ))}
+                </tbody>
+              </table>
             </div>
           </div>
           {/* Boost Modal */}
