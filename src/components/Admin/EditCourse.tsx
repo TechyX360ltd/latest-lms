@@ -30,6 +30,7 @@ import { Course, Module, Lesson, Assignment } from '../../types';
 import { useCategories, useUsers } from '../../hooks/useData';
 import { useToast } from '../Auth/ToastContext';
 import { supabase } from '../../lib/supabase';
+import { CertificateTemplateGallery } from '../common/CertificateTemplateGallery';
 
 interface EditCourseProps {
   course: Course;
@@ -80,17 +81,18 @@ export function EditCourse({ course, onSave, onCancel }: EditCourseProps) {
   const [errors, setErrors] = useState<Record<string, string>>({});
   const [refreshingSchools, setRefreshingSchools] = useState(false);
   const [instructorSearch, setInstructorSearch] = useState('');
-
-  const certificateTemplates = [
-    { id: 'default', name: 'Default Template', description: 'Classic blue and white design' },
-    { id: 'modern', name: 'Modern Template', description: 'Sleek contemporary design' },
-    { id: 'elegant', name: 'Elegant Template', description: 'Sophisticated gold accents' },
-  ];
+  const [certificateTemplateId, setCertificateTemplateId] = useState<string | null>((course as any).certificate_template_id || null);
 
   // Refresh schools/categories when component mounts
   useEffect(() => {
     refreshCategories();
   }, []);
+
+  useEffect(() => {
+    if ((course as any).certificate_template_id) {
+      setCertificateTemplateId((course as any).certificate_template_id);
+    }
+  }, [course]);
 
   const handleRefreshSchools = async () => {
     setRefreshingSchools(true);
@@ -407,25 +409,15 @@ export function EditCourse({ course, onSave, onCancel }: EditCourseProps) {
       const totalDuration = calculateTotalDuration();
       let thumbnailUrl = courseData.thumbnail;
       if (courseData.thumbnail instanceof File) {
-        // You may want to upload the file and get a URL here, similar to CreateCourse
-        // For now, fallback to the existing course thumbnail if not uploading
         thumbnailUrl = course.thumbnail;
       }
       const slug = slugify(courseData.title);
-      // Only include fields that exist in the DB schema
       const coursePayload = {
-        title: courseData.title,
+        ...courseData,
         slug,
-        description: courseData.description,
-        instructor: courseData.instructor,
-        instructor_id: courseData.instructor_id,
-        category: courseData.category,
-        format: courseData.format,
         duration: Math.ceil(totalDuration / 60) || courseData.duration,
-        price: courseData.price,
         thumbnail: thumbnailUrl || course.thumbnail,
-        is_published: courseData.is_published,
-        certificatetemplate: courseData.certificatetemplate,
+        certificate_template_id: certificateTemplateId,
       };
       console.log('Course payload being sent (Edit):', coursePayload);
       await onSave(coursePayload);
@@ -733,26 +725,13 @@ export function EditCourse({ course, onSave, onCancel }: EditCourseProps) {
         {/* Certificate Template Selection */}
         <div className="bg-white rounded-xl shadow-sm p-6 border border-gray-100">
           <h2 className="text-xl font-bold text-gray-900 mb-6">Certificate Template</h2>
-          
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-            {certificateTemplates.map((template) => (
-              <div
-                key={template.id}
-                className={`border-2 rounded-lg p-4 cursor-pointer transition-colors ${
-                  courseData.certificatetemplate === template.id
-                    ? 'border-blue-500 bg-blue-50'
-                    : 'border-gray-200 hover:border-gray-300'
-                }`}
-                onClick={() => setCourseData({...courseData, certificatetemplate: template.id})}
-              >
-                <div className="flex items-center gap-3 mb-3">
-                  <Award className="w-6 h-6 text-blue-600" />
-                  <h3 className="font-medium text-gray-900">{template.name}</h3>
-                </div>
-                <p className="text-sm text-gray-600">{template.description}</p>
-              </div>
-            ))}
-          </div>
+          <CertificateTemplateGallery
+            selectedTemplateId={certificateTemplateId}
+            onSelect={setCertificateTemplateId}
+          />
+          {!certificateTemplateId && (
+            <p className="text-red-600 text-sm mt-2">Please select a certificate template.</p>
+          )}
         </div>
 
         {/* Course Curriculum */}

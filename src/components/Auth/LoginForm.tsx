@@ -4,6 +4,7 @@ import { useAuth } from '../../context/AuthContext';
 import { useToast } from './ToastContext';
 import { useNavigate } from 'react-router-dom';
 import { useGamification } from '../../hooks/useGamification';
+import { supabase } from '../../lib/supabase';
 
 interface LoginFormProps {
   onToggleForm: () => void;
@@ -61,11 +62,22 @@ export function LoginForm({
       await login(formData.email, formData.password);
       await triggerDailyLogin(); // <-- Update streak and award daily login bonus
       showToast('Login successful!', 'success', 4000);
-      // Redirect based on user role
-      if (user?.role === 'admin') {
-        navigate('/admin/overview');
-      } else if (user?.role === 'instructor') {
-        navigate('/instructor/dashboard');
+      // Fetch the latest user profile from Supabase to get the correct role
+      const { data: authData } = await supabase.auth.getUser();
+      const id = authData?.user?.id;
+      if (id) {
+        const { data: profile } = await supabase
+          .from('users')
+          .select('role')
+          .eq('id', id)
+          .single();
+        if (profile?.role === 'admin') {
+          navigate('/admin/overview');
+        } else if (profile?.role === 'instructor') {
+          navigate('/instructor/dashboard');
+        } else {
+          navigate('/dashboard');
+        }
       } else {
         navigate('/dashboard');
       }

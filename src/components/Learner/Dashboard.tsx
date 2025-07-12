@@ -7,6 +7,7 @@ import { supabase } from '../../lib/supabase';
 import { useNavigate } from 'react-router-dom';
 import { useOutletContext } from 'react-router-dom';
 import { useGamification } from '../../hooks/useGamification';
+import { useEffect, useState } from 'react';
 
 interface LearnerDashboardProps {}
 
@@ -15,7 +16,8 @@ export function LearnerDashboard({}: LearnerDashboardProps) {
   const { user } = useAuth();
   const navigate = useNavigate();
   const { onViewCourse } = useOutletContext<{ onViewCourse: (courseId: string) => void }>();
-  const [showWelcome, setShowWelcome] = React.useState(false);
+  const [showWelcomeModal, setShowWelcomeModal] = useState(false);
+  const [userId, setUserId] = useState<string | null>(null);
   const [stats, setStats] = React.useState<{
     enrolled_courses: number;
     hours_completed: number;
@@ -32,12 +34,32 @@ export function LearnerDashboard({}: LearnerDashboardProps) {
   const enrolledCoursesCount = user?.enrolledCourses?.length || 0;
   const coinBalance = user?.coins || 0;
 
-  React.useEffect(() => {
-    if (user?.role === 'learner') {
-      const dismissed = localStorage.getItem('welcomeModalDismissed');
-      if (!dismissed) setShowWelcome(true);
+  useEffect(() => {
+    const fetchUser = async () => {
+      const { data: authData } = await supabase.auth.getUser();
+      const id = authData?.user?.id;
+      setUserId(id);
+      if (id) {
+        const { data: profile } = await supabase
+          .from('users')
+          .select('has_seen_welcome_modal')
+          .eq('id', id)
+          .single();
+        setShowWelcomeModal(!profile?.has_seen_welcome_modal);
+      }
+    };
+    fetchUser();
+  }, []);
+
+  const handleCloseWelcomeModal = async () => {
+    setShowWelcomeModal(false);
+    if (userId) {
+      await supabase
+        .from('users')
+        .update({ has_seen_welcome_modal: true })
+        .eq('id', userId);
     }
-  }, [user]);
+  };
 
   // Fetch weekly referrals
   React.useEffect(() => {
@@ -66,11 +88,6 @@ export function LearnerDashboard({}: LearnerDashboardProps) {
     
     fetchWeeklyReferrals();
   }, [user?.id]);
-
-  const handleCloseWelcome = () => {
-    setShowWelcome(false);
-    localStorage.setItem('welcomeModalDismissed', 'true');
-  };
 
   if (coursesLoading) {
     return (
@@ -149,11 +166,13 @@ export function LearnerDashboard({}: LearnerDashboardProps) {
 
   return (
     <div className="space-y-8">
-      {showWelcome && <WelcomeModal onClose={handleCloseWelcome} />}
+      {showWelcomeModal && (
+        <WelcomeModal onClose={handleCloseWelcomeModal} />
+      )}
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
         <div>
           <h1 className="text-3xl font-bold mb-2">
-            Welcome back, {user?.firstName}!
+            Welcome back, {user?.first_name}!
           </h1>
           <p className="text-gray-600">Continue your learning journey with TECHYX 360</p>
         </div>

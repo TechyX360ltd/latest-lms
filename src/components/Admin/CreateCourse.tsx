@@ -34,6 +34,7 @@ import { useToast } from '../Auth/ToastContext';
 import { Header } from '../Layout/Header';
 import { supabase } from '../../lib/supabase';
 import { Course, Module, Lesson, Assignment } from '../../types';
+import { CertificateTemplateGallery } from '../common/CertificateTemplateGallery';
 
 interface CreateCourseProps {
   onSave: (courseData: any) => Promise<{ data: any; error: any } | void>;
@@ -106,21 +107,21 @@ function isValidUUID(id: string | undefined | null): boolean {
 export function CreateCourse({ onSave, onCancel }: CreateCourseProps) {
   const { categories, refreshCategories, loading: categoriesLoading } = useCategories();
   const { users, loading: usersLoading } = useUsers();
-  const [courseData, setCourseData] = useState({
-    title: '',
-    slug: '',
-    description: '',
-    instructor: '',
-    instructor_id: '',
-    category: '',
-    format: 'mixed' as 'text' | 'video' | 'mixed',
-    duration: 0,
-    price: 0,
-    thumbnail: null as File | null,
-    is_published: false,
-    certificatetemplate: 'default',
-  });
+  // 1. Add stepper and step state
+  const [step, setStep] = useState(1);
 
+  // 2. Move all course basics fields into individual state variables (title, slug, category, description, price, duration, format, thumbnail, instructor, etc.)
+  const [courseTitle, setCourseTitle] = useState('');
+  const [courseSlug, setCourseSlug] = useState('');
+  const [courseDescription, setCourseDescription] = useState('');
+  const [coursePrice, setCoursePrice] = useState(0);
+  const [courseDuration, setCourseDuration] = useState(0);
+  const [courseFormat, setCourseFormat] = useState<'text' | 'video' | 'mixed'>('mixed');
+  const [courseThumbnail, setCourseThumbnail] = useState<File | null>(null);
+  const [courseIsPublished, setCourseIsPublished] = useState(false);
+  const [courseCertificateTemplate, setCourseCertificateTemplate] = useState<string>('default');
+
+  // 3. Move modules/lessons state to match instructor's format
   const [modules, setModules] = useState<Module[]>([]);
   const [expandedModules, setExpandedModules] = useState<Set<string>>(new Set());
   const [minimizedLessons, setMinimizedLessons] = useState<Set<string>>(new Set());
@@ -136,6 +137,9 @@ export function CreateCourse({ onSave, onCancel }: CreateCourseProps) {
   const [isDirty, setIsDirty] = useState(false);
   const { showToast } = useToast();
   const [instructorSearch, setInstructorSearch] = useState('');
+  const [certificateTemplateId, setCertificateTemplateId] = useState<string | null>(null);
+  // Add missing state for courseCategory
+  const [courseCategory, setCourseCategory] = useState('');
 
   const certificateTemplates = [
     { id: 'default', name: 'Default Template', description: 'Classic blue and white design' },
@@ -162,11 +166,15 @@ export function CreateCourse({ onSave, onCancel }: CreateCourseProps) {
   useEffect(() => {
     setIsDirty(true);
   }, [
-    courseData.title,
-    courseData.description,
-    courseData.instructor,
-    courseData.category,
-    courseData.price,
+    courseTitle,
+    courseSlug,
+    courseDescription,
+    coursePrice,
+    courseDuration,
+    courseFormat,
+    courseThumbnail,
+    courseIsPublished,
+    courseCertificateTemplate,
     modules,
     // add any other fields you want to track
   ]);
@@ -260,23 +268,27 @@ export function CreateCourse({ onSave, onCancel }: CreateCourseProps) {
   const validateForm = () => {
     const newErrors: Record<string, string> = {};
 
-    if (!courseData.title.trim()) {
+    if (!courseTitle.trim()) {
       newErrors.title = 'Course title is required';
     }
 
-    if (!courseData.description.trim()) {
+    if (!courseSlug.trim()) {
+      newErrors.slug = 'Course slug is required';
+    }
+
+    if (!courseDescription.trim()) {
       newErrors.description = 'Course description is required';
     }
 
-    if (!courseData.instructor.trim()) {
-      newErrors.instructor = 'Instructor name is required';
+    if (!instructorSearch.trim()) {
+      newErrors.instructor = 'Instructor is required';
     }
 
-    if (!courseData.category) {
+    if (!courseCategory) {
       newErrors.category = 'Category is required';
     }
 
-    if (courseData.price <= 0) {
+    if (coursePrice <= 0) {
       newErrors.price = 'Course price must be greater than 0';
     }
 
@@ -318,7 +330,7 @@ export function CreateCourse({ onSave, onCancel }: CreateCourseProps) {
       id: crypto.randomUUID(),
       title: '',
       content: '',
-      contentType: 'text',
+      video_url: null, // Changed from contentType to type
       attachments: [],
       duration: 0,
       sort_order: 1,
@@ -488,25 +500,25 @@ export function CreateCourse({ onSave, onCancel }: CreateCourseProps) {
     setIsLoading(true);
     try {
       const totalDuration = calculateTotalDuration();
-      let thumbnailUrl = courseData.thumbnail;
-      if (courseData.thumbnail instanceof File) {
-        const uploadResult = await uploadToCloudinary(courseData.thumbnail, 'course-thumbnails');
+      let thumbnailUrl = courseThumbnail;
+      if (courseThumbnail instanceof File) {
+        const uploadResult = await uploadToCloudinary(courseThumbnail, 'course-thumbnails');
         thumbnailUrl = uploadResult.secure_url;
       }
-      const slug = courseData.slug ? slugify(courseData.slug) : slugify(courseData.title);
+      const slug = courseSlug ? slugify(courseSlug) : slugify(courseTitle);
       const coursePayload = {
-        title: courseData.title,
+        title: courseTitle,
         slug,
-        description: courseData.description,
-        instructor: courseData.instructor,
-        instructor_id: courseData.instructor_id,
-        category: courseData.category,
-        format: courseData.format,
-        duration: Number(courseData.duration),
-        price: courseData.price,
+        description: courseDescription,
+        instructor_id: instructorSearch.trim(), // Assuming instructorSearch is the selected instructor ID
+        category: courseCategory, // Assuming courseCategory is the selected category ID
+        format: courseFormat,
+        duration: Number(courseDuration),
+        price: Number(coursePrice),
         thumbnail: thumbnailUrl,
-        is_published: courseData.is_published,
-        certificatetemplate: courseData.certificatetemplate,
+        is_published: courseIsPublished,
+        certificatetemplate: courseCertificateTemplate,
+        certificate_template_id: certificateTemplateId,
       };
       console.log('Course payload being sent (Create):', coursePayload);
       const result = await onSave(coursePayload);
@@ -597,8 +609,8 @@ export function CreateCourse({ onSave, onCancel }: CreateCourseProps) {
                 title: assn.title,
                 description: assn.description,
                 instructions: assn.description || '',
-                due_date: assn.dueDate ? new Date(assn.dueDate).toISOString() : null,
-                max_points: assn.maxPoints || 100,
+                due_date: assn.due_date ? new Date(assn.due_date).toISOString() : null,
+                max_points: assn.max_points || 100,
                 allowed_file_types: [],
                 max_file_size: 10,
                 is_required: true,
@@ -613,7 +625,7 @@ export function CreateCourse({ onSave, onCancel }: CreateCourseProps) {
         }
       }
 
-      showToast(`Course created successfully${courseData.is_published ? ' and published!' : ' (saved as draft).'}`, 'success');
+      showToast(`Course created successfully${courseIsPublished ? ' and published!' : ' (saved as draft).'}`, 'success');
     } catch (error) {
       console.error('Error creating course:', error);
       showToast('Error creating course. Please try again.', 'error');
@@ -627,8 +639,8 @@ export function CreateCourse({ onSave, onCancel }: CreateCourseProps) {
       id: crypto.randomUUID(),
       title: '',
       description: '',
-      dueDate: '',
-      maxPoints: 100,
+      due_date: '', // Changed from dueDate to due_date
+      max_points: 100, // Changed from maxPoints to max_points
     };
     setModules(modules.map(module =>
       module.id === moduleId
@@ -663,27 +675,37 @@ export function CreateCourse({ onSave, onCancel }: CreateCourseProps) {
 
   return (
     <>
-      <Header />
+      {/* <Header /> Removed to prevent duplicate top bar */}
       <div className="w-full px-4 py-6">
         <form onSubmit={handleSubmit}>
           <div className="max-w-6xl mx-auto space-y-8">
-            <div className="flex items-center justify-between">
-              <div>
-                <h1 className="text-3xl font-bold text-gray-900 mb-2">Create New Course</h1>
-                <p className="text-gray-600">Build a comprehensive learning experience</p>
-              </div>
-              <div className="flex gap-3">
+            {/* Stepper */}
+            <div className="flex justify-center items-center mb-8">
                 <button
                   type="button"
-                  onClick={onCancel}
-                  className="px-4 py-2 border border-gray-300 rounded-lg text-gray-700 hover:bg-gray-50 transition-colors"
-                >
-                  Cancel
+                onClick={() => setStep(prev => Math.max(1, prev - 1))}
+                className={`px-4 py-2 rounded-lg font-medium transition-colors ${
+                  step === 1 ? 'bg-gray-200 text-gray-600 cursor-not-allowed' : 'bg-blue-600 text-white hover:bg-blue-700'
+                }`}
+                disabled={step === 1}
+              >
+                Previous
+              </button>
+              <div className="mx-4 text-gray-600">Step {step} of 3</div>
+              <button
+                type="button"
+                onClick={() => setStep(prev => Math.min(3, prev + 1))}
+                className={`px-4 py-2 rounded-lg font-medium transition-colors ${
+                  step === 3 ? 'bg-gray-200 text-gray-600 cursor-not-allowed' : 'bg-blue-600 text-white hover:bg-blue-700'
+                }`}
+                disabled={step === 3}
+              >
+                Next
                 </button>
-              </div>
             </div>
 
-            {/* Basic Course Information */}
+            {/* Step 1: Course Basics */}
+            {step === 1 && (
             <div className="bg-white rounded-xl shadow-sm p-6 border border-gray-100">
               <h2 className="text-xl font-bold text-gray-900 mb-6">Course Information</h2>
               
@@ -694,8 +716,8 @@ export function CreateCourse({ onSave, onCancel }: CreateCourseProps) {
                   </label>
                   <input
                     type="text"
-                    value={courseData.title}
-                    onChange={(e) => setCourseData({...courseData, title: e.target.value})}
+                      value={courseTitle}
+                      onChange={(e) => setCourseTitle(e.target.value)}
                     className={`w-full px-4 py-3 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent ${
                       errors.title ? 'border-red-300' : 'border-gray-300'
                     }`}
@@ -711,12 +733,12 @@ export function CreateCourse({ onSave, onCancel }: CreateCourseProps) {
                   </label>
                   <input
                     type="text"
-                    value={courseData.slug || slugify(courseData.title)}
-                    onChange={e => setCourseData({ ...courseData, slug: e.target.value })}
+                      value={courseSlug || slugify(courseTitle)}
+                      onChange={e => setCourseSlug(e.target.value)}
                     className="w-full px-4 py-3 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
                     placeholder="course-slug"
                   />
-                  <p className="text-xs text-gray-500 mt-1">URL: /course/{courseData.slug || slugify(courseData.title)}</p>
+                    <p className="text-xs text-gray-500 mt-1">URL: /course/{courseSlug || slugify(courseTitle)}</p>
                 </div>
 
                 <div>
@@ -732,14 +754,10 @@ export function CreateCourse({ onSave, onCancel }: CreateCourseProps) {
                     autoComplete="off"
                   />
                   <select
-                    value={courseData.instructor_id}
+                      value={instructorSearch.trim()}
                     onChange={e => {
                       const selected = users.find(u => u.id === e.target.value);
-                      setCourseData({
-                        ...courseData,
-                        instructor_id: selected?.id || '',
-                        instructor: selected ? `${selected.first_name} ${selected.last_name}` : '',
-                      });
+                        setInstructorSearch(selected?.id || '');
                     }}
                     className="w-full px-4 py-3 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
                     required
@@ -768,8 +786,8 @@ export function CreateCourse({ onSave, onCancel }: CreateCourseProps) {
                     </button>
                   </div>
                   <select
-                    value={courseData.category}
-                    onChange={(e) => setCourseData({...courseData, category: e.target.value})}
+                      value={courseCategory}
+                      onChange={(e) => setCourseCategory(e.target.value)}
                     className={`w-full px-4 py-3 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent ${
                       errors.category ? 'border-red-300' : 'border-gray-300'
                     }`}
@@ -798,8 +816,8 @@ export function CreateCourse({ onSave, onCancel }: CreateCourseProps) {
                     Course Format *
                   </label>
                   <select
-                    value={courseData.format}
-                    onChange={(e) => setCourseData({...courseData, format: e.target.value as any})}
+                      value={courseFormat}
+                      onChange={(e) => setCourseFormat(e.target.value as any)}
                     className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
                     required
                   >
@@ -815,8 +833,8 @@ export function CreateCourse({ onSave, onCancel }: CreateCourseProps) {
                   </label>
                   <input
                     type="number"
-                    value={courseData.duration}
-                    onChange={e => setCourseData({ ...courseData, duration: Number(e.target.value) })}
+                      value={courseDuration}
+                      onChange={e => setCourseDuration(Number(e.target.value))}
                     className="w-full px-4 py-3 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
                     placeholder="0"
                     min="0"
@@ -832,8 +850,8 @@ export function CreateCourse({ onSave, onCancel }: CreateCourseProps) {
                     <span className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 font-medium">₦</span>
                     <input
                       type="number"
-                      value={courseData.price}
-                      onChange={(e) => setCourseData({...courseData, price: Number(e.target.value)})}
+                        value={coursePrice}
+                        onChange={(e) => setCoursePrice(Number(e.target.value))}
                       className={`w-full pl-8 pr-4 py-3 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent ${
                         errors.price ? 'border-red-300' : 'border-gray-300'
                       }`}
@@ -852,7 +870,7 @@ export function CreateCourse({ onSave, onCancel }: CreateCourseProps) {
                   <input
                     type="file"
                     accept="image/*"
-                    onChange={(e) => setCourseData({...courseData, thumbnail: e.target.files?.[0] || null})}
+                      onChange={(e) => setCourseThumbnail(e.target.files?.[0] || null)}
                     className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
                   />
                 </div>
@@ -863,11 +881,11 @@ export function CreateCourse({ onSave, onCancel }: CreateCourseProps) {
                   </label>
                   <input
                     type="checkbox"
-                    checked={courseData.is_published}
-                    onChange={e => setCourseData({ ...courseData, is_published: e.target.checked })}
+                      checked={courseIsPublished}
+                      onChange={e => setCourseIsPublished(e.target.checked)}
                     className="w-5 h-5"
                   />
-                  <span className="ml-2 text-gray-600">{courseData.is_published ? 'Published' : 'Draft'}</span>
+                    <span className="ml-2 text-gray-600">{courseIsPublished ? 'Published' : 'Draft'}</span>
                 </div>
               </div>
 
@@ -876,8 +894,8 @@ export function CreateCourse({ onSave, onCancel }: CreateCourseProps) {
                   Course Description *
                 </label>
                 <textarea
-                  value={courseData.description}
-                  onChange={(e) => setCourseData({...courseData, description: e.target.value})}
+                    value={courseDescription}
+                    onChange={(e) => setCourseDescription(e.target.value)}
                   rows={4}
                   className={`w-full px-4 py-3 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent ${
                     errors.description ? 'border-red-300' : 'border-gray-300'
@@ -903,33 +921,10 @@ export function CreateCourse({ onSave, onCancel }: CreateCourseProps) {
                 </div>
               </div>
             </div>
+            )}
 
-            {/* Certificate Template Selection */}
-            <div className="bg-white rounded-xl shadow-sm p-6 border border-gray-100">
-              <h2 className="text-xl font-bold text-gray-900 mb-6">Certificate Template</h2>
-              
-              <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                {certificateTemplates.map((template) => (
-                  <div
-                    key={template.id}
-                    className={`border-2 rounded-lg p-4 cursor-pointer transition-colors ${
-                      courseData.certificatetemplate === template.id
-                        ? 'border-blue-500 bg-blue-50'
-                        : 'border-gray-200 hover:border-gray-300'
-                    }`}
-                    onClick={() => setCourseData({...courseData, certificatetemplate: template.id})}
-                  >
-                    <div className="flex items-center gap-3 mb-3">
-                      <Award className="w-6 h-6 text-blue-600" />
-                      <h3 className="font-medium text-gray-900">{template.name}</h3>
-                    </div>
-                    <p className="text-sm text-gray-600">{template.description}</p>
-                  </div>
-                ))}
-              </div>
-            </div>
-
-            {/* Course Curriculum */}
+            {/* Step 2: Course Curriculum */}
+            {step === 2 && (
             <div className="bg-white rounded-xl shadow-sm p-6 border border-gray-100">
               <div className="flex items-center justify-between mb-6">
                 <h2 className="text-xl font-bold text-gray-900">Course Curriculum</h2>
@@ -980,8 +975,8 @@ export function CreateCourse({ onSave, onCancel }: CreateCourseProps) {
                               placeholder="Lesson Title"
                             />
                             <select
-                              value={lesson.contentType}
-                              onChange={e => updateLesson(module.id, lesson.id, 'contentType', e.target.value)}
+                                value={lesson.type} // Changed from contentType to type
+                                onChange={e => updateLesson(module.id, lesson.id, 'type', e.target.value)} // Changed from contentType to type
                               className="px-2 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
                             >
                               <option value="text">Text</option>
@@ -994,7 +989,7 @@ export function CreateCourse({ onSave, onCancel }: CreateCourseProps) {
                             </button>
                           </div>
                           {/* ContentType logic */}
-                          {lesson.contentType === 'text' && (
+                            {lesson.type === 'text' && ( // Changed from contentType to type
                             <div className="mb-2">
                               <div className="flex items-center gap-2 mb-1">
                                 <FileText className="w-4 h-4 text-blue-500" />
@@ -1022,7 +1017,7 @@ export function CreateCourse({ onSave, onCancel }: CreateCourseProps) {
                               />
                             </div>
                           )}
-                          {lesson.contentType === 'video' && (
+                            {lesson.type === 'video' && ( // Changed from contentType to type
                             <div className="mb-2">
                               <div className="flex items-center gap-2 mb-1">
                                 <Video className="w-4 h-4 text-purple-500" />
@@ -1081,14 +1076,14 @@ export function CreateCourse({ onSave, onCancel }: CreateCourseProps) {
                           <div className="flex gap-4 mt-2">
                             <input
                               type="date"
-                              value={assignment.dueDate}
-                              onChange={e => updateAssignment(module.id, assignment.id, 'dueDate', e.target.value)}
+                                value={assignment.due_date} // Changed from dueDate to due_date
+                                onChange={e => updateAssignment(module.id, assignment.id, 'due_date', e.target.value)} // Changed from dueDate to due_date
                               className="px-3 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
                             />
                             <input
                               type="number"
-                              value={assignment.maxPoints}
-                              onChange={e => updateAssignment(module.id, assignment.id, 'maxPoints', Number(e.target.value))}
+                                value={assignment.max_points} // Changed from maxPoints to max_points
+                                onChange={e => updateAssignment(module.id, assignment.id, 'max_points', Number(e.target.value))} // Changed from maxPoints to max_points
                               className="px-3 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
                               placeholder="Max Points"
                               min="1"
@@ -1108,14 +1103,40 @@ export function CreateCourse({ onSave, onCancel }: CreateCourseProps) {
                 ))}
               </div>
             </div>
+            )}
+
+            {/* Step 3: Certificate Template Selection */}
+            {step === 3 && (
+              <div className="bg-white rounded-xl shadow-sm p-6 border border-gray-100">
+                <h2 className="text-xl font-bold text-gray-900 mb-6">Certificate Template</h2>
+                <CertificateTemplateGallery
+                  selectedTemplateId={certificateTemplateId}
+                  onSelect={setCertificateTemplateId}
+                />
+                {!certificateTemplateId && (
+                  <p className="text-red-600 text-sm mt-2">Please select a certificate template.</p>
+                )}
           </div>
+            )}
+
+            {/* Navigation Buttons */}
+            <div className="flex justify-between mt-8">
+              <button
+                type="button"
+                onClick={onCancel}
+                className="bg-gray-200 text-gray-800 px-6 py-3 rounded-lg font-medium hover:bg-gray-300 transition-colors"
+              >
+                Cancel
+              </button>
           <button
             type="submit"
-            className="w-full bg-blue-600 text-white py-4 rounded-lg font-bold text-lg mt-8 hover:bg-blue-700 transition-all duration-200"
+                className="bg-blue-600 text-white py-3 px-6 rounded-lg font-bold text-lg hover:bg-blue-700 transition-all duration-200"
             disabled={isLoading}
           >
             {isLoading ? 'Adding...' : 'Add Course'}
           </button>
+            </div>
+          </div>
         </form>
         <VideoUploadModal
           open={videoModal.open}

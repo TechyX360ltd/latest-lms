@@ -4,9 +4,12 @@ import { useCourses } from '../../hooks/useData';
 import { CreateCourse } from './CreateCourse';
 import { EditCourse } from './EditCourse';
 import { ViewCourse } from './ViewCourse';
+import { supabase } from '../../lib/supabase'; // Fixed import path
+import { useToast } from '../Auth/ToastContext';
 
 export function CourseManagement() {
   const { courses, addCourse, updateCourse, deleteCourse, loading } = useCourses();
+  const { showToast } = useToast();
   const [searchTerm, setSearchTerm] = useState('');
   const [selectedStatus, setSelectedStatus] = useState('all');
   const [showCreateCourse, setShowCreateCourse] = useState(false);
@@ -64,6 +67,119 @@ export function CourseManagement() {
   const handleCancelView = () => {
     setViewingCourse(null);
   };
+
+  // Function to migrate course modules and lessons from JSON to database tables
+  const migrateCourseStructure = async (courseId: string) => {
+    // Get the course name for confirmation
+    const course = courses.find(c => c.id === courseId);
+    if (!course) {
+      showToast('Course not found', 'error');
+      return;
+    }
+
+    // Show confirmation dialog
+    const confirmed = window.confirm(
+      `Are you sure you want to migrate the course structure for "${course.title}"?\n\n` +
+      `This will move modules and lessons from JSON format to the database tables, ` +
+      `making them visible to learners. This action cannot be undone.`
+    );
+
+    if (!confirmed) {
+      return;
+    }
+
+    try {
+      // Get the course with its JSON modules/lessons
+      const { data: courseData, error: courseError } = await supabase
+        .from('courses')
+        .select('*')
+        .eq('id', courseId)
+        .single();
+      
+      if (courseError || !courseData) {
+        console.error('Error fetching course:', courseError);
+        showToast('Failed to fetch course for migration', 'error');
+        return;
+      }
+
+      // Check if course has modules in JSON format
+      if (courseData.modules && Array.isArray(courseData.modules) && courseData.modules.length > 0) {
+        console.log('Migrating course structure for:', courseData.title);
+        showToast(`Migrating course structure for "${courseData.title}"...`, 'confirmation');
+        
+        let migratedModules = 0;
+        let migratedLessons = 0;
+        
+        for (const mod of courseData.modules) {
+          // Generate UUID for module if not present or invalid
+          const moduleId = (mod.id && isValidUUID(mod.id)) ? mod.id : crypto.randomUUID();
+          
+          // Upsert module
+          const { error: modError } = await supabase
+            .from('modules')
+            .upsert({
+              id: moduleId,
+              course_id: courseId,
+              title: mod.title,
+              description: mod.description || mod.title,
+              order: mod.sort_order || mod.order || 1,
+              created_at: new Date().toISOString(),
+              updated_at: new Date().toISOString(),
+            });
+          
+          if (modError) {
+            console.error('Module upsert error:', modError, mod);
+            continue;
+          }
+          migratedModules++;
+
+          // Upsert lessons for this module
+          if (mod.lessons && Array.isArray(mod.lessons) && mod.lessons.length > 0) {
+            for (const les of mod.lessons) {
+              // Generate UUID for lesson if not present or invalid
+              const lessonId = (les.id && isValidUUID(les.id)) ? les.id : crypto.randomUUID();
+              
+              const { error: lesError } = await supabase
+                .from('lessons')
+                .upsert({
+                  id: lessonId,
+                  course_id: courseId,
+                  module_id: moduleId,
+                  title: les.title,
+                  content: les.content,
+                  video_url: les.video_url || les.videoUrl || null,
+                  duration: les.duration || 15,
+                  order: les.sort_order || les.order || 1,
+                  created_at: new Date().toISOString(),
+                  updated_at: new Date().toISOString(),
+                });
+              
+              if (lesError) {
+                console.error('Lesson upsert error:', lesError, les);
+                continue;
+              }
+              migratedLessons++;
+            }
+          }
+        }
+        
+        console.log('Migration completed for course:', courseData.title);
+        showToast(`Successfully migrated ${migratedModules} modules and ${migratedLessons} lessons for "${courseData.title}"`, 'success');
+      } else {
+        showToast(`No modules found in JSON format for "${courseData.title}". Course structure is already up to date.`, 'confirmation');
+      }
+    } catch (error) {
+      console.error('Error migrating course structure:', error);
+      showToast('Failed to migrate course structure. Please try again.', 'error');
+    }
+  };
+
+  // Helper function to validate UUID
+  function isValidUUID(id: string | undefined | null): boolean {
+    if (!id) return false;
+    const uuidRegex = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
+    return uuidRegex.test(id);
+  }
 
   // Show create course form
   if (showCreateCourse) {
@@ -154,14 +270,19 @@ export function CourseManagement() {
                 alt={course.title}
                 className="w-full h-48 object-cover"
               />
-              <div className="absolute top-4 right-4">
+              <div className="absolute top-4 right-4 flex flex-col gap-2">
                 <span className={`px-2 py-1 rounded-full text-xs font-medium ${
-                  course.isPublished 
+                  course.is_published 
                     ? 'bg-green-100 text-green-800' 
                     : 'bg-yellow-100 text-yellow-800'
                 }`}>
-                  {course.isPublished ? 'Published' : 'Draft'}
+                  {course.is_published ? 'Published' : 'Draft'}
                 </span>
+                {course.modules && Array.isArray(course.modules) && course.modules.length > 0 && (
+                  <span className="px-2 py-1 rounded-full text-xs font-medium bg-orange-100 text-orange-800" title="This course has modules in JSON format and may need migration">
+                    Needs Migration
+                  </span>
+                )}
               </div>
             </div>
             
@@ -177,7 +298,7 @@ export function CourseManagement() {
                 </div>
                 <div className="flex items-center gap-1">
                   <Users className="w-4 h-4" />
-                  <span>{course.enrolledCount}</span>
+                  <span>{course.enrolled_count}</span>
                 </div>
                 <div className="text-green-600 font-medium">
                   ₦{course.price.toLocaleString()}
@@ -188,6 +309,7 @@ export function CourseManagement() {
                 <button 
                   onClick={() => setEditingCourse(course.id)}
                   className="flex-1 bg-blue-600 text-white py-2 px-3 rounded-lg text-sm font-medium hover:bg-blue-700 transition-colors flex items-center justify-center gap-2"
+                  title="Edit course details, modules, and lessons"
                 >
                   <Edit className="w-4 h-4" />
                   Edit
@@ -195,14 +317,23 @@ export function CourseManagement() {
                 <button 
                   onClick={() => setViewingCourse(course.id)}
                   className="p-2 text-gray-400 hover:text-blue-600 hover:bg-blue-50 rounded-lg transition-colors"
-                  title="View Course"
+                  title="View course details and preview content"
                 >
                   <Eye className="w-4 h-4" />
                 </button>
                 <button 
+                  onClick={() => migrateCourseStructure(course.id)}
+                  className="p-2 text-gray-400 hover:text-green-600 hover:bg-green-50 rounded-lg transition-colors"
+                  title="Migrate course structure from JSON to database tables (fixes missing modules/lessons for learners)"
+                >
+                  <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
+                  </svg>
+                </button>
+                <button 
                   onClick={() => handleDeleteCourse(course.id)}
                   className="p-2 text-gray-400 hover:text-red-600 hover:bg-red-50 rounded-lg transition-colors"
-                  title="Delete Course"
+                  title="Delete course permanently (this action cannot be undone)"
                 >
                   <Trash2 className="w-4 h-4" />
                 </button>

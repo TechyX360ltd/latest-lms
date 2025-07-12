@@ -1,7 +1,5 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Sidebar } from '../Layout/Sidebar';
-import { Header } from '../Layout/Header';
 import { supabase } from '../../lib/supabase';
 import { useAuth } from '../../context/AuthContext';
 import { ViewCourse } from '../Admin/ViewCourse';
@@ -55,9 +53,7 @@ export default function InstructorMyCourses() {
 
   return (
     <div className="min-h-screen bg-gray-50 flex">
-      <Sidebar />
       <div className="flex-1 flex flex-col min-w-0">
-        <Header />
         <main className="flex-1 p-4 lg:p-8 overflow-auto">
           <div className="container mx-auto py-2 px-2 md:px-0">
             <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between mb-6 gap-4">

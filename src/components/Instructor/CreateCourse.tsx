@@ -3,13 +3,22 @@ import { Sidebar } from '../Layout/Sidebar';
 import { Header } from '../Layout/Header';
 import { useCategories } from '../../hooks/useData';
 import { useAuth } from '../../context/AuthContext';
-const ReactQuill = React.lazy(() => import('react-quill').then(module => ({ default: module.default })));
+import { useParams } from 'react-router-dom';
+const ReactQuill = React.lazy(() => import('react-quill'));
 import 'react-quill/dist/quill.snow.css';
 import { uploadToCloudinary } from '../../lib/cloudinary';
 import Confetti from 'react-confetti';
 import { FaTrophy } from 'react-icons/fa';
 import { supabase } from '../../lib/supabase';
 import { toast } from 'react-hot-toast';
+import { CertificateTemplateGallery } from '../common/CertificateTemplateGallery';
+
+// Helper function to validate UUID
+function isValidUUID(id: string | undefined | null): boolean {
+  if (!id) return false;
+  const uuidRegex = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
+  return uuidRegex.test(id);
+}
 
 const courseTypes = [
   { label: 'Text Only', value: 'text' },
@@ -121,6 +130,8 @@ export default function CreateCourse() {
   const [loadingDraft, setLoadingDraft] = useState(false);
   const [courseId, setCourseId] = useState<string | null>(null);
   const [savingDraft, setSavingDraft] = useState(false);
+  const { courseId: urlCourseId } = useParams();
+  const [isEditing, setIsEditing] = useState(false);
 
   // Slugify helper
   function slugify(text: string) {
@@ -250,6 +261,8 @@ export default function CreateCourse() {
   // TODO: Replace with real check for instructor's first course
   const isFirstCourse = true; // Set to false if not first course
 
+  const [certificateTemplateId, setCertificateTemplateId] = useState<string | null>(null);
+
   useEffect(() => {
     const handlePopState = () => {
       window.location.reload();
@@ -259,6 +272,31 @@ export default function CreateCourse() {
       window.removeEventListener('popstate', handlePopState);
     };
   }, []);
+
+  useEffect(() => {
+    if (urlCourseId) {
+      setIsEditing(true);
+      (async () => {
+        const { data, error } = await supabase
+          .from('courses')
+          .select('*')
+          .eq('id', urlCourseId)
+          .single();
+        if (data) {
+          setTitle(data.title || '');
+          setCategory(data.category || '');
+          setDescription(data.description || '');
+          setSlug(data.slug || '');
+          setPrice(data.price?.toString() || '');
+          setDuration(data.duration?.toString() || '');
+          setFormat(data.format || 'mixed');
+          setCertificateTemplateId(data.certificate_template_id || null);
+          // Prefill modules, lessons, etc. as needed
+          // You may need to fetch modules/lessons separately if not included
+        }
+      })();
+    }
+  }, [urlCourseId]);
 
   // Load draft if draft ID is provided in URL
   useEffect(() => {
@@ -294,6 +332,11 @@ export default function CreateCourse() {
             // Set thumbnail if it exists
             if (data.thumbnail) {
               setThumbnail(data.thumbnail);
+            }
+            
+            // Set certificate template if it exists
+            if (data.certificate_template_id) {
+              setCertificateTemplateId(data.certificate_template_id);
             }
             
             // Determine which step to show based on content
@@ -369,11 +412,11 @@ export default function CreateCourse() {
         duration: duration ? Number(duration) : 0,
         thumbnail: thumbnailUrl || '',
         format: format || '',
-        modules: modules || [],
         instructor_id: user?.id,
         instructor: user?.id, // for NOT NULL constraint
         status: 'draft',
         updated_at: new Date().toISOString(),
+        certificate_template_id: certificateTemplateId || null,
       };
       const { data, error } = await supabase
         .from('courses')
@@ -383,7 +426,67 @@ export default function CreateCourse() {
         toast.error('Failed to save draft. ' + (error.message || ''));
         throw error;
       }
-      if (data && data[0]?.id) setCourseId(data[0].id);
+      
+      const finalCourseId = data && data[0]?.id ? data[0].id : courseId;
+      if (!finalCourseId) {
+        throw new Error('Failed to get course ID');
+      }
+      setCourseId(finalCourseId);
+
+      // Upsert modules and lessons to separate tables
+      if (modules && modules.length > 0) {
+        for (const mod of modules) {
+          // Generate UUID for module if not present or invalid
+          const moduleId = (mod.id && isValidUUID(mod.id)) ? mod.id : crypto.randomUUID();
+          
+          // Upsert module
+          const { error: modError } = await supabase
+            .from('modules')
+            .upsert({
+              id: moduleId,
+              course_id: finalCourseId,
+              title: mod.title,
+              description: mod.title, // Use title as description if no description field
+              order: modules.indexOf(mod) + 1,
+              created_at: new Date().toISOString(),
+              updated_at: new Date().toISOString(),
+            });
+          
+          if (modError) {
+            console.error('Module upsert error:', modError, mod);
+            throw modError;
+          }
+
+          // Upsert lessons for this module
+          if (mod.lessons && mod.lessons.length > 0) {
+            for (const les of mod.lessons) {
+              // Generate UUID for lesson if not present or invalid
+              const lessonId = (les.id && isValidUUID(les.id)) ? les.id : crypto.randomUUID();
+              
+              const { error: lesError } = await supabase
+                .from('lessons')
+                .upsert({
+                  id: lessonId,
+                  course_id: finalCourseId,
+                  module_id: moduleId,
+                  title: les.title,
+                  content: les.content,
+                  video_url: les.videoUrl || null,
+                  duration: les.type === 'video' ? 30 : 15, // Default duration
+                  order: mod.lessons.indexOf(les) + 1,
+                  created_at: new Date().toISOString(),
+                  updated_at: new Date().toISOString(),
+                });
+              
+              if (lesError) {
+                console.error('Lesson upsert error:', lesError, les);
+                throw lesError;
+              }
+            }
+          }
+        }
+      }
+
       toast.success('Draft saved!');
     } catch (err: any) {
       setError('Failed to save draft. ' + (err.message || ''));
@@ -417,13 +520,13 @@ export default function CreateCourse() {
         duration: duration ? Number(duration) : 0,
         thumbnail: thumbnailUrl || '',
         format: format || '',
-        modules: modules || [],
         instructor_id: user?.id,
         instructor: user?.id, // for NOT NULL constraint
         status: 'published',
         published_at: new Date().toISOString(),
         updated_at: new Date().toISOString(),
         is_published: true,
+        certificate_template_id: certificateTemplateId || null,
       };
       const { data, error } = await supabase
         .from('courses')
@@ -433,7 +536,67 @@ export default function CreateCourse() {
         toast.error('Failed to publish course. ' + (error.message || ''));
         throw error;
       }
-      if (data && data[0]?.id) setCourseId(data[0].id);
+      
+      const finalCourseId = data && data[0]?.id ? data[0].id : courseId;
+      if (!finalCourseId) {
+        throw new Error('Failed to get course ID');
+      }
+      setCourseId(finalCourseId);
+
+      // Upsert modules and lessons to separate tables
+      if (modules && modules.length > 0) {
+        for (const mod of modules) {
+          // Generate UUID for module if not present or invalid
+          const moduleId = (mod.id && isValidUUID(mod.id)) ? mod.id : crypto.randomUUID();
+          
+          // Upsert module
+          const { error: modError } = await supabase
+            .from('modules')
+            .upsert({
+              id: moduleId,
+              course_id: finalCourseId,
+              title: mod.title,
+              description: mod.title, // Use title as description if no description field
+              order: modules.indexOf(mod) + 1,
+              created_at: new Date().toISOString(),
+              updated_at: new Date().toISOString(),
+            });
+          
+          if (modError) {
+            console.error('Module upsert error:', modError, mod);
+            throw modError;
+          }
+
+          // Upsert lessons for this module
+          if (mod.lessons && mod.lessons.length > 0) {
+            for (const les of mod.lessons) {
+              // Generate UUID for lesson if not present or invalid
+              const lessonId = (les.id && isValidUUID(les.id)) ? les.id : crypto.randomUUID();
+              
+              const { error: lesError } = await supabase
+                .from('lessons')
+                .upsert({
+                  id: lessonId,
+                  course_id: finalCourseId,
+                  module_id: moduleId,
+                  title: les.title,
+                  content: les.content,
+                  video_url: les.videoUrl || null,
+                  duration: les.type === 'video' ? 30 : 15, // Default duration
+                  order: mod.lessons.indexOf(les) + 1,
+                  created_at: new Date().toISOString(),
+                  updated_at: new Date().toISOString(),
+                });
+              
+              if (lesError) {
+                console.error('Lesson upsert error:', lesError, les);
+                throw lesError;
+              }
+            }
+          }
+        }
+      }
+
       setShowPublishConfirm(false);
       setShowCelebration(true);
       toast.success('Course published successfully!');
@@ -563,6 +726,16 @@ export default function CreateCourse() {
                       </label>
                     ))}
                   </div>
+                </div>
+                <div className="mb-6">
+                  <label className="block text-sm font-medium mb-2">Certificate Template</label>
+                  <CertificateTemplateGallery
+                    selectedTemplateId={certificateTemplateId}
+                    onSelect={setCertificateTemplateId}
+                  />
+                  {!certificateTemplateId && (
+                    <p className="text-red-600 text-sm mt-2">Please select a certificate template.</p>
+                  )}
                 </div>
                 {error && <div className="text-red-600 mb-4 font-medium">{error}</div>}
                 <div className="flex justify-between gap-4">

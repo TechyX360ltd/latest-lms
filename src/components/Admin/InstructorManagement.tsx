@@ -61,17 +61,17 @@ export default function InstructorManagement() {
     try {
       const { data, error } = await supabase.functions.invoke('update-instructor-verification', {
         body: {
-          user_id,
-          verification_status: status,
-          verification_rejection_reason: status === 'rejected' ? rejectionReason : null,
+        user_id,
+        verification_status: status,
+        verification_rejection_reason: status === 'rejected' ? rejectionReason : null,
         },
-      });
+    });
       if (error) {
         alert('Failed to update verification status: ' + error.message);
       } else {
-        setSelected(null);
-        setRejectionReason('');
-        fetchInstructors();
+    setSelected(null);
+    setRejectionReason('');
+    fetchInstructors();
       }
     } catch (err: any) {
       alert('Failed to update verification status: ' + (err.message || err));

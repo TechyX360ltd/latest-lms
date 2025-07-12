@@ -58,6 +58,7 @@ import InstructorGamificationDashboard from './components/Instructor/InstructorG
 import InstructorManagement from './components/Admin/InstructorManagement';
 import AIChatWidget from './components/AIChatWidget';
 import AdminLiveSupport from './components/Admin/AdminLiveSupport';
+import CertificateManagementPage from './pages/CertificateManagementPage';
 
 function AuthPage() {
   const [isLogin, setIsLogin] = useState(true);
@@ -150,15 +151,15 @@ function ProtectedRoute({ children, allowedRoles }: { children: React.ReactNode,
       </div>
     );
   }
-
+  
   if (!isAuthenticated) {
     return <Navigate to="/login" replace />;
   }
-
+  
   if (!allowedRoles.includes(user?.role || '')) {
     return <Navigate to="/login" replace />;
   }
-
+  
   return <>{children}</>;
 }
 
@@ -375,6 +376,7 @@ function AppContent() {
             }
           />
           <Route path="live-support" element={<AdminLiveSupport />} />
+          <Route path="/admin/certificates" element={<CertificateManagementPage />} />
         </Route>
 
         {/* Course Viewer Route */}

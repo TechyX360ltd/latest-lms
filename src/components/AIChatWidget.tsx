@@ -87,7 +87,7 @@ const AIChatWidget: React.FC = () => {
         .select('*')
         .eq('chat_id', chatId)
         .order('created_at', { ascending: true })
-        .then(({ data }) => {
+        .then(({ data }: { data: any }) => {
           if (!isMounted) return;
           setAdminMessages(
             (data || []).map((m: any) => ({
@@ -110,7 +110,7 @@ const AIChatWidget: React.FC = () => {
         .on(
           'postgres_changes',
           { event: 'INSERT', schema: 'public', table: 'messages', filter: `chat_id=eq.${chatId}` },
-          (payload) => {
+          (payload: any) => {
             const m = payload.new;
             setAdminMessages((msgs) => [
               ...msgs,
@@ -149,7 +149,7 @@ const AIChatWidget: React.FC = () => {
       .on(
         'postgres_changes',
         { event: 'INSERT', schema: 'public', table: 'messages', filter: `chat_id=eq.${adminChatId}` },
-        (payload) => {
+        (payload: any) => {
           const m = payload.new;
           setAdminMessages((msgs) => [
             ...msgs,

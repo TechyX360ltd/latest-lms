@@ -512,12 +512,20 @@ export function CourseViewer() {
                   {currentLesson?.title || 'No lesson selected'}
                 </div>
               </div>
-              {isLastLesson && isLastModule && (
+              {(isLastLesson && isLastModule) ? (
                 <button
                   onClick={handleCourseSubmit}
                   className="flex items-center px-6 py-2 bg-blue-600 text-white rounded-lg font-semibold shadow hover:bg-blue-700 transition ml-auto"
                 >
                   Complete Course <ChevronRight className="w-4 h-4 ml-2" />
+                </button>
+              ) : (
+                <button
+                  onClick={handleNext}
+                  className="flex items-center px-6 py-2 bg-blue-600 text-white rounded-lg font-semibold shadow hover:bg-blue-700 transition ml-auto"
+                  disabled={lessons.length === 0}
+                >
+                  Next <ChevronRight className="w-4 h-4 ml-2" />
                 </button>
               )}
             </div>

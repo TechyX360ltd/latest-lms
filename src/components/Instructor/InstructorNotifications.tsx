@@ -1,6 +1,4 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { Sidebar } from '../Layout/Sidebar';
-import { Header } from '../Layout/Header';
 import { useNotifications } from '../../hooks/useData';
 import { supabase } from '../../lib/supabase';
 import { useAuth } from '../../context/AuthContext';
@@ -274,9 +272,7 @@ export default function InstructorNotifications() {
 
   return (
     <div className="min-h-screen bg-gray-50 flex">
-      <Sidebar />
       <div className="flex-1 flex flex-col min-w-0">
-        <Header />
         <main className="flex-1 p-4 lg:p-8 overflow-auto">
           <div className="w-full max-w-5xl mx-auto">
             <div className="flex items-center justify-between mb-6">
