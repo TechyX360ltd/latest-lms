@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useEffect, useRef } from 'react';
 import { NavLink } from 'react-router-dom';
 import { 
   Store, 
@@ -22,12 +22,30 @@ import {
   TrendingUp,
   Gift,
   Tag,
-  Star
+  Star,
+  MessageCircle
 } from 'lucide-react';
 
 export function AdminSidebar() {
+  const sidebarRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    const sidebar = sidebarRef.current;
+    if (!sidebar) return;
+    // Always reset scroll position after a short delay on focus
+    const resetScroll = () => {
+      setTimeout(() => {
+        sidebar.scrollTop = 0; // or your preferred default position
+      }, 10);
+    };
+    sidebar.addEventListener('focusin', resetScroll);
+    return () => {
+      sidebar.removeEventListener('focusin', resetScroll);
+    };
+  }, []);
+
   return (
-    <aside className="w-64 h-full bg-white border-r border-gray-200 shadow-sm flex flex-col">
+    <aside ref={sidebarRef} className="w-64 h-full bg-white border-r border-gray-200 shadow-sm flex flex-col">
       <div className="px-6 py-6 flex items-center gap-2 text-2xl font-bold text-green-700">
         <LayoutDashboard className="w-7 h-7" /> Admin Panel
       </div>
@@ -185,6 +203,18 @@ export function AdminSidebar() {
             System
           </h3>
         </div>
+
+        {/* Live Support */}
+        <NavLink
+          to="/admin/live-support"
+          className={({ isActive }) =>
+            `flex items-center gap-3 px-4 py-2 rounded-lg font-medium transition-colors ${
+              isActive ? 'bg-pink-100 text-pink-700' : 'text-gray-700 hover:bg-gray-50'
+            }`
+          }
+        >
+          <MessageCircle className="w-5 h-5" /> Live Support
+        </NavLink>
 
         {/* Notifications */}
         <NavLink

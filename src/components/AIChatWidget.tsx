@@ -7,6 +7,10 @@ import { supabase } from '../lib/supabase';
 type Message = {
   sender: 'user' | 'assistant';
   text: string;
+  file_url?: string;
+  file_name?: string;
+  file_type?: string;
+  file_size?: number;
 };
 
 const AIChatWidget: React.FC = () => {
@@ -22,6 +26,7 @@ const AIChatWidget: React.FC = () => {
   const [adminInput, setAdminInput] = useState('');
   const [adminLoading, setAdminLoading] = useState(false);
   const adminSubscriptionRef = useRef<any>(null);
+  const fileInputRef = useRef<HTMLInputElement>(null);
 
   // Show welcome message on open
   useEffect(() => {
@@ -54,7 +59,7 @@ const AIChatWidget: React.FC = () => {
     // 2. Create a new chat
     const { data: newChat, error: createError } = await supabase
       .from('chats')
-      .insert([{ user_id: userId }])
+      .insert([{ user_id: userId, status: 'open' }])
       .select('id')
       .single();
     if (createError) return null;
@@ -88,6 +93,10 @@ const AIChatWidget: React.FC = () => {
             (data || []).map((m: any) => ({
               sender: m.sender_role === 'user' ? 'user' : 'assistant',
               text: m.content,
+              file_url: m.file_url,
+              file_name: m.file_name,
+              file_type: m.file_type,
+              file_size: m.file_size,
             }))
           );
           setAdminLoading(false);
@@ -105,7 +114,14 @@ const AIChatWidget: React.FC = () => {
             const m = payload.new;
             setAdminMessages((msgs) => [
               ...msgs,
-              { sender: m.sender_role === 'user' ? 'user' : 'assistant', text: m.content },
+              {
+                sender: m.sender_role === 'user' ? 'user' : 'assistant',
+                text: m.content,
+                file_url: m.file_url,
+                file_name: m.file_name,
+                file_type: m.file_type,
+                file_size: m.file_size,
+              },
             ]);
           }
         )
@@ -121,6 +137,42 @@ const AIChatWidget: React.FC = () => {
     };
     // eslint-disable-next-line
   }, [chatMode, user?.id]);
+
+  // Real-time subscription for admin replies in user chat
+  useEffect(() => {
+    if (!adminChatId || chatMode !== 'admin') return;
+    if (adminSubscriptionRef.current) {
+      supabase.removeChannel(adminSubscriptionRef.current);
+    }
+    const channel = supabase
+      .channel('admin-chat-' + adminChatId)
+      .on(
+        'postgres_changes',
+        { event: 'INSERT', schema: 'public', table: 'messages', filter: `chat_id=eq.${adminChatId}` },
+        (payload) => {
+          const m = payload.new;
+          setAdminMessages((msgs) => [
+            ...msgs,
+            {
+              sender: m.sender_role === 'user' ? 'user' : 'assistant',
+              text: m.content,
+              file_url: m.file_url,
+              file_name: m.file_name,
+              file_type: m.file_type,
+              file_size: m.file_size,
+            },
+          ]);
+        }
+      )
+      .subscribe();
+    adminSubscriptionRef.current = channel;
+    return () => {
+      if (adminSubscriptionRef.current) {
+        supabase.removeChannel(adminSubscriptionRef.current);
+        adminSubscriptionRef.current = null;
+      }
+    };
+  }, [adminChatId, chatMode]);
 
   // Send message in admin chat
   async function handleAdminSend(e?: React.FormEvent) {
@@ -144,6 +196,51 @@ const AIChatWidget: React.FC = () => {
     ]);
     setAdminInput('');
     setAdminLoading(false);
+  }
+
+  // File upload handler
+  async function handleFileUpload(e: React.ChangeEvent<HTMLInputElement>) {
+    const file = e.target.files?.[0];
+    if (!file || !adminChatId || !user?.id) return;
+    if (file.size > 15 * 1024 * 1024) { // 15MB limit
+      alert('File size must not exceed 15MB.');
+      if (fileInputRef.current) fileInputRef.current.value = '';
+      return;
+    }
+    const filePath = `${adminChatId}/${Date.now()}_${file.name}`;
+    const { error: uploadError } = await supabase.storage.from('chat-files').upload(filePath, file);
+    if (uploadError) {
+      alert('File upload failed');
+      return;
+    }
+    const { data: publicUrlData } = supabase.storage.from('chat-files').getPublicUrl(filePath);
+    const file_url = publicUrlData?.publicUrl;
+    // Send message with file metadata
+    await supabase.from('messages').insert([
+      {
+        chat_id: adminChatId,
+        sender_id: user.id,
+        sender_role: 'user',
+        content: '',
+        file_url,
+        file_name: file.name,
+        file_type: file.type,
+        file_size: file.size,
+      },
+    ]);
+    // Optimistically add to UI
+    setAdminMessages((msgs) => [
+      ...msgs,
+      {
+        sender: 'user',
+        text: '',
+        file_url,
+        file_name: file.name,
+        file_type: file.type,
+        file_size: file.size,
+      },
+    ]);
+    if (fileInputRef.current) fileInputRef.current.value = '';
   }
 
   const handleSend = async () => {
@@ -312,7 +409,19 @@ const AIChatWidget: React.FC = () => {
                           : 'bg-white text-purple-900 rounded-bl-none'
                       }`}
                     >
-                      {msg.text}
+                      {msg.file_url ? (
+                        <a
+                          href={msg.file_url}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="text-blue-600 underline flex items-center gap-2"
+                        >
+                          <svg className="w-4 h-4" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" d="M12 4v16m8-8H4" /></svg>
+                          {msg.file_name || 'Download file'}
+                        </a>
+                      ) : (
+                        msg.text
+                      )}
                     </div>
                   </div>
                 ))}
@@ -323,6 +432,21 @@ const AIChatWidget: React.FC = () => {
                 className="flex items-center gap-3 border-t px-6 py-4 bg-white rounded-b-3xl"
                 onSubmit={handleAdminSend}
               >
+                <input
+                  type="file"
+                  ref={fileInputRef}
+                  style={{ display: 'none' }}
+                  onChange={handleFileUpload}
+                />
+                <button
+                  type="button"
+                  className="p-2 rounded-full bg-gray-100 hover:bg-gray-200"
+                  onClick={() => fileInputRef.current?.click()}
+                  title="Attach file"
+                  disabled={!adminChatId}
+                >
+                  <svg className="w-5 h-5 text-gray-500" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" d="M21 12.79V19a2 2 0 01-2 2H7a2 2 0 01-2-2v-7a2 2 0 012-2h7.79a2 2 0 011.42.59l4.2 4.2a2 2 0 01.59 1.42z" /></svg>
+                </button>
                 <input
                   className="flex-1 px-4 py-3 rounded-2xl border border-gray-200 focus:outline-none focus:ring-2 focus:ring-purple-400 text-base bg-gradient-to-r from-purple-50 to-blue-50 placeholder-gray-400 shadow-sm"
                   type="text"

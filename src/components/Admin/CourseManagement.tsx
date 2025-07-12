@@ -96,8 +96,8 @@ export function CourseManagement() {
     const matchesSearch = course.title.toLowerCase().includes(searchTerm.toLowerCase()) ||
                          course.instructor.toLowerCase().includes(searchTerm.toLowerCase());
     const matchesStatus = selectedStatus === 'all' || 
-                         (selectedStatus === 'published' && course.isPublished) ||
-                         (selectedStatus === 'draft' && !course.isPublished);
+                         (selectedStatus === 'published' && course.is_published) ||
+                         (selectedStatus === 'draft' && !course.is_published);
     
     return matchesSearch && matchesStatus;
   });

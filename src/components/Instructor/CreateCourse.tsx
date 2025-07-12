@@ -102,7 +102,7 @@ export default function CreateCourse() {
   const [slug, setSlug] = useState('');
   const [price, setPrice] = useState('');
   const [duration, setDuration] = useState('');
-  const [cover, setCover] = useState<File | null>(null);
+  const [thumbnail, setThumbnail] = useState<File | null>(null);
   const [format, setFormat] = useState('mixed');
   const [error, setError] = useState('');
 
@@ -291,9 +291,9 @@ export default function CreateCourse() {
             setFormat(data.format || 'mixed');
             setModules(data.modules || []);
             
-            // Set cover if it exists
-            if (data.cover) {
-              setCover(data.cover);
+            // Set thumbnail if it exists
+            if (data.thumbnail) {
+              setThumbnail(data.thumbnail);
             }
             
             // Determine which step to show based on content
@@ -351,13 +351,13 @@ export default function CreateCourse() {
     setSavingDraft(true);
     setError('');
     try {
-      let coverUrl = '';
-      if (cover && typeof cover !== 'string') {
-        // Upload cover image if it's a File
-        const result = await uploadToCloudinary(cover, 'lms-covers');
-        coverUrl = result.secure_url;
-      } else if (typeof cover === 'string') {
-        coverUrl = cover;
+      let thumbnailUrl = '';
+      if (thumbnail && typeof thumbnail !== 'string') {
+        // Upload thumbnail image if it's a File
+        const result = await uploadToCloudinary(thumbnail, 'lms-covers');
+        thumbnailUrl = result.secure_url;
+      } else if (typeof thumbnail === 'string') {
+        thumbnailUrl = thumbnail;
       }
       const courseData = {
         ...(courseId ? { id: courseId } : {}),
@@ -367,7 +367,7 @@ export default function CreateCourse() {
         price: price ? Number(price) : 0,
         description: description || '',
         duration: duration ? Number(duration) : 0,
-        cover: coverUrl || '',
+        thumbnail: thumbnailUrl || '',
         format: format || '',
         modules: modules || [],
         instructor_id: user?.id,
@@ -399,13 +399,13 @@ export default function CreateCourse() {
     setSavingDraft(true); // Reuse the same loading state
     setError('');
     try {
-      let coverUrl = '';
-      if (cover && typeof cover !== 'string') {
-        // Upload cover image if it's a File
-        const result = await uploadToCloudinary(cover, 'lms-covers');
-        coverUrl = result.secure_url;
-      } else if (typeof cover === 'string') {
-        coverUrl = cover;
+      let thumbnailUrl = '';
+      if (thumbnail && typeof thumbnail !== 'string') {
+        // Upload thumbnail image if it's a File
+        const result = await uploadToCloudinary(thumbnail, 'lms-covers');
+        thumbnailUrl = result.secure_url;
+      } else if (typeof thumbnail === 'string') {
+        thumbnailUrl = thumbnail;
       }
       const courseData = {
         ...(courseId ? { id: courseId } : {}),
@@ -415,7 +415,7 @@ export default function CreateCourse() {
         price: price ? Number(price) : 0,
         description: description || '',
         duration: duration ? Number(duration) : 0,
-        cover: coverUrl || '',
+        thumbnail: thumbnailUrl || '',
         format: format || '',
         modules: modules || [],
         instructor_id: user?.id,
@@ -423,6 +423,7 @@ export default function CreateCourse() {
         status: 'published',
         published_at: new Date().toISOString(),
         updated_at: new Date().toISOString(),
+        is_published: true,
       };
       const { data, error } = await supabase
         .from('courses')
@@ -540,10 +541,10 @@ export default function CreateCourse() {
                   <input
                     type="file"
                     accept="image/*"
-                    onChange={e => setCover(e.target.files?.[0] || null)}
+                    onChange={e => setThumbnail(e.target.files?.[0] || null)}
                     className="block w-full text-sm text-gray-500 file:mr-4 file:py-2 file:px-4 file:rounded-lg file:border-0 file:text-sm file:font-semibold file:bg-blue-50 file:text-blue-700 hover:file:bg-blue-100"
                   />
-                  {cover && <div className="mt-2"><img src={URL.createObjectURL(cover)} alt="cover preview" className="h-32 rounded-lg shadow" /></div>}
+                  {thumbnail && <div className="mt-2"><img src={URL.createObjectURL(thumbnail)} alt="thumbnail preview" className="h-32 rounded-lg shadow" /></div>}
                 </div>
                 <div className="mb-6">
                   <label className="block text-sm font-medium mb-2">Course Type</label>
@@ -860,8 +861,8 @@ export default function CreateCourse() {
                 <div className="bg-white rounded-xl shadow p-6 mb-8 max-w-3xl mx-auto">
                   <div className="flex flex-col md:flex-row gap-8">
                     <div className="flex-shrink-0">
-                      {cover ? (
-                        <img src={URL.createObjectURL(cover)} alt="cover preview" className="h-40 w-64 object-cover rounded-lg shadow" />
+                      {thumbnail ? (
+                        <img src={URL.createObjectURL(thumbnail)} alt="thumbnail preview" className="h-40 w-64 object-cover rounded-lg shadow" />
                       ) : (
                         <div className="h-40 w-64 bg-gray-200 rounded-lg flex items-center justify-center text-gray-400">No Cover</div>
                       )}

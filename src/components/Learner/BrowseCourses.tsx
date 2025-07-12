@@ -112,7 +112,7 @@ export function BrowseCourses() {
 
   const handleStartLearning = () => {
     setShowSuccessModal(false);
-    navigate('/my-courses'); // Adjust this route if your "My Courses" page uses a different path
+    navigate('/dashboard/courses'); // Use the correct route for "My Courses"
   };
 
   // Placeholder for Pay with Coins

@@ -4,6 +4,8 @@ import { Sidebar } from '../Layout/Sidebar';
 import { Header } from '../Layout/Header';
 import { supabase } from '../../lib/supabase';
 import { useAuth } from '../../context/AuthContext';
+import { ViewCourse } from '../Admin/ViewCourse';
+import { EditCourse } from '../Admin/EditCourse';
 
 export default function InstructorMyCourses() {
   const navigate = useNavigate();
@@ -12,6 +14,9 @@ export default function InstructorMyCourses() {
   const [courses, setCourses] = useState<any[]>([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
+  const [viewCourse, setViewCourse] = useState(null);
+  const [editCourse, setEditCourse] = useState(null);
+  const [analyticsCourse, setAnalyticsCourse] = useState(null);
 
   useEffect(() => {
     const fetchCourses = async () => {
@@ -101,8 +106,8 @@ export default function InstructorMyCourses() {
                 {filteredCourses.map(course => (
                   <div key={course.id} className="bg-white rounded-xl shadow-lg p-6 flex flex-col relative hover:shadow-2xl transition group">
                     <div className="h-40 w-full bg-gray-100 rounded-lg mb-4 flex items-center justify-center overflow-hidden">
-                      {course.cover ? (
-                        <img src={course.cover} alt={course.title} className="object-cover h-full w-full" />
+                      {course.thumbnail ? (
+                        <img src={course.thumbnail} alt={course.title} className="object-cover h-full w-full" />
                       ) : (
                         <span className="text-gray-400 text-5xl font-bold">📚</span>
                       )}
@@ -113,9 +118,9 @@ export default function InstructorMyCourses() {
                     </div>
                     <div className="text-sm text-gray-500 mb-2">{course.enrollments || 0} enrollments • {course.created_at ? new Date(course.created_at).toLocaleDateString() : ''}</div>
                     <div className="flex gap-2 mt-auto">
-                      <button className="px-4 py-2 rounded-lg bg-blue-50 text-blue-700 font-semibold hover:bg-blue-100 transition">View</button>
-                      <button className="px-4 py-2 rounded-lg bg-gray-50 text-gray-700 font-semibold hover:bg-gray-100 transition">Edit</button>
-                      <button className="px-4 py-2 rounded-lg bg-purple-50 text-purple-700 font-semibold hover:bg-purple-100 transition">Analytics</button>
+                      <button className="px-4 py-2 rounded-lg bg-blue-50 text-blue-700 font-semibold hover:bg-blue-100 transition" onClick={() => setViewCourse(course)}>View</button>
+                      <button className="px-4 py-2 rounded-lg bg-gray-50 text-gray-700 font-semibold hover:bg-gray-100 transition" onClick={() => setEditCourse(course)}>Edit</button>
+                      <button className="px-4 py-2 rounded-lg bg-purple-50 text-purple-700 font-semibold hover:bg-purple-100 transition" onClick={() => setAnalyticsCourse(course)}>Analytics</button>
                     </div>
                   </div>
                 ))}
@@ -134,6 +139,52 @@ export default function InstructorMyCourses() {
               </div>
             )}
           </div>
+          {/* View Modal */}
+          {viewCourse && (
+            <div className="fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-40">
+              <div className="bg-white rounded-xl shadow-2xl p-8 max-w-3xl w-full relative animate-fade-in overflow-auto max-h-[90vh]">
+                <button
+                  onClick={() => setViewCourse(null)}
+                  className="absolute top-4 right-4 text-gray-400 hover:text-gray-700 text-2xl font-bold"
+                  aria-label="Close"
+                >
+                  ×
+                </button>
+                <ViewCourse course={viewCourse} onBack={() => setViewCourse(null)} />
+              </div>
+            </div>
+          )}
+          {/* Edit Modal */}
+          {editCourse && (
+            <div className="fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-40">
+              <div className="bg-white rounded-xl shadow-2xl p-8 max-w-3xl w-full relative animate-fade-in overflow-auto max-h-[90vh]">
+                <button
+                  onClick={() => setEditCourse(null)}
+                  className="absolute top-4 right-4 text-gray-400 hover:text-gray-700 text-2xl font-bold"
+                  aria-label="Close"
+                >
+                  ×
+                </button>
+                <EditCourse course={editCourse} onSave={() => setEditCourse(null)} onCancel={() => setEditCourse(null)} />
+              </div>
+            </div>
+          )}
+          {/* Analytics Modal (Placeholder) */}
+          {analyticsCourse && (
+            <div className="fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-40">
+              <div className="bg-white rounded-xl shadow-2xl p-8 max-w-2xl w-full relative animate-fade-in overflow-auto max-h-[90vh]">
+                <button
+                  onClick={() => setAnalyticsCourse(null)}
+                  className="absolute top-4 right-4 text-gray-400 hover:text-gray-700 text-2xl font-bold"
+                  aria-label="Close"
+                >
+                  ×
+                </button>
+                <h2 className="text-2xl font-bold mb-4">Course Analytics</h2>
+                <p>Analytics for <b>{analyticsCourse.title}</b> will appear here.</p>
+              </div>
+            </div>
+          )}
         </main>
       </div>
     </div>

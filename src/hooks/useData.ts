@@ -626,7 +626,7 @@ export function useCourses() {
         setError(error.message);
         setCourses([]);
       } else {
-        setCourses(data as Course[]);
+        setCourses(keysToCamel(data) as Course[]);
       }
       setLoading(false);
     };

@@ -57,6 +57,7 @@ import MyReviews from './components/Instructor/MyReviews';
 import InstructorGamificationDashboard from './components/Instructor/InstructorGamificationDashboard';
 import InstructorManagement from './components/Admin/InstructorManagement';
 import AIChatWidget from './components/AIChatWidget';
+import AdminLiveSupport from './components/Admin/AdminLiveSupport';
 
 function AuthPage() {
   const [isLogin, setIsLogin] = useState(true);
@@ -373,6 +374,7 @@ function AppContent() {
               </ProtectedRoute>
             }
           />
+          <Route path="live-support" element={<AdminLiveSupport />} />
         </Route>
 
         {/* Course Viewer Route */}
