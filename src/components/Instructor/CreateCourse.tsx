@@ -190,6 +190,7 @@ export default function CreateCourse() {
     setNewLessonType(format);
     setNewLessonContent('');
     setActiveModuleIdx(null);
+    toast.success('Lesson added!');
   };
   // Remove module
   const handleRemoveModule = (idx: number) => {
@@ -861,36 +862,8 @@ export default function CreateCourse() {
                                 </div>
                               )}
                               {newLessonType === 'video' && (
-                                <div className="mb-2">
-                                  <label className="block text-sm font-medium mb-1">Lesson Video</label>
-                                  <button
-                                    className="px-4 py-2 rounded-lg bg-blue-600 text-white font-semibold hover:bg-blue-700 transition"
-                                    type="button"
-                                    onClick={() => setVideoModal({ open: true, moduleIdx: mIdx, lessonIdx: modules[mIdx].lessons.length })}
-                                  >Upload Video</button>
-                                  {videoModal.open && videoModal.moduleIdx === mIdx && videoModal.lessonIdx === modules[mIdx].lessons.length && (
-                                    <VideoUploadModal
-                                      open={videoModal.open}
-                                      onClose={() => setVideoModal({ open: false, moduleIdx: null, lessonIdx: null })}
-                                      onUpload={handleVideoUpload}
-                                      progress={videoUploadProgress}
-                                      error={videoUploadError}
-                                    />
-                                  )}
-                                  {/* Show video preview if uploaded */}
-                                  {modules[mIdx].lessons[modules[mIdx].lessons.length - 1]?.videoUrl && (
-                                    <video
-                                      src={modules[mIdx].lessons[modules[mIdx].lessons.length - 1].videoUrl}
-                                      controls
-                                      className="w-full rounded-lg mt-2"
-                                      style={{ maxHeight: 240 }}
-                                    />
-                                  )}
-                                </div>
-                              )}
-                              {newLessonType === 'mixed' && (
-                                <>
-                                  <div className="mb-2">
+                                <div className="flex flex-col gap-2 mb-2">
+                                  <div>
                                     <label className="block text-sm font-medium mb-1">Lesson Content</label>
                                     <Suspense fallback={<div>Loading editor...</div>}>
                                       <ReactQuill
@@ -914,10 +887,10 @@ export default function CreateCourse() {
                                       />
                                     </Suspense>
                                   </div>
-                                  <div className="mb-2">
+                                  <div>
                                     <label className="block text-sm font-medium mb-1">Lesson Video</label>
                                     <button
-                                      className="px-4 py-2 rounded-lg bg-blue-600 text-white font-semibold hover:bg-blue-700 transition"
+                                      className="px-4 py-2 rounded-lg bg-blue-600 text-white font-semibold hover:bg-blue-700 transition w-full sm:w-auto"
                                       type="button"
                                       onClick={() => setVideoModal({ open: true, moduleIdx: mIdx, lessonIdx: modules[mIdx].lessons.length })}
                                     >Upload Video</button>
@@ -940,7 +913,61 @@ export default function CreateCourse() {
                                       />
                                     )}
                                   </div>
-                                </>
+                                </div>
+                              )}
+                              {newLessonType === 'mixed' && (
+                                <div className="flex flex-col gap-2 mb-2">
+                                  <div>
+                                    <label className="block text-sm font-medium mb-1">Lesson Content</label>
+                                    <Suspense fallback={<div>Loading editor...</div>}>
+                                      <ReactQuill
+                                        value={newLessonContent}
+                                        onChange={setNewLessonContent}
+                                        className="bg-white rounded-lg"
+                                        theme="snow"
+                                        placeholder="Lesson content..."
+                                        modules={{
+                                          toolbar: [
+                                            [{ 'header': [1, 2, 3, false] }],
+                                            ['bold', 'italic', 'underline', 'strike'],
+                                            [{ 'list': 'ordered'}, { 'list': 'bullet' }],
+                                            ['blockquote', 'code-block'],
+                                            ['link', 'image', 'video'],
+                                            [{ 'align': [] }],
+                                            ['clean']
+                                          ]
+                                        }}
+                                        style={{ minHeight: 200, height: 200 }}
+                                      />
+                                    </Suspense>
+                                  </div>
+                                  <div>
+                                    <label className="block text-sm font-medium mb-1">Lesson Video</label>
+                                    <button
+                                      className="px-4 py-2 rounded-lg bg-blue-600 text-white font-semibold hover:bg-blue-700 transition w-full sm:w-auto"
+                                      type="button"
+                                      onClick={() => setVideoModal({ open: true, moduleIdx: mIdx, lessonIdx: modules[mIdx].lessons.length })}
+                                    >Upload Video</button>
+                                    {videoModal.open && videoModal.moduleIdx === mIdx && videoModal.lessonIdx === modules[mIdx].lessons.length && (
+                                      <VideoUploadModal
+                                        open={videoModal.open}
+                                        onClose={() => setVideoModal({ open: false, moduleIdx: null, lessonIdx: null })}
+                                        onUpload={handleVideoUpload}
+                                        progress={videoUploadProgress}
+                                        error={videoUploadError}
+                                      />
+                                    )}
+                                    {/* Show video preview if uploaded */}
+                                    {modules[mIdx].lessons[modules[mIdx].lessons.length - 1]?.videoUrl && (
+                                      <video
+                                        src={modules[mIdx].lessons[modules[mIdx].lessons.length - 1].videoUrl}
+                                        controls
+                                        className="w-full rounded-lg mt-2"
+                                        style={{ maxHeight: 240 }}
+                                      />
+                                    )}
+                                  </div>
+                                </div>
                               )}
                               {/* Assignment section (optional) */}
                               <div className="mt-8">

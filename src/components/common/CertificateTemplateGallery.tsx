@@ -16,45 +16,51 @@ interface CertificateTemplateGalleryProps {
   onSelect: (id: string) => void;
 }
 
-const CANVAS_WIDTH = 220;
-const CANVAS_HEIGHT = 140;
+// Use A4 aspect ratio (landscape: 1.414:1 or 297:210)
+const CANVAS_WIDTH = 240;
+const CANVAS_HEIGHT = 170;
 
 const MiniCanvas: React.FC<{ elements: any[]; backgroundImage?: string }> = ({ elements, backgroundImage }) => {
   const [bgImg] = useImage(backgroundImage || '', 'anonymous');
   return (
-    <Stage width={CANVAS_WIDTH} height={CANVAS_HEIGHT} style={{ background: '#f8fafc', borderRadius: 12 }}>
-      <Layer>
-        {backgroundImage ? (
-          <KonvaImage image={bgImg} x={0} y={0} width={CANVAS_WIDTH} height={CANVAS_HEIGHT} listening={false} />
-        ) : (
-          <Rect x={0} y={0} width={CANVAS_WIDTH} height={CANVAS_HEIGHT} fill="#fff" cornerRadius={12} shadowBlur={4} />
-        )}
-        {elements && elements.map((el, idx) => {
-          if (el.type === 'text') {
-            return (
-              <Text
-                key={el.id || idx}
-                x={el.x}
-                y={el.y}
-                text={el.text}
-                fontSize={el.fontSize}
-                fontFamily={el.fontFamily}
-                fill={el.fill}
-                width={el.width}
-                opacity={el.opacity ?? 1}
-                draggable={false}
-              />
-            );
-          }
-          if (el.type === 'image') {
-            return (
-              <MiniImage key={el.id || idx} src={el.src} x={el.x} y={el.y} width={el.width} height={el.height} opacity={el.opacity ?? 1} />
-            );
-          }
-          return null;
-        })}
-      </Layer>
-    </Stage>
+    <div
+      className="w-full flex justify-center items-center aspect-[24/17] rounded-xl overflow-hidden bg-[#f8fafc]"
+      style={{ maxWidth: CANVAS_WIDTH, maxHeight: CANVAS_HEIGHT }}
+    >
+      <Stage width={CANVAS_WIDTH} height={CANVAS_HEIGHT} style={{ display: 'block', width: '100%', height: '100%' }}>
+        <Layer>
+          {backgroundImage ? (
+            <KonvaImage image={bgImg} x={0} y={0} width={CANVAS_WIDTH} height={CANVAS_HEIGHT} listening={false} />
+          ) : (
+            <Rect x={0} y={0} width={CANVAS_WIDTH} height={CANVAS_HEIGHT} fill="#fff" cornerRadius={12} shadowBlur={4} />
+          )}
+          {elements && elements.map((el, idx) => {
+            if (el.type === 'text') {
+              return (
+                <Text
+                  key={el.id || idx}
+                  x={el.x}
+                  y={el.y}
+                  text={el.text}
+                  fontSize={el.fontSize}
+                  fontFamily={el.fontFamily}
+                  fill={el.fill}
+                  width={el.width}
+                  opacity={el.opacity ?? 1}
+                  draggable={false}
+                />
+              );
+            }
+            if (el.type === 'image') {
+              return (
+                <MiniImage key={el.id || idx} src={el.src} x={el.x} y={el.y} width={el.width} height={el.height} opacity={el.opacity ?? 1} />
+              );
+            }
+            return null;
+          })}
+        </Layer>
+      </Stage>
+    </div>
   );
 };
 

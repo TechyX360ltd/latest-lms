@@ -1,6 +1,4 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { Header } from '../Layout/Header';
-import { Sidebar } from '../Layout/Sidebar';
 import { useAuth } from '../../context/AuthContext';
 import { CheckCircle, BookOpen, Users, DollarSign, Clock, AlertCircle, Download, Rocket, Edit, Eye, Lock, XCircle } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
@@ -8,6 +6,8 @@ import { PaystackButton } from 'react-paystack';
 import dayjs from 'dayjs';
 import { supabase } from '../../lib/supabase';
 import { toast } from 'react-hot-toast';
+import CourseDetailsModal from '../Learner/CourseDetailsModal';
+import { EditCourse } from '../Admin/EditCourse';
 
 function WelcomeInstructorModal({ onClose }: { onClose: () => void }) {
   const navigate = useNavigate();
@@ -368,11 +368,13 @@ export function InstructorDashboard() {
     };
   }, []);
 
+  const [selectedCourse, setSelectedCourse] = useState<any>(null);
+  const [showCourseModal, setShowCourseModal] = useState(false);
+  const [showEditModal, setShowEditModal] = useState(false);
+
   return (
     <div className="min-h-screen bg-gray-50 flex">
-      <Sidebar />
       <div className="flex-1 flex flex-col min-w-0">
-        <Header />
         <main className="flex-1 p-4 lg:p-8 overflow-auto">
           {showWelcome && <WelcomeInstructorModal onClose={handleCloseWelcome} />}
           {showVerificationBanner && (
@@ -527,8 +529,14 @@ export function InstructorDashboard() {
                         )}
                       </div>
                       <div className="flex gap-2">
-                        <button className="px-3 py-1 rounded bg-blue-50 text-blue-700 hover:bg-blue-100 text-sm flex items-center gap-1"><Eye className="w-4 h-4" />View</button>
-                        <button className="px-3 py-1 rounded bg-gray-50 text-gray-700 hover:bg-gray-100 text-sm flex items-center gap-1"><Edit className="w-4 h-4" />Edit</button>
+                        <button 
+                          className="px-3 py-1 rounded bg-blue-50 text-blue-700 hover:bg-blue-100 text-sm flex items-center gap-1"
+                          onClick={() => { setSelectedCourse(course); setShowCourseModal(true); }}
+                        ><Eye className="w-4 h-4" />View</button>
+                        <button 
+                          className="px-3 py-1 rounded bg-gray-50 text-gray-700 hover:bg-gray-100 text-sm flex items-center gap-1"
+                          onClick={() => { setSelectedCourse(course); setShowEditModal(true); }}
+                        ><Edit className="w-4 h-4" />Edit</button>
                         {(!isBoosted || isExpiringSoon) && (
                           <button
                             className={`px-3 py-1 rounded text-sm flex items-center gap-1 bg-green-50 text-green-700 hover:bg-green-100`}
@@ -909,6 +917,25 @@ export function InstructorDashboard() {
           {toast && (
             <div className={`fixed bottom-6 right-6 z-50 px-6 py-4 rounded-xl shadow-lg text-white font-semibold transition-all animate-fade-in ${toast.type === 'success' ? 'bg-green-600' : 'bg-red-600'}`}>
               {toast.message}
+            </div>
+          )}
+          {showCourseModal && selectedCourse && (
+            <CourseDetailsModal course={selectedCourse} onClose={() => setShowCourseModal(false)} />
+          )}
+          {showEditModal && selectedCourse && (
+            <div className="fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-40">
+              <div className="bg-white rounded-xl shadow-2xl p-8 max-w-3xl w-full relative animate-fade-in overflow-auto max-h-[90vh]">
+                <button
+                  onClick={() => setShowEditModal(false)}
+                  className="absolute top-4 right-4 text-gray-400 hover:text-gray-700 text-2xl font-bold"
+                  aria-label="Close"
+                >×</button>
+                <EditCourse 
+                  course={selectedCourse} 
+                  onSave={() => setShowEditModal(false)}
+                  onCancel={() => setShowEditModal(false)}
+                />
+              </div>
             </div>
           )}
         </main>
