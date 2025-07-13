@@ -1140,14 +1140,16 @@ export function useNotifications() {
             if (notificationsData && notificationsData.length > 0) {
               const formattedNotifications = await formatNotifications(notificationsData);
               setNotifications(formattedNotifications);
-              // Show toast for new notifications (only for INSERT events)
+              // Show toast and play sound for new gift_received notifications
               if (payload.eventType === 'INSERT') {
                 const notification = payload.new;
-                if (notification.recipients && user && notification.recipients.includes(user.id)) {
-                  console.log('New notification for this user:', notification);
-                  console.log('Current user ID:', user.id);
-                  console.log('Notification recipients:', notification.recipients);
-                  showToast(notification.title || 'New Notification', 'confirmation', 6000, notification.message);
+                // Check if this is a gift_received notification for the current user
+                if (notification.type === 'gift_received' && user && notification.user_id === user.id) {
+                  // Play sound
+                  const audio = new Audio('/notification.mp3');
+                  audio.play();
+                  // Show toast
+                  showToast('🎁 You received a gift!', 'confirmation', 6000, notification.message);
                 }
               }
             }

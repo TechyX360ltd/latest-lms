@@ -197,7 +197,7 @@ export function BadgeCollection() {
           return (
             <div
               key={badge.id}
-              className={`relative flex flex-col items-center justify-between bg-white rounded-2xl shadow-lg border-2 transition-all duration-200 hover:shadow-xl cursor-pointer w-48 h-48 min-w-[12rem] min-h-[12rem] max-w-[12rem] max-h-[12rem] text-center p-4 ${
+              className={`relative flex flex-col items-center justify-between bg-white rounded-2xl shadow-lg border-2 transition-all duration-200 hover:shadow-xl cursor-pointer w-48 h-48 min-w-[12rem] min-h-[12rem] max-w-[12rem] max-h-[12rem] text-center p-4 overflow-hidden ${
                 earned 
                   ? 'border-green-300 hover:border-green-400' 
                   : 'border-gray-200 hover:border-gray-300'
@@ -212,24 +212,24 @@ export function BadgeCollection() {
               )}
 
               {/* Badge Icon */}
-              <div className={`w-20 h-20 mx-auto mb-4 rounded-full flex items-center justify-center shadow ${
+              <div className={`w-10 h-10 mx-auto mb-2 rounded-full flex items-center justify-center shadow ${
                   earned ? 'bg-gradient-to-br from-green-400 to-green-600' : 'bg-gray-100'
               }`} style={{ aspectRatio: '1/1' }}>
                   {badge.icon_url ? (
                     <img 
                       src={badge.icon_url} 
                       alt={badge.name}
-                    className={`w-10 h-10 ${earned ? 'filter brightness-0 invert' : ''}`}
+                    className={`w-5 h-5 ${earned ? 'filter brightness-0 invert' : ''}`}
                     style={{ aspectRatio: '1/1' }}
                     />
                   ) : (
-                  <Award className={`w-10 h-10 ${earned ? 'text-white' : 'text-gray-400'}`} />
+                  <Award className={`w-5 h-5 ${earned ? 'text-white' : 'text-gray-400'}`} />
                   )}
                 </div>
 
                 {/* Badge Info */}
+              <div className="flex flex-col flex-grow items-center justify-between w-full h-full">
               <h3 className="font-bold text-lg text-gray-900 mb-1 mt-2">{badge.name}</h3>
-              <p className="text-sm text-gray-600 mb-3 line-clamp-2 min-h-[40px]">{badge.description}</p>
 
                 {/* Rarity Badge */}
               <div className={`inline-flex items-center gap-1 px-3 py-1 rounded-full text-xs font-semibold border ${getRarityColor(badge.rarity)} mb-2`}>
@@ -248,6 +248,7 @@ export function BadgeCollection() {
                       Requires {badge.points_required.toLocaleString()} points
                     </div>
                   )}
+              </div>
               </div>
             </div>
           );

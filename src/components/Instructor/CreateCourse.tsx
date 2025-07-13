@@ -1,10 +1,8 @@
 import React, { useState, useRef, Suspense, useEffect } from 'react';
-import { Sidebar } from '../Layout/Sidebar';
-import { Header } from '../Layout/Header';
 import { useCategories } from '../../hooks/useData';
 import { useAuth } from '../../context/AuthContext';
 import { useParams } from 'react-router-dom';
-const ReactQuill = React.lazy(() => import('react-quill'));
+const ReactQuill = React.lazy(() => import('react-quill').then(module => ({ default: module.default })));
 import 'react-quill/dist/quill.snow.css';
 import { uploadToCloudinary } from '../../lib/cloudinary';
 import Confetti from 'react-confetti';
@@ -375,9 +373,7 @@ export default function CreateCourse() {
   if (loadingDraft) {
     return (
       <div className="min-h-screen bg-gray-50 flex">
-        <Sidebar />
         <div className="flex-1 flex flex-col min-w-0">
-          <Header />
           <main className="flex-1 p-4 lg:p-8 overflow-auto flex flex-col items-center justify-center">
             <div className="text-center">
               <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600 mx-auto mb-4"></div>
@@ -611,9 +607,7 @@ export default function CreateCourse() {
 
   return (
     <div className="min-h-screen bg-gray-50 flex">
-      <Sidebar />
       <div className="flex-1 flex flex-col min-w-0">
-        <Header />
         <main className="flex-1 p-4 lg:p-8 overflow-auto flex flex-col items-center">
           <div className="w-full bg-white rounded-xl shadow-lg p-4 md:p-8">
             <Stepper step={step} />

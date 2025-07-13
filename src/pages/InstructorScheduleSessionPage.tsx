@@ -5,7 +5,6 @@ import { useAuth } from '../context/AuthContext';
 import { supabase } from '../lib/supabase';
 import { Course } from '../types';
 import { Sidebar } from '../components/Layout/Sidebar';
-import { Header } from '../components/Layout/Header';
 
 export default function InstructorScheduleSessionPage() {
   const { user } = useAuth();
@@ -32,7 +31,6 @@ export default function InstructorScheduleSessionPage() {
   return (
     <div className="min-h-screen bg-gray-50 flex">
       <div className="flex-1 flex flex-col min-w-0">
-        <Header />
         <main className="flex-1 p-0 lg:p-0 overflow-auto flex flex-col justify-start items-stretch">
           <div className="w-full h-full flex flex-col items-stretch justify-start">
             <h1 className="text-2xl lg:text-3xl font-bold text-gray-900 mb-6 mt-4 px-6">Schedule a Live Session</h1>

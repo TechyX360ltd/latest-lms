@@ -3,6 +3,7 @@ import { DollarSign, Clock, CheckCircle, Download, TrendingUp } from 'lucide-rea
 import { supabase } from '../../lib/supabase';
 import { useAuth } from '../../context/AuthContext';
 import { LineChart, Line, XAxis, YAxis, Tooltip, ResponsiveContainer, CartesianGrid } from 'recharts';
+import { useGiftCashout } from '../../hooks/useGiftCashout';
 
 export default function Earnings() {
   const { user } = useAuth();
@@ -11,6 +12,20 @@ export default function Earnings() {
   const [coinBalance, setCoinBalance] = useState<number>(0);
   const [payouts, setPayouts] = useState<any[]>([]);
   const [transactions, setTransactions] = useState<any[]>([]);
+  const { requestGiftCashout, loading: cashoutLoading, error: cashoutError, result: cashoutResult } = useGiftCashout();
+  const [showCashoutModal, setShowCashoutModal] = useState(false);
+  const [payoutDetails, setPayoutDetails] = useState({ payout_bank_name: '', payout_account_number: '', payout_account_name: '', payout_bank_code: '' });
+  const [gifts, setGifts] = useState<any[]>([]);
+  const [giftsLoading, setGiftsLoading] = useState(false);
+  const [giftsError, setGiftsError] = useState<string | null>(null);
+  const [cashoutSuccess, setCashoutSuccess] = useState(false);
+
+  // Paystack bank list and account name resolution
+  const [banks, setBanks] = useState<any[]>([]);
+  const [banksLoading, setBanksLoading] = useState(false);
+  const [banksError, setBanksError] = useState<string | null>(null);
+  const [accountNameLoading, setAccountNameLoading] = useState(false);
+  const [accountNameError, setAccountNameError] = useState<string | null>(null);
 
   useEffect(() => {
     if (!user?.id) return;
@@ -20,25 +35,77 @@ export default function Earnings() {
       supabase.from('users').select('coins').eq('id', user.id).single(),
       supabase.from('withdrawal_requests').select('*').eq('user_id', user.id).order('requested_at', { ascending: false }),
       supabase.from('coin_transactions').select('*').eq('user_id', user.id).order('created_at', { ascending: true })
-    ]).then(([userRes, payoutRes, txRes]) => {
+    ]).then(([userRes, payoutRes, txRes]: any[]) => {
       if (userRes.error) setError(userRes.error.message);
       else setCoinBalance(userRes.data?.coins || 0);
       if (payoutRes.error) setError(payoutRes.error.message);
       else setPayouts(payoutRes.data || []);
       if (txRes.error) setError(txRes.error.message);
       else setTransactions(txRes.data || []);
-    }).catch(e => setError(e.message)).finally(() => setLoading(false));
+    }).catch((e: any) => setError(e.message)).finally(() => setLoading(false));
   }, [user?.id]);
 
+  // Fetch un-cashed-out gifts
   useEffect(() => {
-    const handlePopState = () => {
-      window.location.reload();
-    };
-    window.addEventListener('popstate', handlePopState);
-    return () => {
-      window.removeEventListener('popstate', handlePopState);
-    };
-  }, []);
+    if (!user?.id) return;
+    setGiftsLoading(true);
+    setGiftsError(null);
+    supabase
+      .from('gifts')
+      .select('id, coin_value, cashed_out, created_at')
+      .eq('recipient_id', user.id)
+      .order('created_at', { ascending: false })
+      .then(({ data, error }: { data: any; error: any }) => {
+        if (error) setGiftsError(error.message);
+        else setGifts(data || []);
+      })
+      .catch((e: any) => setGiftsError(e.message))
+      .finally(() => setGiftsLoading(false));
+  }, [user?.id, cashoutResult]);
+
+  // Fetch Paystack banks on modal open
+  useEffect(() => {
+    if (!showCashoutModal) return;
+    setBanksLoading(true);
+    setBanksError(null);
+    fetch('https://api.paystack.co/bank?country=nigeria', {
+      headers: { Authorization: `Bearer ${import.meta.env.VITE_PAYSTACK_SECRET_KEY}` }
+    })
+      .then(res => res.json())
+      .then(data => setBanks(data.data || []))
+      .catch(e => setBanksError('Failed to load banks'))
+      .finally(() => setBanksLoading(false));
+  }, [showCashoutModal]);
+
+  // Auto-resolve account name
+  useEffect(() => {
+    const { payout_bank_code, payout_account_number } = payoutDetails;
+    if (!payout_bank_code || !payout_account_number || payout_account_number.length < 10) return;
+    setAccountNameLoading(true);
+    setAccountNameError(null);
+    // Fix: Use correct function URL for local and production
+    const baseUrl = import.meta.env.DEV
+      ? 'http://localhost:54321/functions/v1'
+      : 'https://<your-project-ref>.functions.supabase.co'; // TODO: Replace <your-project-ref> with your actual Supabase project ref
+    fetch(`${baseUrl}/resolve-account-name`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        bank_code: payout_bank_code,
+        account_number: payout_account_number,
+      }),
+    })
+      .then(res => res.json())
+      .then(data => {
+        if (data.account_name) {
+          setPayoutDetails(d => ({ ...d, payout_account_name: data.account_name }));
+        } else {
+          setAccountNameError(data.error || 'Could not resolve account name');
+        }
+      })
+      .catch(() => setAccountNameError('Could not resolve account name'))
+      .finally(() => setAccountNameLoading(false));
+  }, [payoutDetails.payout_bank_code, payoutDetails.payout_account_number]);
 
   // Calculate earnings
   const courseEarnings = transactions.filter(tx => tx.type === 'earn').reduce((sum, tx) => sum + tx.amount, 0);
@@ -47,6 +114,22 @@ export default function Earnings() {
   // Calculate stats
   const pendingPayout = payouts.find(p => p.status === 'pending');
   const lastPayout = payouts.find(p => p.status === 'paid' || p.status === 'approved');
+
+  // Calculate un-cashed-out gifts
+  const uncashedGifts = gifts.filter(g => !g.cashed_out);
+  const totalGiftCoins = uncashedGifts.reduce((sum, g) => sum + (g.coin_value || 0), 0);
+  const totalGiftNaira = totalGiftCoins / 100;
+
+  // Handle cashout submit
+  async function handleGiftCashout(e: React.FormEvent) {
+    e.preventDefault();
+    try {
+      await requestGiftCashout(payoutDetails);
+      setCashoutSuccess(true);
+      setShowCashoutModal(false);
+      setPayoutDetails({ payout_bank_name: '', payout_account_number: '', payout_account_name: '', payout_bank_code: '' });
+    } catch {}
+  }
 
   const stats = [
     { title: 'Course Earnings', value: `₦${(courseEarnings/100).toLocaleString()}`, icon: DollarSign, color: 'bg-green-600', tooltip: 'Earnings from students enrolling in your courses.' },
@@ -82,6 +165,87 @@ export default function Earnings() {
             Withdraw Earnings
           </button>
         </div>
+
+        {/* Gift Cashout Card */}
+        <div className="bg-gradient-to-r from-yellow-100 to-yellow-50 rounded-xl shadow-sm p-6 mb-8 flex flex-col md:flex-row md:items-center md:justify-between gap-4 border border-yellow-200">
+          <div>
+            <h2 className="text-lg font-bold text-yellow-700 mb-1 flex items-center gap-2">
+              <span role="img" aria-label="gift">🎁</span> Gift Cashout
+            </h2>
+            <p className="text-gray-700 mb-2">You have <span className="font-bold text-yellow-800">{uncashedGifts.length}</span> un-cashed-out gifts worth <span className="font-bold text-yellow-800">{totalGiftCoins} coins</span> (₦{totalGiftNaira.toLocaleString()})</p>
+            <button
+              className="bg-yellow-500 hover:bg-yellow-600 text-white px-6 py-2 rounded-lg font-semibold shadow transition disabled:opacity-50"
+              disabled={uncashedGifts.length === 0 || cashoutLoading}
+              onClick={() => { setShowCashoutModal(true); setCashoutSuccess(false); }}
+            >
+              Request Cashout
+            </button>
+            {cashoutSuccess && <div className="text-green-700 mt-2 font-medium">Cashout request submitted!</div>}
+            {cashoutError && <div className="text-red-600 mt-2">{cashoutError}</div>}
+          </div>
+          <div className="flex flex-col gap-2 w-full md:w-auto">
+            <div className="text-sm text-gray-600">Recent Gifts</div>
+            <div className="flex flex-wrap gap-2">
+              {giftsLoading ? <span className="text-blue-600">Loading...</span> :
+                gifts.slice(0, 5).map(g => (
+                  <span key={g.id} className={`px-3 py-1 rounded-full text-xs font-semibold ${g.cashed_out ? 'bg-green-100 text-green-700' : 'bg-yellow-200 text-yellow-800'}`}>{g.coin_value} coins {g.cashed_out ? '✓' : ''}</span>
+                ))}
+            </div>
+            {giftsError && <div className="text-red-600 text-xs">{giftsError}</div>}
+          </div>
+        </div>
+
+        {/* Cashout Modal */}
+        {showCashoutModal && (
+          <div className="fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-40">
+            <form onSubmit={handleGiftCashout} className="bg-white rounded-xl shadow-xl p-8 w-full max-w-md mx-auto flex flex-col gap-4 animate-fade-in">
+              <h3 className="text-xl font-bold text-gray-900 mb-2">Request Gift Cashout</h3>
+              <label className="flex flex-col gap-1">
+                <span className="text-sm font-medium text-gray-700">Bank Name</span>
+                {banksLoading ? (
+                  <div className="text-blue-600 text-sm">Loading banks...</div>
+                ) : banksError ? (
+                  <div className="text-red-600 text-sm">{banksError}</div>
+                ) : (
+                  <select
+                    required
+                    className="border border-gray-300 rounded-lg px-3 py-2 w-full focus:ring-2 focus:ring-yellow-400 focus:border-yellow-400"
+                    value={payoutDetails.payout_bank_code || ''}
+                    onChange={e => {
+                      const selectedBank = banks.find(b => b.code === e.target.value);
+                      setPayoutDetails(d => ({
+                        ...d,
+                        payout_bank_name: selectedBank ? selectedBank.name : '',
+                        payout_bank_code: selectedBank ? selectedBank.code : '',
+                      }));
+                    }}
+                  >
+                    <option value="">Select a bank</option>
+                    {banks.map((bank: any, idx: number) => (
+                      <option key={bank.code + '-' + bank.name + '-' + idx} value={bank.code}>{bank.name}</option>
+                    ))}
+                  </select>
+                )}
+              </label>
+              <label className="flex flex-col gap-1">
+                <span className="text-sm font-medium text-gray-700">Account Number</span>
+                <input type="text" required maxLength={10} className="border border-gray-300 rounded-lg px-3 py-2 w-full focus:ring-2 focus:ring-yellow-400 focus:border-yellow-400" value={payoutDetails.payout_account_number} onChange={e => setPayoutDetails(d => ({ ...d, payout_account_number: e.target.value }))} />
+              </label>
+              <label className="flex flex-col gap-1">
+                <span className="text-sm font-medium text-gray-700">Account Name</span>
+                <input type="text" readOnly className="border border-gray-300 rounded-lg px-3 py-2 w-full bg-gray-100 text-gray-700" value={payoutDetails.payout_account_name} />
+                {accountNameLoading && <div className="text-blue-600 text-xs">Resolving account name...</div>}
+                {accountNameError && <div className="text-red-600 text-xs">{accountNameError}</div>}
+              </label>
+              <div className="flex gap-2 mt-4">
+                <button type="submit" className="bg-yellow-500 hover:bg-yellow-600 text-white px-6 py-2 rounded-lg font-semibold shadow transition disabled:opacity-50" disabled={cashoutLoading}>Submit</button>
+                <button type="button" className="bg-gray-200 hover:bg-gray-300 text-gray-700 px-6 py-2 rounded-lg font-semibold shadow transition" onClick={() => setShowCashoutModal(false)}>Cancel</button>
+              </div>
+              {cashoutLoading && <div className="text-blue-600 mt-2">Submitting...</div>}
+              {cashoutError && <div className="text-red-600 mt-2">{cashoutError}</div>}
+            </form>
+          </div>
+        )}
 
         {/* Stats Cards */}
         <div className="grid grid-cols-2 md:grid-cols-4 gap-4 lg:gap-6 mb-8">

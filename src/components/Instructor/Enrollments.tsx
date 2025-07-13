@@ -397,421 +397,422 @@ export default function Enrollments() {
   }, []);
 
   return (
-    <div className="min-h-screen bg-gray-50 flex">
-      {/* Sidebar and Header are now provided by the main layout */}
-      <main className="flex-1 p-4 lg:p-8 overflow-auto">
-          {/* Header */}
-          <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 mb-8">
-            <div>
-              <h1 className="text-2xl lg:text-3xl font-bold text-gray-900 mb-2">
-                Student Enrollments
-              </h1>
-              <p className="text-gray-600">Manage and track your course enrollments</p>
-            </div>
-            <div className="flex items-center gap-3">
-              <button
-                onClick={handleExportCSV}
-                className="flex items-center gap-2 px-4 py-2 bg-white border border-gray-300 rounded-lg text-gray-700 hover:bg-gray-50 transition-colors"
-              >
-                <Download className="w-4 h-4" />
-                Export CSV
-              </button>
-              <button
-                onClick={handleExportExcel}
-                className="flex items-center gap-2 px-4 py-2 bg-white border border-gray-300 rounded-lg text-gray-700 hover:bg-gray-50 transition-colors"
-              >
-                <Download className="w-4 h-4" />
-                Export Excel
-              </button>
-              <button
-                onClick={handleExportPDF}
-                className="flex items-center gap-2 px-4 py-2 bg-white border border-gray-300 rounded-lg text-gray-700 hover:bg-gray-50 transition-colors"
-              >
-                <Download className="w-4 h-4" />
-                Export PDF
-              </button>
-            </div>
-          </div>
-
-          {/* Statistics Cards */}
-          <div className="grid grid-cols-2 md:grid-cols-4 gap-4 lg:gap-6 mb-8">
-            <div className="bg-white rounded-xl shadow-sm p-4 lg:p-6 border border-gray-100 hover:shadow-lg transition">
-              <div className="flex items-center justify-between">
-                <div>
-                  <p className="text-xs sm:text-sm text-gray-600 mb-1">Total Enrollments</p>
-                  <p className="text-xl lg:text-2xl font-bold text-gray-900">{stats.total}</p>
-                </div>
-                <div className="w-10 h-10 lg:w-12 lg:h-12 bg-blue-500 rounded-lg flex items-center justify-center">
-                  <Users className="w-5 h-5 lg:w-6 lg:h-6 text-white" />
-                </div>
-              </div>
-            </div>
-
-            <div className="bg-white rounded-xl shadow-sm p-4 lg:p-6 border border-gray-100 hover:shadow-lg transition">
-              <div className="flex items-center justify-between">
-                <div>
-                  <p className="text-xs sm:text-sm text-gray-600 mb-1">Active Students</p>
-                  <p className="text-xl lg:text-2xl font-bold text-gray-900">{stats.active}</p>
-                </div>
-                <div className="w-10 h-10 lg:w-12 lg:h-12 bg-green-500 rounded-lg flex items-center justify-center">
-                  <UserCheck className="w-5 h-5 lg:w-6 lg:h-6 text-white" />
-                </div>
-              </div>
-            </div>
-
-            <div className="bg-white rounded-xl shadow-sm p-4 lg:p-6 border border-gray-100 hover:shadow-lg transition">
-              <div className="flex items-center justify-between">
-                <div>
-                  <p className="text-xs sm:text-sm text-gray-600 mb-1">Completed</p>
-                  <p className="text-xl lg:text-2xl font-bold text-gray-900">{stats.completed}</p>
-                </div>
-                <div className="w-10 h-10 lg:w-12 lg:h-12 bg-purple-500 rounded-lg flex items-center justify-center">
-                  <Award className="w-5 h-5 lg:w-6 lg:h-6 text-white" />
-                </div>
-              </div>
-            </div>
-
-            <div className="bg-white rounded-xl shadow-sm p-4 lg:p-6 border border-gray-100 hover:shadow-lg transition">
-              <div className="flex items-center justify-between">
-                <div>
-                  <p className="text-xs sm:text-sm text-gray-600 mb-1">Total Revenue</p>
-                  <p className="text-xl lg:text-2xl font-bold text-gray-900">{formatCurrency(stats.revenue)}</p>
-                </div>
-                <div className="w-10 h-10 lg:w-12 lg:h-12 bg-green-600 rounded-lg flex items-center justify-center">
-                  <DollarSign className="w-5 h-5 lg:w-6 lg:h-6 text-white" />
-                </div>
-              </div>
-            </div>
-          </div>
-
-          {/* Charts Section */}
-          <div className="bg-white rounded-xl shadow-sm p-6 border border-gray-100 mb-8">
-            <div className="flex items-center justify-between mb-6">
-              <h2 className="text-xl font-bold text-gray-900">Analytics</h2>
-              <div className="flex gap-2">
-                <button
-                  onClick={() => setSelectedChart('trends')}
-                  className={`px-3 py-1 rounded-lg text-sm font-medium transition-colors ${
-                    selectedChart === 'trends' 
-                      ? 'bg-blue-100 text-blue-700' 
-                      : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
-                  }`}
-                >
-                  <TrendingUp className="w-4 h-4 inline mr-1" />
-                  Trends
-                </button>
-                <button
-                  onClick={() => setSelectedChart('distribution')}
-                  className={`px-3 py-1 rounded-lg text-sm font-medium transition-colors ${
-                    selectedChart === 'distribution' 
-                      ? 'bg-blue-100 text-blue-700' 
-                      : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
-                  }`}
-                >
-                  <PieChart className="w-4 h-4 inline mr-1" />
-                  Distribution
-                </button>
-                <button
-                  onClick={() => setSelectedChart('progress')}
-                  className={`px-3 py-1 rounded-lg text-sm font-medium transition-colors ${
-                    selectedChart === 'progress' 
-                      ? 'bg-blue-100 text-blue-700' 
-                      : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
-                  }`}
-                >
-                  <Activity className="w-4 h-4 inline mr-1" />
-                  Progress
-                </button>
-              </div>
-            </div>
-            <div className="h-80">
-              {selectedChart === 'trends' && (
-                <ResponsiveContainer width="100%" height="100%">
-                  <LineChart data={enrollmentTrends}>
-                    <CartesianGrid strokeDasharray="3 3" />
-                    <XAxis dataKey="month" />
-                    <YAxis yAxisId="left" />
-                    <YAxis yAxisId="right" orientation="right" />
-                    <Tooltip 
-                      formatter={(value, name) => [
-                        name === 'enrollments' ? value : formatCurrency(Number(value)),
-                        name === 'enrollments' ? 'Enrollments' : 'Revenue'
-                      ]}
-                    />
-                    <Legend />
-                    <Line 
-                      yAxisId="left"
-                      type="monotone" 
-                      dataKey="enrollments" 
-                      stroke="#3B82F6" 
-                      strokeWidth={2}
-                      name="Enrollments"
-                    />
-                    <Line 
-                      yAxisId="right"
-                      type="monotone" 
-                      dataKey="revenue" 
-                      stroke="#10B981" 
-                      strokeWidth={2}
-                      name="Revenue"
-                    />
-                  </LineChart>
-                </ResponsiveContainer>
-              )}
-              {selectedChart === 'distribution' && (
-                <ResponsiveContainer width="100%" height="100%">
-                  <RechartsPieChart>
-                    <Pie
-                      data={[
-                        { name: 'Active', value: stats.active, color: '#10B981' },
-                        { name: 'Completed', value: stats.completed, color: '#3B82F6' },
-                        { name: 'Inactive', value: stats.inactive, color: '#F59E0B' },
-                        { name: 'Cancelled', value: stats.cancelled, color: '#EF4444' }
-                      ]}
-                      cx="50%"
-                      cy="50%"
-                      outerRadius={80}
-                      dataKey="value"
-                      label={({ name, value, percent }) => `${name}: ${value} (${(percent * 100).toFixed(0)}%)`}
-                    >
-                      {[
-                        { name: 'Active', value: stats.active, color: '#10B981' },
-                        { name: 'Completed', value: stats.completed, color: '#3B82F6' },
-                        { name: 'Inactive', value: stats.inactive, color: '#F59E0B' },
-                        { name: 'Cancelled', value: stats.cancelled, color: '#EF4444' }
-                      ].map((entry, index) => (
-                        <Cell key={`cell-${index}`} fill={entry.color} />
-                      ))}
-                    </Pie>
-                    <Tooltip formatter={(value) => [value, 'Students']} />
-                  </RechartsPieChart>
-                </ResponsiveContainer>
-              )}
-              {selectedChart === 'progress' && (
-                <ResponsiveContainer width="100%" height="100%">
-                  <BarChart data={[
-                    { range: '0-25%', students: filteredStudents.filter(s => s.progress <= 25).length },
-                    { range: '26-50%', students: filteredStudents.filter(s => s.progress > 25 && s.progress <= 50).length },
-                    { range: '51-75%', students: filteredStudents.filter(s => s.progress > 50 && s.progress <= 75).length },
-                    { range: '76-100%', students: filteredStudents.filter(s => s.progress > 75).length }
-                  ]}>
-                    <CartesianGrid strokeDasharray="3 3" />
-                    <XAxis dataKey="range" />
-                    <YAxis />
-                    <Tooltip formatter={(value) => [value, 'Students']} />
-                    <Bar dataKey="students" fill="#8B5CF6" />
-                  </BarChart>
-                </ResponsiveContainer>
-              )}
-            </div>
-          </div>
-
-          {/* Filters and Search */}
-          <div className="bg-white rounded-xl shadow-sm p-6 border border-gray-100 mb-6">
-            <div className="flex flex-col lg:flex-row gap-4 items-start lg:items-center justify-between">
-              <div className="flex-1 max-w-md">
-                <div className="relative">
-                  <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-4 h-4" />
-                  <input
-                    type="text"
-                    placeholder="Search students, courses..."
-                    value={searchTerm}
-                    onChange={(e) => setSearchTerm(e.target.value)}
-                    className="w-full pl-10 pr-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                  />
-                </div>
+    <>
+      <div className="min-h-screen bg-gray-50 flex">
+        {/* Sidebar and Header are now provided by the main layout */}
+        <main className="flex-1 p-6 overflow-y-auto">
+            {/* Header */}
+            <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 mb-8">
+              <div>
+                <h1 className="text-2xl lg:text-3xl font-bold text-gray-900 mb-2">
+                  Student Enrollments
+                </h1>
+                <p className="text-gray-600">Manage and track your course enrollments</p>
               </div>
               <div className="flex items-center gap-3">
                 <button
-                  onClick={() => setShowFilters(!showFilters)}
-                  className="flex items-center gap-2 px-4 py-2 bg-gray-100 text-gray-700 rounded-lg hover:bg-gray-200 transition-colors"
+                  onClick={handleExportCSV}
+                  className="flex items-center gap-2 px-4 py-2 bg-white border border-gray-300 rounded-lg text-gray-700 hover:bg-gray-50 transition-colors"
                 >
-                  <Filter className="w-4 h-4" />
-                  Filters
+                  <Download className="w-4 h-4" />
+                  Export CSV
                 </button>
-                <span className="text-sm text-gray-500">
-                  {filteredStudents.length} of {students.length} students
-                </span>
+                <button
+                  onClick={handleExportExcel}
+                  className="flex items-center gap-2 px-4 py-2 bg-white border border-gray-300 rounded-lg text-gray-700 hover:bg-gray-50 transition-colors"
+                >
+                  <Download className="w-4 h-4" />
+                  Export Excel
+                </button>
+                <button
+                  onClick={handleExportPDF}
+                  className="flex items-center gap-2 px-4 py-2 bg-white border border-gray-300 rounded-lg text-gray-700 hover:bg-gray-50 transition-colors"
+                >
+                  <Download className="w-4 h-4" />
+                  Export PDF
+                </button>
               </div>
             </div>
-            {showFilters && (
-              <div className="mt-4 pt-4 border-t border-gray-200">
-                <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-1">Status</label>
-                    <select
-                      value={statusFilter}
-                      onChange={(e) => setStatusFilter(e.target.value)}
-                      className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                    >
-                      <option value="all">All Status</option>
-                      <option value="active">Active</option>
-                      <option value="completed">Completed</option>
-                      <option value="inactive">Inactive</option>
-                      <option value="cancelled">Cancelled</option>
-                    </select>
-                  </div>
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-1">Course</label>
-                    <select
-                      value={courseFilter}
-                      onChange={(e) => setCourseFilter(e.target.value)}
-                      className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                    >
-                      <option value="all">All Courses</option>
-                      {uniqueCourses.map(course => (
-                        <option key={course} value={course}>{course}</option>
-                      ))}
-                    </select>
-                  </div>
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-1">Date Range</label>
-                    <select
-                      value={dateFilter}
-                      onChange={(e) => setDateFilter(e.target.value)}
-                      className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                    >
-                      <option value="all">All Time</option>
-                      <option value="7d">Last 7 days</option>
-                      <option value="30d">Last 30 days</option>
-                      <option value="90d">Last 90 days</option>
-                    </select>
-                  </div>
-                </div>
-              </div>
-            )}
-          </div>
 
-          {/* Students Table */}
-          <div className="bg-white rounded-xl shadow-sm border border-gray-100 overflow-hidden">
-            {loading ? (
-              <div className="text-center py-12 text-blue-600 font-semibold">Loading enrollments...</div>
-            ) : error ? (
-              <div className="text-center py-12 text-red-600 font-semibold">{error}</div>
-            ) : (
-              <>
-              <div className="overflow-x-auto">
-                <table className="min-w-full divide-y divide-gray-200">
-                  <thead className="bg-gray-50">
-                    <tr>
-                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider cursor-pointer" onClick={() => handleSort('name')}>
-                        Student {sortBy === 'name' && (sortOrder === 'asc' ? '▲' : '▼')}
-                      </th>
-                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider cursor-pointer" onClick={() => handleSort('course')}>
-                        Course {sortBy === 'course' && (sortOrder === 'asc' ? '▲' : '▼')}
-                      </th>
-                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider cursor-pointer" onClick={() => handleSort('status')}>
-                        Status {sortBy === 'status' && (sortOrder === 'asc' ? '▲' : '▼')}
-                      </th>
-                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider cursor-pointer" onClick={() => handleSort('progress')}>
-                        Progress {sortBy === 'progress' && (sortOrder === 'asc' ? '▲' : '▼')}
-                      </th>
-                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider cursor-pointer" onClick={() => handleSort('enrollmentDate')}>
-                        Enrollment Date {sortBy === 'enrollmentDate' && (sortOrder === 'asc' ? '▲' : '▼')}
-                      </th>
-                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider cursor-pointer" onClick={() => handleSort('lastAccessed')}>
-                        Last Accessed {sortBy === 'lastAccessed' && (sortOrder === 'asc' ? '▲' : '▼')}
-                      </th>
-                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider cursor-pointer" onClick={() => handleSort('amountPaid')}>
-                        Amount Paid {sortBy === 'amountPaid' && (sortOrder === 'asc' ? '▲' : '▼')}
-                      </th>
-                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                        Actions
-                      </th>
-                    </tr>
-                  </thead>
-                  <tbody className="bg-white divide-y divide-gray-200">
-                    {paginatedStudents.map((student) => (
-                      <tr key={student.id} className="hover:bg-gray-50 transition-colors">
-                        <td className="px-6 py-4 whitespace-nowrap">
-                          <div className="flex items-center">
-                            <div className="w-8 h-8 bg-gray-200 rounded-full flex items-center justify-center mr-3">
-                              {student.avatar ? (
-                                <img src={student.avatar} alt={student.name} className="w-full h-full rounded-full object-cover" />
-                              ) : (
-                                <Users className="w-4 h-4 text-gray-500" />
-                              )}
-                            </div>
-                            <div>
-                              <div className="text-sm font-medium text-gray-900">{student.name}</div>
-                              <div className="text-sm text-gray-500">{student.email}</div>
-                            </div>
-                          </div>
-                        </td>
-                        <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
-                          {student.course}
-                        </td>
-                        <td className="px-6 py-4 whitespace-nowrap">
-                          <span className={`px-2 py-1 text-xs font-medium rounded-full ${getStatusColor(student.status)}`}>
-                            {student.status?.charAt(0).toUpperCase() + student.status?.slice(1)}
-                          </span>
-                        </td>
-                        <td className="px-6 py-4 whitespace-nowrap">
-                          <div className="flex items-center">
-                            <div className="w-16 bg-gray-200 rounded-full h-2 mr-2">
-                              <div
-                                className={`h-2 rounded-full ${getProgressColor(student.progress)}`}
-                                style={{ width: `${student.progress}%` }}
-                              />
-                            </div>
-                            <span className="text-sm text-gray-900">{student.progress}%</span>
-                          </div>
-                        </td>
-                        <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
-                          {student.enrollmentDate ? new Date(student.enrollmentDate).toLocaleDateString() : ''}
-                        </td>
-                        <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
-                          {student.lastAccessed ? new Date(student.lastAccessed).toLocaleDateString() : ''}
-                        </td>
-                        <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
-                          {formatCurrency(student.amountPaid)}
-                        </td>
-                        <td className="px-6 py-4 whitespace-nowrap text-sm font-medium">
-                          <div className="flex items-center gap-2">
-                            <button className="text-blue-600 hover:text-blue-900">
-                              <Eye className="w-4 h-4" />
-                            </button>
-                            <button className="text-green-600 hover:text-green-900">
-                              <MessageCircle className="w-4 h-4" />
-                            </button>
-                          </div>
-                        </td>
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
-              </div>
-              {/* Pagination Controls */}
-              <div className="flex justify-between items-center p-4 border-t bg-gray-50">
-                <div className="text-sm text-gray-600">
-                  Page {currentPage} of {totalPages} ({sortedStudents.length} students)
+            {/* Statistics Cards */}
+            <div className="grid grid-cols-2 md:grid-cols-4 gap-4 lg:gap-6 mb-8">
+              <div className="bg-white rounded-xl shadow-sm p-4 lg:p-6 border border-gray-100 hover:shadow-lg transition">
+                <div className="flex items-center justify-between">
+                  <div>
+                    <p className="text-xs sm:text-sm text-gray-600 mb-1">Total Enrollments</p>
+                    <p className="text-xl lg:text-2xl font-bold text-gray-900">{stats.total}</p>
+                  </div>
+                  <div className="w-10 h-10 lg:w-12 lg:h-12 bg-blue-500 rounded-lg flex items-center justify-center">
+                    <Users className="w-5 h-5 lg:w-6 lg:h-6 text-white" />
+                  </div>
                 </div>
+              </div>
+
+              <div className="bg-white rounded-xl shadow-sm p-4 lg:p-6 border border-gray-100 hover:shadow-lg transition">
+                <div className="flex items-center justify-between">
+                  <div>
+                    <p className="text-xs sm:text-sm text-gray-600 mb-1">Active Students</p>
+                    <p className="text-xl lg:text-2xl font-bold text-gray-900">{stats.active}</p>
+                  </div>
+                  <div className="w-10 h-10 lg:w-12 lg:h-12 bg-green-500 rounded-lg flex items-center justify-center">
+                    <UserCheck className="w-5 h-5 lg:w-6 lg:h-6 text-white" />
+                  </div>
+                </div>
+              </div>
+
+              <div className="bg-white rounded-xl shadow-sm p-4 lg:p-6 border border-gray-100 hover:shadow-lg transition">
+                <div className="flex items-center justify-between">
+                  <div>
+                    <p className="text-xs sm:text-sm text-gray-600 mb-1">Completed</p>
+                    <p className="text-xl lg:text-2xl font-bold text-gray-900">{stats.completed}</p>
+                  </div>
+                  <div className="w-10 h-10 lg:w-12 lg:h-12 bg-purple-500 rounded-lg flex items-center justify-center">
+                    <Award className="w-5 h-5 lg:w-6 lg:h-6 text-white" />
+                  </div>
+                </div>
+              </div>
+
+              <div className="bg-white rounded-xl shadow-sm p-4 lg:p-6 border border-gray-100 hover:shadow-lg transition">
+                <div className="flex items-center justify-between">
+                  <div>
+                    <p className="text-xs sm:text-sm text-gray-600 mb-1">Total Revenue</p>
+                    <p className="text-xl lg:text-2xl font-bold text-gray-900">{formatCurrency(stats.revenue)}</p>
+                  </div>
+                  <div className="w-10 h-10 lg:w-12 lg:h-12 bg-green-600 rounded-lg flex items-center justify-center">
+                    <DollarSign className="w-5 h-5 lg:w-6 lg:h-6 text-white" />
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            {/* Charts Section */}
+            <div className="bg-white rounded-xl shadow-sm p-6 border border-gray-100 mb-8">
+              <div className="flex items-center justify-between mb-6">
+                <h2 className="text-xl font-bold text-gray-900">Analytics</h2>
                 <div className="flex gap-2">
-                  <button onClick={() => handlePageChange(currentPage - 1)} disabled={currentPage === 1} className="px-3 py-1 rounded bg-gray-200 text-gray-700 disabled:opacity-50">Prev</button>
-                  {Array.from({ length: totalPages }, (_, i) => (
-                    <button
-                      key={i + 1}
-                      onClick={() => handlePageChange(i + 1)}
-                      className={`px-3 py-1 rounded ${currentPage === i + 1 ? 'bg-blue-600 text-white' : 'bg-gray-100 text-gray-700'}`}
-                    >
-                      {i + 1}
-                    </button>
-                  ))}
-                  <button onClick={() => handlePageChange(currentPage + 1)} disabled={currentPage === totalPages} className="px-3 py-1 rounded bg-gray-200 text-gray-700 disabled:opacity-50">Next</button>
+                  <button
+                    onClick={() => setSelectedChart('trends')}
+                    className={`px-3 py-1 rounded-lg text-sm font-medium transition-colors ${
+                      selectedChart === 'trends' 
+                        ? 'bg-blue-100 text-blue-700' 
+                        : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
+                    }`}
+                  >
+                    <TrendingUp className="w-4 h-4 inline mr-1" />
+                    Trends
+                  </button>
+                  <button
+                    onClick={() => setSelectedChart('distribution')}
+                    className={`px-3 py-1 rounded-lg text-sm font-medium transition-colors ${
+                      selectedChart === 'distribution' 
+                        ? 'bg-blue-100 text-blue-700' 
+                        : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
+                    }`}
+                  >
+                    <PieChart className="w-4 h-4 inline mr-1" />
+                    Distribution
+                  </button>
+                  <button
+                    onClick={() => setSelectedChart('progress')}
+                    className={`px-3 py-1 rounded-lg text-sm font-medium transition-colors ${
+                      selectedChart === 'progress' 
+                        ? 'bg-blue-100 text-blue-700' 
+                        : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
+                    }`}
+                  >
+                    <Activity className="w-4 h-4 inline mr-1" />
+                    Progress
+                  </button>
                 </div>
               </div>
-              </>
-            )}
-            {filteredStudents.length === 0 && !loading && !error && (
-              <div className="text-center py-12">
-                <Users className="w-12 h-12 text-gray-400 mx-auto mb-4" />
-                <h3 className="text-lg font-medium text-gray-900 mb-2">No students found</h3>
-                <p className="text-gray-500">Try adjusting your search or filter criteria.</p>
+              <div className="h-80">
+                {selectedChart === 'trends' && (
+                  <ResponsiveContainer width="100%" height="100%">
+                    <LineChart data={enrollmentTrends}>
+                      <CartesianGrid strokeDasharray="3 3" />
+                      <XAxis dataKey="month" />
+                      <YAxis yAxisId="left" />
+                      <YAxis yAxisId="right" orientation="right" />
+                      <Tooltip 
+                        formatter={(value, name) => [
+                          name === 'enrollments' ? value : formatCurrency(Number(value)),
+                          name === 'enrollments' ? 'Enrollments' : 'Revenue'
+                        ]}
+                      />
+                      <Legend />
+                      <Line 
+                        yAxisId="left"
+                        type="monotone" 
+                        dataKey="enrollments" 
+                        stroke="#3B82F6" 
+                        strokeWidth={2}
+                        name="Enrollments"
+                      />
+                      <Line 
+                        yAxisId="right"
+                        type="monotone" 
+                        dataKey="revenue" 
+                        stroke="#10B981" 
+                        strokeWidth={2}
+                        name="Revenue"
+                      />
+                    </LineChart>
+                  </ResponsiveContainer>
+                )}
+                {selectedChart === 'distribution' && (
+                  <ResponsiveContainer width="100%" height="100%">
+                    <RechartsPieChart>
+                      <Pie
+                        data={[
+                          { name: 'Active', value: stats.active, color: '#10B981' },
+                          { name: 'Completed', value: stats.completed, color: '#3B82F6' },
+                          { name: 'Inactive', value: stats.inactive, color: '#F59E0B' },
+                          { name: 'Cancelled', value: stats.cancelled, color: '#EF4444' }
+                        ]}
+                        cx="50%"
+                        cy="50%"
+                        outerRadius={80}
+                        dataKey="value"
+                        label={({ name, value, percent }) => `${name}: ${value} (${(percent * 100).toFixed(0)}%)`}
+                      >
+                        {[
+                          { name: 'Active', value: stats.active, color: '#10B981' },
+                          { name: 'Completed', value: stats.completed, color: '#3B82F6' },
+                          { name: 'Inactive', value: stats.inactive, color: '#F59E0B' },
+                          { name: 'Cancelled', value: stats.cancelled, color: '#EF4444' }
+                        ].map((entry, index) => (
+                          <Cell key={`cell-${index}`} fill={entry.color} />
+                        ))}
+                      </Pie>
+                      <Tooltip formatter={(value) => [value, 'Students']} />
+                    </RechartsPieChart>
+                  </ResponsiveContainer>
+                )}
+                {selectedChart === 'progress' && (
+                  <ResponsiveContainer width="100%" height="100%">
+                    <BarChart data={[
+                      { range: '0-25%', students: filteredStudents.filter(s => s.progress <= 25).length },
+                      { range: '26-50%', students: filteredStudents.filter(s => s.progress > 25 && s.progress <= 50).length },
+                      { range: '51-75%', students: filteredStudents.filter(s => s.progress > 50 && s.progress <= 75).length },
+                      { range: '76-100%', students: filteredStudents.filter(s => s.progress > 75).length }
+                    ]}>
+                      <CartesianGrid strokeDasharray="3 3" />
+                      <XAxis dataKey="range" />
+                      <YAxis />
+                      <Tooltip formatter={(value) => [value, 'Students']} />
+                      <Bar dataKey="students" fill="#8B5CF6" />
+                    </BarChart>
+                  </ResponsiveContainer>
+                )}
               </div>
-            )}
-          </div>
-        </main>
-      </div>
-    </div>
-  );
-} 
+            </div>
+
+            {/* Filters and Search */}
+            <div className="bg-white rounded-xl shadow-sm p-6 border border-gray-100 mb-6">
+              <div className="flex flex-col lg:flex-row gap-4 items-start lg:items-center justify-between">
+                <div className="flex-1 max-w-md">
+                  <div className="relative">
+                    <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-4 h-4" />
+                    <input
+                      type="text"
+                      placeholder="Search students, courses..."
+                      value={searchTerm}
+                      onChange={(e) => setSearchTerm(e.target.value)}
+                      className="w-full pl-10 pr-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                    />
+                  </div>
+                </div>
+                <div className="flex items-center gap-3">
+                  <button
+                    onClick={() => setShowFilters(!showFilters)}
+                    className="flex items-center gap-2 px-4 py-2 bg-gray-100 text-gray-700 rounded-lg hover:bg-gray-200 transition-colors"
+                  >
+                    <Filter className="w-4 h-4" />
+                    Filters
+                  </button>
+                  <span className="text-sm text-gray-500">
+                    {filteredStudents.length} of {students.length} students
+                  </span>
+                </div>
+              </div>
+              {showFilters && (
+                <div className="mt-4 pt-4 border-t border-gray-200">
+                  <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 mb-1">Status</label>
+                      <select
+                        value={statusFilter}
+                        onChange={(e) => setStatusFilter(e.target.value)}
+                        className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                      >
+                        <option value="all">All Status</option>
+                        <option value="active">Active</option>
+                        <option value="completed">Completed</option>
+                        <option value="inactive">Inactive</option>
+                        <option value="cancelled">Cancelled</option>
+                      </select>
+                    </div>
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 mb-1">Course</label>
+                      <select
+                        value={courseFilter}
+                        onChange={(e) => setCourseFilter(e.target.value)}
+                        className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                      >
+                        <option value="all">All Courses</option>
+                        {uniqueCourses.map(course => (
+                          <option key={course} value={course}>{course}</option>
+                        ))}
+                      </select>
+                    </div>
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 mb-1">Date Range</label>
+                      <select
+                        value={dateFilter}
+                        onChange={(e) => setDateFilter(e.target.value)}
+                        className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                      >
+                        <option value="all">All Time</option>
+                        <option value="7d">Last 7 days</option>
+                        <option value="30d">Last 30 days</option>
+                        <option value="90d">Last 90 days</option>
+                      </select>
+                    </div>
+                  </div>
+                </div>
+              )}
+            </div>
+
+            {/* Students Table */}
+            <div className="bg-white rounded-xl shadow-sm border border-gray-100 overflow-hidden">
+              {loading ? (
+                <div className="text-center py-12 text-blue-600 font-semibold">Loading enrollments...</div>
+              ) : error ? (
+                <div className="text-center py-12 text-red-600 font-semibold">{error}</div>
+              ) : (
+                <>
+                <div className="overflow-x-auto">
+                  <table className="min-w-full divide-y divide-gray-200">
+                    <thead className="bg-gray-50">
+                      <tr>
+                        <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider cursor-pointer" onClick={() => handleSort('name')}>
+                          Student {sortBy === 'name' && (sortOrder === 'asc' ? '▲' : '▼')}
+                        </th>
+                        <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider cursor-pointer" onClick={() => handleSort('course')}>
+                          Course {sortBy === 'course' && (sortOrder === 'asc' ? '▲' : '▼')}
+                        </th>
+                        <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider cursor-pointer" onClick={() => handleSort('status')}>
+                          Status {sortBy === 'status' && (sortOrder === 'asc' ? '▲' : '▼')}
+                        </th>
+                        <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider cursor-pointer" onClick={() => handleSort('progress')}>
+                          Progress {sortBy === 'progress' && (sortOrder === 'asc' ? '▲' : '▼')}
+                        </th>
+                        <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider cursor-pointer" onClick={() => handleSort('enrollmentDate')}>
+                          Enrollment Date {sortBy === 'enrollmentDate' && (sortOrder === 'asc' ? '▲' : '▼')}
+                        </th>
+                        <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider cursor-pointer" onClick={() => handleSort('lastAccessed')}>
+                          Last Accessed {sortBy === 'lastAccessed' && (sortOrder === 'asc' ? '▲' : '▼')}
+                        </th>
+                        <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider cursor-pointer" onClick={() => handleSort('amountPaid')}>
+                          Amount Paid {sortBy === 'amountPaid' && (sortOrder === 'asc' ? '▲' : '▼')}
+                        </th>
+                        <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                          Actions
+                        </th>
+                      </tr>
+                    </thead>
+                    <tbody className="bg-white divide-y divide-gray-200">
+                      {paginatedStudents.map((student) => (
+                        <tr key={student.id} className="hover:bg-gray-50 transition-colors">
+                          <td className="px-6 py-4 whitespace-nowrap">
+                            <div className="flex items-center">
+                              <div className="w-8 h-8 bg-gray-200 rounded-full flex items-center justify-center mr-3">
+                                {student.avatar ? (
+                                  <img src={student.avatar} alt={student.name} className="w-full h-full rounded-full object-cover" />
+                                ) : (
+                                  <Users className="w-4 h-4 text-gray-500" />
+                                )}
+                              </div>
+                              <div>
+                                <div className="text-sm font-medium text-gray-900">{student.name}</div>
+                                <div className="text-sm text-gray-500">{student.email}</div>
+                              </div>
+                            </div>
+                          </td>
+                          <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
+                            {student.course}
+                          </td>
+                          <td className="px-6 py-4 whitespace-nowrap">
+                            <span className={`px-2 py-1 text-xs font-medium rounded-full ${getStatusColor(student.status)}`}>
+                              {student.status?.charAt(0).toUpperCase() + student.status?.slice(1)}
+                            </span>
+                          </td>
+                          <td className="px-6 py-4 whitespace-nowrap">
+                            <div className="flex items-center">
+                              <div className="w-16 bg-gray-200 rounded-full h-2 mr-2">
+                                <div
+                                  className={`h-2 rounded-full ${getProgressColor(student.progress)}`}
+                                  style={{ width: `${student.progress}%` }}
+                                />
+                              </div>
+                              <span className="text-sm text-gray-900">{student.progress}%</span>
+                            </div>
+                          </td>
+                          <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
+                            {student.enrollmentDate ? new Date(student.enrollmentDate).toLocaleDateString() : ''}
+                          </td>
+                          <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
+                            {student.lastAccessed ? new Date(student.lastAccessed).toLocaleDateString() : ''}
+                          </td>
+                          <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
+                            {formatCurrency(student.amountPaid)}
+                          </td>
+                          <td className="px-6 py-4 whitespace-nowrap text-sm font-medium">
+                            <div className="flex items-center gap-2">
+                              <button className="text-blue-600 hover:text-blue-900">
+                                <Eye className="w-4 h-4" />
+                              </button>
+                              <button className="text-green-600 hover:text-green-900">
+                                <MessageCircle className="w-4 h-4" />
+                              </button>
+                            </div>
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+                {/* Pagination Controls */}
+                <div className="flex justify-between items-center p-4 border-t bg-gray-50">
+                  <div className="text-sm text-gray-600">
+                    Page {currentPage} of {totalPages} ({sortedStudents.length} students)
+                  </div>
+                  <div className="flex gap-2">
+                    <button onClick={() => handlePageChange(currentPage - 1)} disabled={currentPage === 1} className="px-3 py-1 rounded bg-gray-200 text-gray-700 disabled:opacity-50">Prev</button>
+                    {Array.from({ length: totalPages }, (_, i) => (
+                      <button
+                        key={i + 1}
+                        onClick={() => handlePageChange(i + 1)}
+                        className={`px-3 py-1 rounded ${currentPage === i + 1 ? 'bg-blue-600 text-white' : 'bg-gray-100 text-gray-700'}`}
+                      >
+                        {i + 1}
+                      </button>
+                    ))}
+                    <button onClick={() => handlePageChange(currentPage + 1)} disabled={currentPage === totalPages} className="px-3 py-1 rounded bg-gray-200 text-gray-700 disabled:opacity-50">Next</button>
+                  </div>
+                </div>
+                </>
+              )}
+              {filteredStudents.length === 0 && !loading && !error && (
+                <div className="text-center py-12">
+                  <Users className="w-12 h-12 text-gray-400 mx-auto mb-4" />
+                  <h3 className="text-lg font-medium text-gray-900 mb-2">No students found</h3>
+                  <p className="text-gray-500">Try adjusting your search or filter criteria.</p>
+                </div>
+              )}
+            </div>
+          </main>
+        </div>
+      </>
+    );
+  } 

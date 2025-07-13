@@ -4,8 +4,7 @@ import { Copy, Share2, Gift } from 'lucide-react';
 import { supabase } from '../lib/supabase';
 import { useToast } from '../components/Auth/ToastContext';
 import { useAuth } from '../context/AuthContext';
-import { Header } from '../components/Layout/Header';
-import { Sidebar } from '../components/Layout/Sidebar';
+// Removed Sidebar and Header imports
 
 export default function ReferralsPage() {
   const { stats } = useGamification();
@@ -74,9 +73,9 @@ export default function ReferralsPage() {
 
   return (
     <div className="min-h-screen bg-gray-50 flex">
-      <Sidebar />
+      {/* Removed Sidebar */}
       <div className="flex-1 flex flex-col min-w-0">
-        <Header />
+        {/* Removed Header */}
         <main className="flex-1 p-4 lg:p-8 overflow-auto">
           <div className="max-w-4xl mx-auto">
             <div className="bg-gradient-to-r from-yellow-100 to-pink-100 rounded-2xl shadow-lg p-8 mb-8 flex flex-col items-center">

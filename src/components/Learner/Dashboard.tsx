@@ -35,30 +35,19 @@ export function LearnerDashboard({}: LearnerDashboardProps) {
   const coinBalance = user?.coins || 0;
 
   useEffect(() => {
-    const fetchUser = async () => {
-      const { data: authData } = await supabase.auth.getUser();
-      const id = authData?.user?.id;
-      setUserId(id);
-      if (id) {
-        const { data: profile } = await supabase
-          .from('users')
-          .select('has_seen_welcome_modal')
-          .eq('id', id)
-          .single();
-        setShowWelcomeModal(!profile?.has_seen_welcome_modal);
-      }
-    };
-    fetchUser();
-  }, []);
-
-  const handleCloseWelcomeModal = async () => {
-    setShowWelcomeModal(false);
-    if (userId) {
-      await supabase
-        .from('users')
-        .update({ has_seen_welcome_modal: true })
-        .eq('id', userId);
+    if (!user?.id) return;
+    const seenKey = `welcomeModalSeen_${user.id}`;
+    const hasSeen = localStorage.getItem(seenKey);
+    if (!hasSeen) {
+      setShowWelcomeModal(true);
     }
+  }, [user?.id]);
+
+  const handleCloseWelcomeModal = () => {
+    if (user?.id) {
+      localStorage.setItem(`welcomeModalSeen_${user.id}`, 'true');
+    }
+    setShowWelcomeModal(false);
   };
 
   // Fetch weekly referrals

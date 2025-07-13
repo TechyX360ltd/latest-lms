@@ -92,13 +92,10 @@ export default function AdminScheduleSessionPage() {
   // ...implement create/edit logic as needed...
 
   return (
-    <div className="max-w-6xl mx-auto w-full p-0">
+    <div className="w-full px-2 md:px-4 p-0">
       <h1 className="text-3xl font-bold text-gray-900 mb-6">Schedule a Live Session</h1>
-      <div className="bg-white rounded-2xl shadow-xl p-8 mb-10">
-        <h2 className="text-xl font-semibold mb-4">Schedule Live Session</h2>
-        {/* Pass courses and a callback to refresh sessions to the form */}
-        <ScheduleSessionForm courses={courses} onSessionCreated={() => window.location.reload()} />
-      </div>
+      {/* Place the form directly under the main title, no container or inner title */}
+      <ScheduleSessionForm courses={courses} onSessionCreated={() => window.location.reload()} />
 
       {/* Scheduled Sessions Table */}
       <div className="bg-white rounded-2xl shadow-xl p-6">

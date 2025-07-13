@@ -1,5 +1,5 @@
 import React, { useEffect, useRef } from 'react';
-import { NavLink } from 'react-router-dom';
+import { NavLink, Link } from 'react-router-dom';
 import { 
   Store, 
   Award, 
@@ -23,11 +23,45 @@ import {
   Gift,
   Tag,
   Star,
-  MessageCircle
+  MessageCircle,
+  Briefcase,
+  Shield
 } from 'lucide-react';
+import { useAuth } from '../../context/AuthContext';
+
+export const allAdminModules = [
+  { id: 'dashboard', label: 'Overview', icon: LayoutDashboard, path: '/admin/overview' },
+  { id: 'analytics', label: 'Analytics', icon: BarChart3, path: '/admin/analytics' },
+  { id: 'users', label: 'User Management', icon: Users, path: '/admin/users' },
+  { id: 'instructors', label: 'Instructor Management', icon: Users, path: '/admin/instructors' },
+  { id: 'courses', label: 'Course Management', icon: BookOpen, path: '/admin/courses' },
+  { id: 'categories', label: 'Categories', icon: FolderOpen, path: '/admin/categories' },
+  { id: 'job-board', label: 'Job Board', icon: Briefcase, path: '/admin/job-board' },
+  { id: 'progress-tracking', label: 'Progress Tracking', icon: Target, path: '/admin/progress-tracking' },
+  { id: 'payments', label: 'Payment Management', icon: CreditCard, path: '/admin/payments' },
+  { id: 'schedule-session', label: 'Schedule Sessions', icon: Calendar, path: '/admin/schedule-session' },
+  { id: 'store', label: 'Store Management', icon: Store, path: '/admin/store' },
+  { id: 'cashouts', label: 'Cashout Requests', icon: Gift, path: '/admin/cashouts' },
+  { id: 'badges', label: 'Badge Management', icon: Award, path: '/admin/badges' },
+  { id: 'moderation', label: 'Gamification Moderation', icon: ShieldCheck, path: '/admin/moderation' },
+  { id: 'live-support', label: 'Live Support', icon: MessageCircle, path: '/admin/live-support' },
+  { id: 'notifications', label: 'Notifications', icon: Bell, path: '/admin/notifications' },
+  { id: 'settings', label: 'Settings', icon: Settings, path: '/admin/settings' },
+  { id: 'coupons', label: 'Coupon Management', icon: Tag, path: '/admin/coupons' },
+  { id: 'ratings', label: 'Rating Management', icon: Star, path: '/admin/ratings' },
+  { id: 'referrals', label: 'Referral Management', icon: Gift, path: '/admin/referrals' },
+  { id: 'role-management', label: 'Role Management', icon: Shield, path: '/admin/role-management', superAdminOnly: true },
+];
 
 export function AdminSidebar() {
   const sidebarRef = useRef<HTMLDivElement>(null);
+  const { user } = useAuth(); // user.role, user.modules
+
+  // Extend user type to allow for super_admin and modules
+  type AdminUser = typeof user & { role?: string; modules?: string[] };
+  const adminUser = user as AdminUser;
+
+  if (!adminUser) return null;
 
   useEffect(() => {
     const sidebar = sidebarRef.current;
@@ -44,247 +78,34 @@ export function AdminSidebar() {
     };
   }, []);
 
+  const visibleModules =
+    adminUser.role === 'super_admin'
+      ? allAdminModules
+      : allAdminModules.filter(mod => adminUser.modules?.includes(mod.id));
+
   return (
     <aside ref={sidebarRef} className="w-64 h-full bg-white border-r border-gray-200 shadow-sm flex flex-col">
       <div className="px-6 py-6 flex items-center gap-2 text-2xl font-bold text-green-700">
         <LayoutDashboard className="w-7 h-7" /> Admin Panel
       </div>
       <nav className="flex-1 px-2 space-y-2 overflow-y-auto">
-        {/* Dashboard */}
-        <NavLink
-          to="/admin"
-          className={({ isActive }) =>
-            `flex items-center gap-3 px-4 py-2 rounded-lg font-medium transition-colors ${
-              isActive ? 'bg-green-100 text-green-700' : 'text-gray-700 hover:bg-gray-50'
-            }`
-          }
-        >
-          <LayoutDashboard className="w-5 h-5" /> Overview
-        </NavLink>
-
-        {/* Analytics */}
-        <NavLink
-          to="/admin/analytics"
-          className={({ isActive }) =>
-            `flex items-center gap-3 px-4 py-2 rounded-lg font-medium transition-colors ${
-              isActive ? 'bg-blue-100 text-blue-700' : 'text-gray-700 hover:bg-gray-50'
-            }`
-          }
-        >
-          <BarChart3 className="w-5 h-5" /> Analytics
-        </NavLink>
-
-        {/* User Management */}
-        <NavLink
-          to="/admin/users"
-          className={({ isActive }) =>
-            `flex items-center gap-3 px-4 py-2 rounded-lg font-medium transition-colors ${
-              isActive ? 'bg-purple-100 text-purple-700' : 'text-gray-700 hover:bg-gray-50'
-            }`
-          }
-        >
-          <Users className="w-5 h-5" /> User Management
-        </NavLink>
-
-        {/* Instructor Management */}
-        <NavLink
-          to="/admin/instructors"
-          className={({ isActive }) =>
-            `flex items-center gap-3 px-4 py-2 rounded-lg font-medium transition-colors ${
-              isActive ? 'bg-orange-100 text-orange-700' : 'text-gray-700 hover:bg-gray-50'
-            }`
-          }
-        >
-          <Users className="w-5 h-5" /> Instructor Management
-        </NavLink>
-
-        {/* Course Management */}
-        <NavLink
-          to="/admin/courses"
-          className={({ isActive }) =>
-            `flex items-center gap-3 px-4 py-2 rounded-lg font-medium transition-colors ${
-              isActive ? 'bg-indigo-100 text-indigo-700' : 'text-gray-700 hover:bg-gray-50'
-            }`
-          }
-        >
-          <BookOpen className="w-5 h-5" /> Course Management
-        </NavLink>
-
-        <NavLink
-          to="/admin/categories"
-          className={({ isActive }) =>
-            `flex items-center gap-3 px-4 py-2 rounded-lg font-medium transition-colors ${
-              isActive ? 'bg-indigo-100 text-indigo-700' : 'text-gray-700 hover:bg-gray-50'
-            }`
-          }
-        >
-          <FolderOpen className="w-5 h-5" /> Categories
-        </NavLink>
-
-        {/* Progress Tracking */}
-        <NavLink
-          to="/admin/progress-tracking"
-          className={({ isActive }) =>
-            `flex items-center gap-3 px-4 py-2 rounded-lg font-medium transition-colors ${
-              isActive ? 'bg-teal-100 text-teal-700' : 'text-gray-700 hover:bg-gray-50'
-            }`
-          }
-        >
-          <Target className="w-5 h-5" /> Progress Tracking
-        </NavLink>
-
-        {/* Payment Management */}
-        <NavLink
-          to="/admin/payments"
-          className={({ isActive }) =>
-            `flex items-center gap-3 px-4 py-2 rounded-lg font-medium transition-colors ${
-              isActive ? 'bg-emerald-100 text-emerald-700' : 'text-gray-700 hover:bg-gray-50'
-            }`
-          }
-        >
-          <CreditCard className="w-5 h-5" /> Payment Management
-        </NavLink>
-
-        {/* Sessions */}
-        <NavLink
-          to="/admin/schedule-session"
-          className={({ isActive }) =>
-            `flex items-center gap-3 px-4 py-2 rounded-lg font-medium transition-colors ${
-              isActive ? 'bg-violet-100 text-violet-700' : 'text-gray-700 hover:bg-gray-50'
-            }`
-          }
-        >
-          <Calendar className="w-5 h-5" /> Schedule Sessions
-        </NavLink>
-
-        {/* Gamification Section */}
-        <div className="pt-4 pb-2">
-          <h3 className="px-4 text-xs font-semibold text-gray-500 uppercase tracking-wider">
-            Gamification
-          </h3>
-        </div>
-
-        <NavLink
-          to="/admin/store"
-          className={({ isActive }) =>
-            `flex items-center gap-3 px-4 py-2 rounded-lg font-medium transition-colors ${
-              isActive ? 'bg-green-100 text-green-700' : 'text-gray-700 hover:bg-gray-50'
-            }`
-          }
-        >
-          <Store className="w-5 h-5" /> Store Management
-        </NavLink>
-
-        <NavLink
-          to="/admin/badges"
-          className={({ isActive }) =>
-            `flex items-center gap-3 px-4 py-2 rounded-lg font-medium transition-colors ${
-              isActive ? 'bg-yellow-100 text-yellow-700' : 'text-gray-700 hover:bg-gray-50'
-            }`
-          }
-        >
-          <Award className="w-5 h-5" /> Badge Management
-        </NavLink>
-
-        <NavLink
-          to="/admin/moderation"
-          className={({ isActive }) =>
-            `flex items-center gap-3 px-4 py-2 rounded-lg font-medium transition-colors ${
-              isActive ? 'bg-blue-100 text-blue-700' : 'text-gray-700 hover:bg-gray-50'
-            }`
-          }
-        >
-          <ShieldCheck className="w-5 h-5" /> Gamification Moderation
-        </NavLink>
-
-        {/* System Section */}
-        <div className="pt-4 pb-2">
-          <h3 className="px-4 text-xs font-semibold text-gray-500 uppercase tracking-wider">
-            System
-          </h3>
-        </div>
-
-        {/* Live Support */}
-        <NavLink
-          to="/admin/live-support"
-          className={({ isActive }) =>
-            `flex items-center gap-3 px-4 py-2 rounded-lg font-medium transition-colors ${
-              isActive ? 'bg-pink-100 text-pink-700' : 'text-gray-700 hover:bg-gray-50'
-            }`
-          }
-        >
-          <MessageCircle className="w-5 h-5" /> Live Support
-        </NavLink>
-
-        {/* Notifications */}
-        <NavLink
-          to="/admin/notifications"
-          className={({ isActive }) =>
-            `flex items-center gap-3 px-4 py-2 rounded-lg font-medium transition-colors ${
-              isActive ? 'bg-red-100 text-red-700' : 'text-gray-700 hover:bg-gray-50'
-            }`
-          }
-        >
-          <Bell className="w-5 h-5" /> Notifications
-        </NavLink>
-
-        {/* Settings */}
-        <NavLink
-          to="/admin/settings"
-          className={({ isActive }) =>
-            `flex items-center gap-3 px-4 py-2 rounded-lg font-medium transition-colors ${
-              isActive ? 'bg-gray-100 text-gray-700' : 'text-gray-700 hover:bg-gray-50'
-            }`
-          }
-        >
-          <Settings className="w-5 h-5" /> Settings
-        </NavLink>
-
-        {/* Coupon Management */}
-        <NavLink
-          to="/admin/coupons"
-          className={({ isActive }) =>
-            `flex items-center gap-3 px-4 py-2 rounded-lg font-medium transition-colors ${
-              isActive ? 'bg-orange-100 text-orange-700' : 'text-gray-700 hover:bg-gray-50'
-            }`
-          }
-        >
-          <Tag className="w-5 h-5" /> Coupon Management
-        </NavLink>
-
-        {/* Rating Management */}
-        <NavLink
-          to="/admin/ratings"
-          className={({ isActive }) =>
-            `flex items-center gap-3 px-4 py-2 rounded-lg font-medium transition-colors ${
-              isActive ? 'bg-yellow-100 text-yellow-700' : 'text-gray-700 hover:bg-gray-50'
-            }`
-          }
-        >
-          <Star className="w-5 h-5" /> Rating Management
-        </NavLink>
-
-        {/* Referral Management */}
-        <NavLink
-          to="/admin/referrals"
-          className={({ isActive }) =>
-            `flex items-center gap-3 px-4 py-2 rounded-lg font-medium transition-colors ${
-              isActive ? 'bg-pink-100 text-pink-700' : 'text-gray-700 hover:bg-gray-50'
-            }`
-          }
-        >
-          <Gift className="w-5 h-5" /> Referral Management
-        </NavLink>
-
-        <li>
-          <a
-            href="/admin/certificates"
-            className="flex items-center gap-3 px-4 py-2 rounded-lg hover:bg-blue-50 transition-colors text-gray-700"
-          >
-            <svg className="w-5 h-5 text-yellow-500" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" d="M15 17h5l-1.405-1.405A2.032 2.032 0 0118 14.158V11a6.002 6.002 0 00-4-5.659V4a2 2 0 10-4 0v1.341C7.67 6.165 6 8.388 6 11v3.159c0 .538-.214 1.055-.595 1.436L4 17h5m6 0v1a3 3 0 11-6 0v-1m6 0H9" /></svg>
-            Certificate Management
-          </a>
-        </li>
+        {visibleModules.map(item => {
+          if (item.superAdminOnly && adminUser.role !== 'super_admin') return null;
+          return (
+            <NavLink
+              key={item.id}
+              to={item.path}
+              className={({ isActive }) =>
+                `flex items-center gap-3 px-4 py-2 rounded-lg font-medium transition-colors ${
+                  isActive ? 'bg-green-100 text-green-700' : 'text-gray-700 hover:bg-gray-50'
+                }`
+              }
+            >
+              <item.icon className="w-5 h-5" />
+              {item.label}
+            </NavLink>
+          );
+        })}
       </nav>
     </aside>
   );

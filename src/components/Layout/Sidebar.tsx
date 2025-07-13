@@ -19,10 +19,12 @@ import {
   UserCheck,
   Calendar as CalendarIcon,
   Trophy,
-  Link as LinkIcon
+  Link as LinkIcon,
+  Gift,
+  Briefcase
 } from 'lucide-react';
 import { useAuth } from '../../context/AuthContext';
-import { useNavigate, useLocation } from 'react-router-dom';
+import { useNavigate, useLocation, Link } from 'react-router-dom';
 
 interface SidebarMenuItem {
   id: string;
@@ -43,6 +45,7 @@ export function Sidebar({}: SidebarProps) {
     { id: 'dashboard', label: 'Dashboard', icon: Home, path: '/dashboard' },
     { id: 'courses', label: 'My Courses', icon: BookOpen, path: '/dashboard/courses' },
     { id: 'browse', label: 'Browse Courses', icon: FolderOpen, path: '/dashboard/browse' },
+    { id: 'job-board', label: 'Job Board', icon: Briefcase, path: '/dashboard/job-board' },
     { id: 'notifications', label: 'Notifications', icon: Bell, path: '/dashboard/notifications' },
     { id: 'certificates', label: 'My Certificates', icon: Award, path: '/dashboard/certificates' },
     { id: 'progress', label: 'Progress', icon: BarChart3, path: '/dashboard/progress' },
@@ -50,6 +53,7 @@ export function Sidebar({}: SidebarProps) {
     { id: 'gamification', label: 'Gamification', icon: Trophy, path: '/dashboard/gamification' },
     { id: 'referrals', label: 'My Referrals', icon: LinkIcon, path: '/dashboard/referrals' },
     { id: 'profile', label: 'Profile', icon: User, path: '/dashboard/profile' },
+    { id: 'my-store-items', label: 'My Store Items', icon: Gift, path: '/dashboard/my-store-items' },
   ];
 
   const adminMenuItems: SidebarMenuItem[] = [
@@ -74,6 +78,7 @@ export function Sidebar({}: SidebarProps) {
     { id: 'my-courses', label: 'My Courses', icon: BookOpen, path: '/instructor/courses' },
     { id: 'enrollments', label: 'Enrollments', icon: Users, path: '/instructor/enrollments' },
     { id: 'earnings', label: 'Earnings', icon: CreditCard, path: '/instructor/earnings' },
+    { id: 'job-board', label: 'Job Board', icon: Briefcase, path: '/instructor/job-board' },
     { id: 'my-events', label: 'My Events', icon: CalendarIcon, path: '/instructor/events' },
     { id: 'schedule-session', label: 'Schedule Session', icon: CalendarIcon, path: '/instructor/schedule-session' },
     { id: 'notifications', label: 'Notifications', icon: Bell, path: '/instructor/notifications' },
@@ -143,18 +148,6 @@ export function Sidebar({}: SidebarProps) {
         </div>
 
         <nav className="p-4">
-          {/* Back to My Courses link for learners */}
-          {user?.role !== 'admin' && user?.role !== 'instructor' && (
-            <div className="mb-4">
-              <button
-                onClick={() => handleMenuItemClick('/dashboard/courses')}
-                className="w-full flex items-center gap-2 px-3 py-2 rounded-lg bg-blue-100 text-blue-700 font-semibold hover:bg-blue-200 transition-all duration-200 mb-2"
-              >
-                <BookOpen className="w-5 h-5" />
-                Back to My Courses
-              </button>
-            </div>
-          )}
           <ul className="space-y-2">
             {menuItems.map((item) => {
               const Icon = item.icon;

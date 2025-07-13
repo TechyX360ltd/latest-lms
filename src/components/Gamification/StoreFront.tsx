@@ -21,6 +21,7 @@ import { STORE_ITEM_TYPES } from '../../types/gamification';
 import { GiftModal } from './GiftModal';
 import Confetti from 'react-confetti';
 import { useAuth } from '../../context/AuthContext';
+import { Link } from 'react-router-dom';
 
 export function StoreFront() {
   const { user } = useAuth();
@@ -174,6 +175,16 @@ export function StoreFront() {
           <div className="text-sm text-gray-600">Available Coins</div>
         </div>
       </div>
+      {/* My Store Items Button */}
+      <div className="flex justify-end mb-4">
+        <Link
+          to="/dashboard/my-store-items"
+          className="inline-flex items-center gap-2 px-4 py-2 bg-gradient-to-r from-pink-500 to-yellow-400 text-white rounded-lg font-semibold shadow hover:scale-105 transition-transform"
+        >
+          <Gift className="w-5 h-5" />
+          My Store Items
+        </Link>
+      </div>
 
       {/* Store Info */}
       <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
@@ -240,15 +251,27 @@ export function StoreFront() {
       {/* Items Grid */}
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
         {filteredItems.map((item) => {
-          const owned = isItemOwned(item.id);
           const canAfford = (stats?.coins || 0) >= item.price;
-          
           return (
             <div
               key={item.id}
               className={`relative min-h-[440px] flex flex-col justify-between items-center p-6 rounded-3xl shadow-xl border-4 border-transparent bg-gradient-to-br from-pink-100 via-yellow-50 to-blue-100 transition-transform duration-300 hover:scale-105 hover:shadow-2xl hover:border-yellow-300 cursor-pointer group`}
-              onClick={() => !owned && canAfford && setSelectedItem(item)}
+              onClick={() => canAfford && setSelectedItem(item)}
             >
+              {/* Gift Icon/Button */}
+              <button
+                className="absolute top-4 right-4 bg-pink-200 hover:bg-pink-300 rounded-full p-2 shadow-md z-10"
+                title="Gift this item to another user"
+                onClick={e => {
+                  e.stopPropagation();
+                  setGiftType('item');
+                  setGiftItemId(item.id);
+                  setGiftModalOpen(true);
+                }}
+              >
+                <Gift className="w-6 h-6 text-pink-700" />
+              </button>
+
               {/* Icon Badge */}
               <div className="flex flex-col items-center w-full">
                 <div className="relative flex items-center justify-center w-24 h-24 mb-4 rounded-full bg-white shadow-lg border-4 border-yellow-200 group-hover:scale-110 transition-transform duration-300">
@@ -287,15 +310,15 @@ export function StoreFront() {
 
               {/* Status */}
               <div className="mt-2 text-lg font-bold">
-                {owned ? (
-                  <span className="text-green-600 flex items-center gap-1">✅ Owned</span>
-                ) : canAfford ? (
+                {canAfford ? (
                   <span className="text-blue-600 flex items-center gap-1">🪙 Available</span>
-                ) : null}
+                ) : (
+                  <span className="text-gray-500 flex items-center gap-1">Not enough coins</span>
+                )}
               </div>
 
-              {/* Quick Purchase Button for Affordable Items */}
-              {!owned && canAfford && (
+              {/* Purchase Button for Affordable Items */}
+              {canAfford && (
                 <button
                   onClick={(e) => {
                     e.stopPropagation();
@@ -309,7 +332,7 @@ export function StoreFront() {
               )}
 
               {/* Earn More Coins Button for Unaffordable Items */}
-              {!owned && !canAfford && (
+              {!canAfford && (
                 <button
                   onClick={(e) => {
                     e.stopPropagation();
@@ -477,7 +500,8 @@ export function StoreFront() {
         open={giftModalOpen}
         onClose={() => setGiftModalOpen(false)}
         giftType={giftType}
-        itemId={giftType === 'item' ? giftItemId : undefined}
+        itemId={giftItemId}
+        storeItems={storeItems}
       />
     </div>
   );

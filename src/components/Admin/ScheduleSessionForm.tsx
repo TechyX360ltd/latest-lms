@@ -177,7 +177,7 @@ export default function ScheduleSessionForm({ courses, onSessionCreated }: Sched
   };
 
   return (
-    <div className="bg-white rounded-xl shadow p-6 border border-gray-100 h-full w-full mx-4 md:mx-8">
+    <div className="bg-white rounded-xl shadow p-6 border border-gray-100 h-full w-full max-w-4xl mx-auto">
       <h2 className="text-xl font-bold mb-6">Schedule Live Session</h2>
       <form onSubmit={handleSubmit} className="grid grid-cols-1 md:grid-cols-2 gap-6">
         {/* Course - full width */}

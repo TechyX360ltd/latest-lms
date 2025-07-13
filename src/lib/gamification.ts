@@ -273,6 +273,17 @@ export class GamificationService {
         if (stockError) throw stockError;
       }
 
+      // Insert a gift record for the buyer
+      const { error: giftError } = await supabase.from('gifts').insert({
+        recipient_id: userId,
+        sender_id: userId,
+        coin_value: item.price,
+        cashed_out: false,
+        created_at: new Date().toISOString(),
+        gift_type: 'store_purchase',
+      });
+      if (giftError) console.error('Gift insert error:', giftError);
+
       return purchase;
     } catch (error) {
       console.error('Failed to purchase item:', error);
@@ -492,5 +503,34 @@ export class GamificationService {
       `Purchased ${itemName}`,
       { item_id: itemId }
     );
+  }
+
+  /**
+   * Get user's gifting history (sent and received) with pagination
+   */
+  static async getUserGiftingHistory(userId: string, options?: { type?: 'sent' | 'received', sort?: 'asc' | 'desc', page?: number, pageSize?: number }) {
+    const { type, sort, page = 1, pageSize = 10 } = options || {};
+    const from = (page - 1) * pageSize;
+    const to = from + pageSize - 1;
+    let query = supabase
+      .from('gifts')
+      .select(`
+        *,
+        item:store_items(*),
+        sender:users!gifts_sender_id_fkey(id, first_name, last_name, email),
+        recipient:users!gifts_recipient_id_fkey(id, first_name, last_name, email)
+      `, { count: 'exact' })
+      .order('sent_at', { ascending: sort === 'asc' })
+      .range(from, to);
+    if (type === 'sent') {
+      query = query.eq('sender_id', userId);
+    } else if (type === 'received') {
+      query = query.eq('recipient_id', userId);
+    } else {
+      query = query.or(`sender_id.eq.${userId},recipient_id.eq.${userId}`);
+    }
+    const { data, error, count } = await query;
+    if (error) throw error;
+    return { data: data || [], total: count || 0 };
   }
 } 

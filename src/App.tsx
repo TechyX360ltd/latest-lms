@@ -13,7 +13,7 @@ import { Certificates } from './components/Learner/Certificates';
 import { Progress } from './components/Learner/Progress';
 import { Profile } from './components/Learner/Profile';
 import { LearnerNotificationCenter } from './components/Learner/NotificationCenter';
-import { AdminOverview } from './components/Admin/Overview';
+import AdminOverview from './components/Admin/Overview';
 import { UserManagement } from './components/Admin/UserManagement';
 import { CourseManagement } from './components/Admin/CourseManagement';
 import { SchoolManagement } from './components/Admin/SchoolManagement';
@@ -59,6 +59,12 @@ import InstructorManagement from './components/Admin/InstructorManagement';
 import AIChatWidget from './components/AIChatWidget';
 import AdminLiveSupport from './components/Admin/AdminLiveSupport';
 import CertificateManagementPage from './pages/CertificateManagementPage';
+import InstructorLayout from './components/Instructor/InstructorLayout';
+import CashoutRequests from './components/Admin/CashoutRequests';
+import MyStoreItemsPage from './pages/MyStoreItemsPage';
+import JobBoardPage from './pages/JobBoardPage';
+import AdminJobBoardPage from './pages/AdminJobBoardPage';
+import AdminRoleManagementPage from './pages/AdminRoleManagementPage';
 
 function AuthPage() {
   const [isLogin, setIsLogin] = useState(true);
@@ -71,7 +77,6 @@ function AuthPage() {
       <div className="w-full max-w-md">
         {isLogin ? (
           <LoginForm
-            onToggleForm={() => setIsLogin(false)}
             formData={formData}
             setFormData={setFormData}
             error={error}
@@ -80,7 +85,7 @@ function AuthPage() {
             setShowPassword={setShowPassword}
           />
         ) : (
-          <RegisterForm onToggleForm={() => setIsLogin(true)} />
+          <RegisterForm />
         )}
       </div>
     </div>
@@ -143,6 +148,10 @@ function DashboardLayout() {
 function ProtectedRoute({ children, allowedRoles }: { children: React.ReactNode, allowedRoles: string[] }) {
   const { isAuthenticated, user, isLoading } = useAuth();
 
+  // Debug logging
+  console.log('ProtectedRoute:', { isAuthenticated, user, isLoading, allowedRoles });
+  console.log('user.role:', user?.role);
+
   if (isLoading) {
     // Show a loading spinner or splash screen
     return (
@@ -177,18 +186,37 @@ function AdminLayout() {
   );
 }
 
+// 1. Remove 'super_admin' from learner and instructor dashboard allowedRoles
+// 2. Ensure only 'admin' and 'super_admin' can access /admin routes
+// 3. Redirect super_admin users to /admin/overview after login
+// 4. Sidebar logic is already handled in AdminSidebar
+
+// Update the root route to redirect based on user role
 function AppContent() {
   // Provide minimal state for LoginForm props
   const [loginFormData, setLoginFormData] = useState({ email: '', password: '' });
   const [loginError, setLoginError] = useState('');
   const [showPassword, setShowPassword] = useState(false);
   const handleToggleForm = () => {};
-  const { user } = useAuth();
+  const { user, isLoading } = useAuth();
+
+  if (isLoading) {
+    return (
+      <div className="flex items-center justify-center h-screen">
+        <div className="animate-spin h-10 w-10 border-b-2 border-blue-500 rounded-full"></div>
+      </div>
+    );
+  }
 
   return (
     <Router>
       <Routes>
-        <Route path="/" element={<Navigate to="/login" replace />} />
+        <Route path="/" element={
+          user?.role === 'super_admin' ? <Navigate to="/admin/overview" replace /> :
+          user?.role === 'admin' ? <Navigate to="/admin/overview" replace /> :
+          user?.role === 'instructor' ? <Navigate to="/instructor/dashboard" replace /> :
+          <Navigate to="/dashboard" replace />
+        } />
         <Route
           path="/login"
           element={
@@ -215,114 +243,44 @@ function AppContent() {
 
         {/* Instructor Routes */}
         <Route
-          path="/instructor/dashboard"
+          path="/instructor"
           element={
             <ProtectedRoute allowedRoles={['instructor']}>
-              <InstructorDashboard />
+              <InstructorLayout />
             </ProtectedRoute>
           }
-        />
-        <Route
-          path="/instructor/profile"
-          element={
-            <ProtectedRoute allowedRoles={['instructor']}>
-              <InstructorProfile />
-            </ProtectedRoute>
-          }
-        />
+        >
+          <Route path="dashboard" element={<InstructorDashboard />} />
+          <Route path="courses" element={<InstructorMyCourses />} />
+          <Route path="profile" element={<InstructorProfile />} />
+          <Route path="enrollments" element={<Enrollments />} />
+          <Route path="create-course" element={<CreateCourse />} />
+          <Route path="earnings" element={<Earnings />} />
+          <Route path="notifications" element={<InstructorNotifications />} />
+          <Route path="referrals" element={<ReferralsPage />} />
+          <Route path="reviews" element={<MyReviews />} />
+          <Route path="events" element={<AdminEventsPage />} />
+          <Route path="schedule-session" element={<InstructorScheduleSessionPage />} />
+          <Route path="job-board" element={<JobBoardPage />} />
+          <Route path="gamification" element={<InstructorGamificationDashboard />} />
+        </Route>
         {/* Public Instructor Profile Route */}
         <Route
           path="/instructor/:instructorId"
           element={<InstructorProfilePage />}
-        />
-        <Route
-          path="/instructor/courses"
-          element={
-            <ProtectedRoute allowedRoles={['instructor']}>
-              <InstructorMyCourses />
-            </ProtectedRoute>
-          }
-        />
-        <Route
-          path="/instructor/enrollments"
-          element={
-            <ProtectedRoute allowedRoles={['instructor']}>
-              <Enrollments />
-            </ProtectedRoute>
-          }
-        />
-        <Route
-          path="/instructor/create-course"
-          element={
-            <ProtectedRoute allowedRoles={['instructor']}>
-              <CreateCourse />
-            </ProtectedRoute>
-          }
-        />
-        <Route
-          path="/instructor/earnings"
-          element={
-            <ProtectedRoute allowedRoles={['instructor']}>
-              <Earnings />
-            </ProtectedRoute>
-          }
-        />
-        <Route
-          path="/instructor/notifications"
-          element={
-            <ProtectedRoute allowedRoles={['instructor']}>
-              <InstructorNotifications />
-            </ProtectedRoute>
-          }
-        />
-        <Route
-          path="/instructor/referrals"
-          element={
-            <ProtectedRoute allowedRoles={['instructor']}>
-              <ReferralsPage />
-            </ProtectedRoute>
-          }
-        />
-        <Route
-          path="/instructor/reviews"
-          element={
-            <ProtectedRoute allowedRoles={['instructor']}>
-              <MyReviews />
-            </ProtectedRoute>
-          }
-        />
-        <Route
-          path="/instructor/events"
-          element={
-            <ProtectedRoute allowedRoles={['instructor']}>
-              <AdminEventsPage />
-            </ProtectedRoute>
-          }
-        />
-        <Route
-          path="/instructor/schedule-session"
-          element={
-            <ProtectedRoute allowedRoles={['instructor']}>
-              <InstructorScheduleSessionPage />
-            </ProtectedRoute>
-          }
-        />
-        <Route
-          path="/instructor/gamification"
-          element={
-            <ProtectedRoute allowedRoles={['instructor']}>
-              <InstructorGamificationDashboard />
-            </ProtectedRoute>
-          }
         />
 
         {/* Learner Dashboard Routes */}
         <Route
           path="/dashboard"
           element={
-            <ProtectedRoute allowedRoles={['learner', 'instructor']}>
-              <DashboardLayout />
-            </ProtectedRoute>
+            user?.role === 'super_admin'
+              ? <Navigate to="/admin/overview" replace />
+              : (
+                <ProtectedRoute allowedRoles={['learner', 'instructor']}>
+                  <DashboardLayout />
+                </ProtectedRoute>
+              )
           }
         >
           <Route index element={<LearnerDashboard />} />
@@ -335,13 +293,15 @@ function AppContent() {
           <Route path="calendar" element={<LearnerCalendarPage />} />
           <Route path="gamification" element={<GamificationDashboard />} />
           <Route path="referrals" element={<ReferralsPage />} />
+          <Route path="job-board" element={<JobBoardPage />} />
+          <Route path="/dashboard/my-store-items" element={<MyStoreItemsPage />} />
         </Route>
 
         {/* Admin Dashboard Routes */}
         <Route
           path="/admin"
           element={
-            <ProtectedRoute allowedRoles={['admin']}>
+            <ProtectedRoute allowedRoles={['admin', 'super_admin']}>
               <AdminLayout />
             </ProtectedRoute>
           }
@@ -354,6 +314,7 @@ function AppContent() {
           <Route path="progress-tracking" element={<ProgressTracking />} />
           <Route path="notifications" element={<NotificationCenter />} />
           <Route path="categories" element={<CategoryManagement />} />
+          <Route path="job-board" element={<AdminJobBoardPage />} />
           <Route path="payments" element={<PaymentManagement />} />
           <Route path="analytics" element={<Analytics />} />
           <Route path="settings" element={<Settings />} />
@@ -367,16 +328,25 @@ function AppContent() {
           <Route path="ratings" element={<RatingManagement />} />
           <Route path="rating-test" element={<RatingTest />} />
           <Route path="referrals" element={<AdminReferralsPage />} />
+          <Route path="cashouts" element={<CashoutRequests />} />
           <Route
             path="instructors"
             element={
-              <ProtectedRoute allowedRoles={['admin']}>
+              <ProtectedRoute allowedRoles={['admin', 'super_admin']}>
                 <InstructorManagement />
               </ProtectedRoute>
             }
           />
           <Route path="live-support" element={<AdminLiveSupport />} />
           <Route path="/admin/certificates" element={<CertificateManagementPage />} />
+          <Route
+            path="role-management"
+            element={
+              <ProtectedRoute allowedRoles={['super_admin']}>
+                <AdminRoleManagementPage />
+              </ProtectedRoute>
+            }
+          />
         </Route>
 
         {/* Course Viewer Route */}
@@ -386,7 +356,7 @@ function AppContent() {
         <Route
           path="/gamification"
           element={
-            <ProtectedRoute allowedRoles={['learner', 'instructor']}>
+            <ProtectedRoute allowedRoles={['learner', 'instructor', 'super_admin']}>
               <GamificationDashboard />
             </ProtectedRoute>
           }
