@@ -187,8 +187,8 @@ export const CertificateDownload: React.FC<CertificateDownloadProps> = ({
       .eq('course_id', courseId);
     if (lessonsError || !lessons) {
       alert('Could not fetch lessons for this course.');
-      return;
-    }
+        return;
+      }
     // Fetch all notes for the user and lessons in this course
     const lessonIds = lessons.map((l: any) => l.id);
     const { data: notes, error: notesError } = await supabase

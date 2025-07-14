@@ -416,21 +416,38 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
               first_name: userData.firstName,
               last_name: userData.lastName,
               role: userData.role,
-              // Add any other metadata fields if needed
             }
           }
         });
-        if (authError) throw authError;
+
+        if (authError) {
+          let msg = 'Registration failed. Please try again.';
+          if (
+            authError.message?.toLowerCase().includes('already registered') ||
+            authError.message?.toLowerCase().includes('duplicate') ||
+            authError.message?.toLowerCase().includes('23505')
+          ) {
+            msg = 'This email is already registered. Please log in or use a different email.';
+          }
+          alert(msg);
+          throw authError;
+        }
         if (!authData.user) throw new Error('Auth signup failed, no user returned');
 
         // 2. Insert user profile into users table
         const userPayload = {
-          id: authData.user.id, // Use UUID from Auth
+          id: authData.user.id,
+          email: userData.email,
+          role: userData.role,
               first_name: userData.firstName,
               last_name: userData.lastName,
-              email: userData.email,
+          points: 0,
+          coins: 0,
+          current_streak: 0,
+          longest_streak: 0,
+          referral_code: crypto.randomUUID(),
+          verification_status: 'unverified',
           phone: userData.phone || '',
-              role: userData.role,
           bio: userData.bio || '',
           location: userData.location || '',
           occupation: userData.occupation || '',
@@ -440,7 +457,6 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
           expertise: userData.role === 'instructor' ? userData.expertise || '' : '',
               is_approved: userData.role === 'instructor' ? false : null,
           created_at: new Date().toISOString(),
-          // Add any other NOT NULL fields here with default values if needed
         };
         console.log('User insert payload:', userPayload);
         const { error: userError } = await supabase
@@ -448,7 +464,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
           .insert(userPayload);
         if (userError) {
           console.error('User profile insert error:', userError);
-          // Optionally: delete the Auth user here to avoid orphaned Auth records
+          alert(JSON.stringify(userError, null, 2)); // Show full error details
           throw userError;
         }
         dispatch({ type: 'SET_LOADING', payload: false });
@@ -475,10 +491,19 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       dispatch({ type: 'SET_LOADING', payload: false });
       return;
     } catch (error) {
-      console.error('Registration error:', error);
-      if (error && error.message) alert(error.message);
+      console.error('Full registration error:', error); // Log the full error object for debugging
+      let msg = 'Registration failed. Please try again.';
+      if (
+        error?.code === '23505' ||
+        error?.message?.toLowerCase().includes('duplicate key value') ||
+        error?.message?.toLowerCase().includes('already registered') ||
+        error?.message?.toLowerCase().includes('duplicate')
+      ) {
+        msg = 'This email is already registered. Please log in or use a different email.';
+      }
+      alert(msg);
       dispatch({ type: 'SET_LOADING', payload: false });
-      throw new Error('Registration failed. Please try again.');
+      throw new Error(msg);
     }
   };
 

@@ -793,12 +793,12 @@ export function CourseViewer() {
               onClose={() => setShowCertificateModal(false)}
             />
             <div className="flex justify-center gap-4 mt-6">
-              <button
+            <button
                 className="px-6 py-3 bg-blue-600 text-white rounded-lg font-semibold shadow hover:bg-blue-700 transition"
-                onClick={() => setShowCertificateModal(false)}
-              >
-                Close
-              </button>
+              onClick={() => setShowCertificateModal(false)}
+            >
+              Close
+            </button>
             </div>
           </div>
         </div>
