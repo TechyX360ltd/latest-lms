@@ -606,21 +606,45 @@ export function useCourses() {
   const [courses, setCourses] = useState<Course[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const { user } = useAuth();
 
   useEffect(() => {
     const fetchCourses = async () => {
       setLoading(true);
       setError(null);
       try {
-        // Always fetch all courses from Supabase backend
+        // Temporary workaround: fetch from user_courses and join course
+        if (!user?.id) {
+          setCourses([]);
+          setLoading(false);
+          return;
+        }
         const { data, error } = await supabase
-          .from('courses')
-          .select('*');
+          .from('user_courses')
+          .select('*, course:course_id(*)')
+          .eq('user_id', user.id);
+        console.log('[useCourses] user_courses data:', data);
         if (error) {
           setError(error.message);
           setCourses([]);
         } else {
-          setCourses(keysToCamel(data) as Course[]);
+          // Extract the joined course objects and preserve user_course fields
+          const joinedCourses = await Promise.all((data || [])
+            .map(async (uc: any) => {
+              // Count enrolled users for this course
+              const { count, error: countError } = await supabase
+                .from('user_courses')
+                .select('*', { count: 'exact', head: true })
+                .eq('course_id', uc.course_id)
+                .eq('status', 'enrolled');
+              return {
+                ...uc.course,
+                user_course_status: uc.status, // preserve status
+                user_course: uc, // preserve all user_course fields if needed
+                enrolled_count: count || 0,
+              };
+            }));
+          setCourses(joinedCourses.filter((c: any) => !!c && !!c.id));
         }
       } catch (err) {
         setError('Failed to fetch courses');
@@ -629,7 +653,7 @@ export function useCourses() {
       setLoading(false);
     };
     fetchCourses();
-  }, []);
+  }, [user?.id]);
 
   const addCourse = async (newCourse: Partial<Course> & { modules?: Module[] }) => {
     let createdCourseId: string | undefined;
@@ -1311,4 +1335,60 @@ export function useCourseStructure(courseId: string) {
   }, [courseId]);
 
   return { modules, loading, error };
+}
+
+export function useAllCourses() {
+  const [courses, setCourses] = useState<Course[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+
+  const fetchAllCourses = async () => {
+    setLoading(true);
+    setError(null);
+    try {
+      const { data, error } = await supabase
+        .from('courses')
+        .select('*');
+      if (error) {
+        setError(error.message);
+        setCourses([]);
+      } else {
+        // For each course, fetch enrolled_count
+        const coursesWithCounts = await Promise.all((data || []).map(async (course: any) => {
+          const { count, error: countError } = await supabase
+            .from('user_courses')
+            .select('*', { count: 'exact', head: true })
+            .eq('course_id', course.id)
+            .eq('status', 'enrolled');
+          return {
+            ...course,
+            enrolled_count: count || 0,
+          };
+        }));
+        setCourses(coursesWithCounts);
+      }
+    } catch (err) {
+      setError('Failed to fetch courses');
+      setCourses([]);
+    }
+    setLoading(false);
+  };
+
+  useEffect(() => {
+    fetchAllCourses();
+  }, []);
+
+  const deleteCourse = async (courseId: string) => {
+    const { error } = await supabase
+      .from('courses')
+      .delete()
+      .eq('id', courseId);
+    if (!error) {
+      // Refetch all courses after deletion
+      await fetchAllCourses();
+    }
+    return { error };
+  };
+
+  return { courses, loading, error, deleteCourse };
 }

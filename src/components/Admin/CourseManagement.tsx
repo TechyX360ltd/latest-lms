@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { Search, Plus, Edit, Trash2, Eye, Users, Clock } from 'lucide-react';
-import { useCourses } from '../../hooks/useData';
+import { useAllCourses } from '../../hooks/useData';
 import { useUsers } from '../../hooks/useData';
 import { CreateCourse } from './CreateCourse';
 import { EditCourse } from './EditCourse';
@@ -9,7 +9,7 @@ import { supabase } from '../../lib/supabase'; // Fixed import path
 import { useToast } from '../Auth/ToastContext';
 
 export function CourseManagement() {
-  const { courses, addCourse, updateCourse, deleteCourse, loading } = useCourses();
+  const { courses, loading, error, deleteCourse } = useAllCourses();
   const { users } = useUsers();
   const { showToast } = useToast();
   const [searchTerm, setSearchTerm] = useState('');
@@ -17,6 +17,9 @@ export function CourseManagement() {
   const [showCreateCourse, setShowCreateCourse] = useState(false);
   const [editingCourse, setEditingCourse] = useState<string | null>(null);
   const [viewingCourse, setViewingCourse] = useState<string | null>(null);
+  // In-app delete confirmation modal state
+  const [deleteConfirmOpen, setDeleteConfirmOpen] = useState(false);
+  const [courseToDelete, setCourseToDelete] = useState<string | null>(null);
 
   if (loading) {
     return (
@@ -25,6 +28,9 @@ export function CourseManagement() {
       </div>
     );
   }
+
+  // Debug log: all fetched courses
+  console.log('Admin - all courses:', courses);
 
   const handleCreateCourse = async (courseData: any) => {
     try {
@@ -52,9 +58,16 @@ export function CourseManagement() {
     setEditingCourse(null);
   };
 
-  const handleDeleteCourse = async (courseId: string) => {
-    if (window.confirm('Are you sure you want to delete this course? This action cannot be undone.')) {
-      deleteCourse(courseId);
+  const handleDeleteCourse = (courseId: string) => {
+    setCourseToDelete(courseId);
+    setDeleteConfirmOpen(true);
+  };
+
+  const confirmDeleteCourse = async () => {
+    if (courseToDelete) {
+      await deleteCourse(courseToDelete);
+      setDeleteConfirmOpen(false);
+      setCourseToDelete(null);
     }
   };
 
@@ -210,15 +223,18 @@ export function CourseManagement() {
     }
   }
 
+  // Filtering logic
   const filteredCourses = courses.filter(course => {
     const matchesSearch = course.title.toLowerCase().includes(searchTerm.toLowerCase()) ||
                          course.instructor.toLowerCase().includes(searchTerm.toLowerCase());
     const matchesStatus = selectedStatus === 'all' || 
                          (selectedStatus === 'published' && course.is_published) ||
                          (selectedStatus === 'draft' && !course.is_published);
-    
     return matchesSearch && matchesStatus;
   });
+
+  // Debug log: filtered courses
+  console.log('Admin - filtered courses:', filteredCourses);
 
   return (
     <div className="space-y-8">
@@ -363,6 +379,28 @@ export function CourseManagement() {
           <p className="text-gray-600">Try adjusting your search criteria</p>
         </div>
       )}
+      {deleteConfirmOpen && (
+    <div className="fixed inset-0 flex items-center justify-center bg-black bg-opacity-40 z-50">
+      <div className="bg-white p-6 rounded shadow-lg">
+        <h2 className="text-lg font-bold mb-4">Delete Course</h2>
+        <p>Are you sure you want to delete this course? This action cannot be undone.</p>
+        <div className="flex justify-end gap-2 mt-6">
+          <button
+            className="px-4 py-2 bg-gray-200 rounded"
+            onClick={() => setDeleteConfirmOpen(false)}
+          >
+            Cancel
+          </button>
+          <button
+            className="px-4 py-2 bg-red-600 text-white rounded"
+            onClick={confirmDeleteCourse}
+          >
+            Delete
+          </button>
+        </div>
+      </div>
+    </div>
+  )}
     </div>
   );
 }

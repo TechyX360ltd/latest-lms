@@ -15,6 +15,9 @@ export function CourseList({}: CourseListProps) {
   const { courses, loading } = useCourses();
   const { users } = useUsers();
   const { user } = useAuth();
+  // Debug logs
+  console.log('Current user:', user);
+  console.log('Courses:', courses);
   const navigate = useNavigate();
   const { onViewCourse } = useOutletContext<{ onViewCourse: (courseId: string) => void }>();
   const [activeTab, setActiveTab] = useState<'active' | 'completed'>('active');
@@ -39,13 +42,24 @@ export function CourseList({}: CourseListProps) {
     );
   }
 
-  const enrolledCourses = courses.filter(course => 
-    !!user && Array.isArray(user.enrolledCourses) && user.enrolledCourses.includes(course.id)
-  );
+  courses.forEach(course => {
+    console.log('Course:', course.title, 'user_courses:', course.user_courses);
+  });
 
-  const completedCourses = courses.filter(course => 
-    !!user && Array.isArray(user.completedCourses) && user.completedCourses.includes(course.id)
-  );
+  function flattenUserCourses(user_courses: any) {
+    if (!Array.isArray(user_courses)) return [];
+    // If the first element is also an array, flatten
+    if (user_courses.length > 0 && Array.isArray(user_courses[0])) {
+      return user_courses.flat();
+    }
+    return user_courses;
+  }
+
+  const enrolledCourses = courses.filter(course => course.user_course_status === 'enrolled');
+  console.log('Filtered enrolledCourses:', enrolledCourses);
+
+  const completedCourses = courses.filter(course => course.user_course_status === 'completed');
+  console.log('Filtered completedCourses:', completedCourses);
 
   const handleBrowseCourses = () => {
     navigate('/dashboard/browse');
@@ -71,6 +85,7 @@ export function CourseList({}: CourseListProps) {
   const currentCourses = activeTab === 'active' ? enrolledCourses : completedCourses;
 
   const handlePayWithCoins = async (course: any) => {
+    if (!user) return;
     setCoinModalLoading(true);
     setCoinModalError(null);
     setCoinModalSuccess(null);
@@ -97,7 +112,7 @@ export function CourseList({}: CourseListProps) {
 
   // Download all notes as PDF for a course
   const handleDownloadNotesPDF = async (course: any) => {
-    if (!user?.id || !course?.id) return;
+    if (!user || !user.id || !course?.id) return;
     // Fetch all lessons for the course
     const { data: lessons, error: lessonsError } = await supabase
       .from('lessons')
@@ -131,23 +146,23 @@ export function CourseList({}: CourseListProps) {
     pdf.setFont(undefined, 'bold');
     pdf.text(`Course:`, 14, y);
     pdf.setFont(undefined, 'normal');
-    pdf.text(`${course.title}`, 40, y);
+    pdf.text(String(course.title ?? ''), 40, y);
     y += 8;
     pdf.setFont(undefined, 'bold');
     pdf.text(`Instructor:`, 14, y);
     pdf.setFont(undefined, 'normal');
-    pdf.text(`${course.instructor || ''}`, 44, y);
+    pdf.text(String(course.instructor ?? ''), 44, y);
     y += 8;
     pdf.setFont(undefined, 'bold');
     pdf.text(`Date:`, 14, y);
     pdf.setFont(undefined, 'normal');
-    pdf.text(`${new Date().toLocaleDateString()}`, 32, y);
+    pdf.text(String(new Date().toLocaleDateString() ?? ''), 32, y);
     y += 8;
     pdf.setFont(undefined, 'bold');
     pdf.text(`Course summary:`, 14, y);
     pdf.setFont(undefined, 'normal');
-    const summaryLines = pdf.splitTextToSize(course.description || '', 180);
-    pdf.text(summaryLines, 14, y + 7);
+    const summaryLines = pdf.splitTextToSize(String(course.description ?? ''), 180);
+    pdf.text(summaryLines.length ? summaryLines : [''], 14, y + 7);
     y += summaryLines.length * 7 + 10;
     pdf.setFontSize(14);
     pdf.setFont(undefined, 'bold');
@@ -155,19 +170,19 @@ export function CourseList({}: CourseListProps) {
     y += 10;
     pdf.setFontSize(12);
     lessons.forEach((lesson: any, idx: number) => {
-      const note = notesByLesson[lesson.id];
+      const note = String(notesByLesson[lesson.id] ?? '');
       if (note && note.trim()) {
         pdf.setFont(undefined, 'bold');
-        pdf.text(`${idx + 1}. ${lesson.title}`, 14, y);
+        pdf.text(`${idx + 1}. ${String(lesson.title ?? '')}`, 14, y);
         y += 8;
         pdf.setFont(undefined, 'normal');
         const lines = pdf.splitTextToSize(note, 180);
-        pdf.text(lines, 18, y);
+        pdf.text(lines.length ? lines : [''], 18, y);
         y += lines.length * 7 + 8;
         if (y > 270) { pdf.addPage(); y = 20; }
       }
     });
-    pdf.save(`My-Notes-${course.title.replace(/\s+/g, '-')}.pdf`);
+    pdf.save(`My-Notes-${String(course.title ?? '').replace(/\s+/g, '-')}.pdf`);
   };
 
   return (

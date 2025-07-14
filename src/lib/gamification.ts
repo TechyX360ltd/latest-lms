@@ -69,6 +69,9 @@ export class GamificationService {
    * Get user's gamification statistics
    */
   static async getUserStats(userId: string): Promise<UserGamificationStats> {
+    function isValidUUID(id: string) {
+      return /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(id);
+    }
     try {
       // Get user's basic stats
       const { data: user, error: userError } = await supabase
@@ -76,20 +79,15 @@ export class GamificationService {
         .select('points, coins, current_streak, longest_streak, last_active_date')
         .eq('id', userId)
         .single();
-
-      if (userError) throw userError;
+      if (userError) { console.error('User query error:', userError); throw userError; }
 
       // Get user's badges
       const { data: badges, error: badgesError } = await supabase
         .from('user_badges')
-        .select(`
-          *,
-          badge:badges(*)
-        `)
+        .select(`*, badge:badges(*)`)
         .eq('user_id', userId)
         .order('earned_at', { ascending: false });
-
-      if (badgesError) throw badgesError;
+      if (badgesError) { console.error('Badges query error:', badgesError); throw badgesError; }
 
       // Get recent events
       const { data: events, error: eventsError } = await supabase
@@ -98,16 +96,52 @@ export class GamificationService {
         .eq('user_id', userId)
         .order('created_at', { ascending: false })
         .limit(10);
-
-      if (eventsError) throw eventsError;
+      if (eventsError) { console.error('Events query error:', eventsError); throw eventsError; }
 
       // Get leaderboard rank
       const { data: leaderboard, error: leaderboardError } = await supabase
         .rpc('get_leaderboard', { p_limit: 1000 });
+      if (leaderboardError) { console.error('Leaderboard query error:', leaderboardError); throw leaderboardError; }
+      const userRank = leaderboard?.find((entry: any) => entry.user_id === userId)?.rank;
 
-      if (leaderboardError) throw leaderboardError;
+      // --- NEW: Fetch course, lesson, and assignment progress ---
+      // Get all courses
+      const { data: allCourses, error: coursesError } = await supabase
+        .from('courses')
+        .select('id');
+      if (coursesError) { console.error('Courses query error:', coursesError); throw coursesError; }
+      const totalCourses = allCourses.length;
 
-      const userRank = leaderboard?.find(entry => entry.user_id === userId)?.rank;
+      // Get user's course statuses
+      const { data: userCourses, error: userCoursesError } = await supabase
+        .from('user_courses')
+        .select('course_id, status')
+        .eq('user_id', userId);
+      if (userCoursesError) { console.error('UserCourses query error:', userCoursesError); throw userCoursesError; }
+      const completedCourses = userCourses.filter((uc: any) => uc.status === 'completed').length;
+
+      // Get all lessons for user's courses
+      const courseIds = userCourses.map((uc: any) => uc.course_id).filter(isValidUUID);
+      let lessonsCompleted = 0;
+      if (courseIds.length > 0) {
+        const { data: lessons, error: lessonsError } = await supabase
+          .from('lessons')
+          .select('id, course_id')
+          .in('course_id', courseIds);
+        if (lessonsError) { console.error('Lessons query error:', lessonsError); throw lessonsError; }
+        // Optionally, you can track lesson completion per user if you have such a table
+        // For now, count all lessons in completed courses as completed
+        const completedCourseIds = userCourses.filter((uc: any) => uc.status === 'completed').map((uc: any) => uc.course_id).filter(isValidUUID);
+        lessonsCompleted = (lessons || []).filter((l: any) => completedCourseIds.includes(l.course_id)).length;
+      }
+
+      // Get assignments submitted
+      const { data: assignments, error: assignmentsError } = await supabase
+        .from('assignment_submissions')
+        .select('id')
+        .eq('user_id', userId);
+      if (assignmentsError) { console.error('Assignments query error:', assignmentsError); throw assignmentsError; }
+      const assignmentsSubmitted = assignments.length;
 
       return {
         points: user.points || 0,
@@ -117,7 +151,11 @@ export class GamificationService {
         last_active_date: user.last_active_date || new Date().toISOString(),
         badges: badges || [],
         recent_events: events || [],
-        leaderboard_rank: userRank
+        leaderboard_rank: userRank,
+        completed_courses: completedCourses,
+        total_courses: totalCourses,
+        lessons_completed: lessonsCompleted,
+        assignments_submitted: assignmentsSubmitted,
       };
     } catch (error) {
       console.error('Failed to get user stats:', error);

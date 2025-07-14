@@ -1,7 +1,8 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
-import { CheckCircle, ChevronRight, ChevronLeft, BookOpen, Video, FileText, Menu, X } from 'lucide-react';
+import { CheckCircle, ChevronRight, ChevronLeft, BookOpen, Video, FileText, Menu, X, Star } from 'lucide-react';
 import { useCourses, useUsers, useCourseStructure } from '../../hooks/useData';
+import { useRatings } from '../../hooks/useRatings';
 import { Header } from '../Layout/Header';
 import { Sidebar } from '../Layout/Sidebar';
 import { useAuth } from '../../context/AuthContext';
@@ -41,6 +42,7 @@ export function CourseViewer() {
   const { getCourseBySlug } = useCourses();
   const { user, completeCourse } = useAuth();
   const { users: allUsers, loading: usersLoading } = useUsers();
+  const { createCourseRating } = useRatings();
 
   // State management
   const [moduleIdx, setModuleIdx] = useState(0);
@@ -69,6 +71,11 @@ export function CourseViewer() {
   const [showCertificate, setShowCertificate] = useState(false);
   const [showCompleteConfirm, setShowCompleteConfirm] = useState(false);
   const [showCertificateModal, setShowCertificateModal] = useState(false);
+  const [showRatingModal, setShowRatingModal] = useState(false);
+  const [rating, setRating] = useState(0);
+  const [hoverRating, setHoverRating] = useState(0);
+  const [review, setReview] = useState('');
+  const [submittingReview, setSubmittingReview] = useState(false);
 
   // Course data fetching
   const course = getCourseBySlug(courseSlug || '');
@@ -388,11 +395,79 @@ export function CourseViewer() {
               className="px-6 py-3 bg-blue-600 text-white rounded-lg font-semibold shadow hover:bg-blue-700 transition"
               onClick={() => {
                 setShowCelebration(false);
-                setShowCertificate(true);
+                setShowRatingModal(true);
               }}
             >
-              Show Certificate
+              Continue
             </button>
+          </div>
+        </div>
+      )}
+      {/* Rating & Review Modal */}
+      {showRatingModal && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-50">
+          <div className="bg-white rounded-2xl shadow-2xl p-8 max-w-md w-full mx-4 flex flex-col items-center relative animate-fade-in">
+            <h3 className="text-2xl font-bold mb-2 text-center">Rate this Course</h3>
+            <p className="text-gray-600 mb-4 text-center">We'd love your feedback! How would you rate your experience?</p>
+            <div className="flex items-center gap-1 mb-4">
+              {[1,2,3,4,5].map(star => (
+                <button
+                  key={star}
+                  type="button"
+                  onClick={() => setRating(star)}
+                  onMouseEnter={() => setHoverRating(star)}
+                  onMouseLeave={() => setHoverRating(0)}
+                  className="focus:outline-none"
+                >
+                  <Star
+                    className={`w-8 h-8 ${((hoverRating || rating) >= star) ? 'text-yellow-400 fill-yellow-400' : 'text-gray-300'}`}
+                    fill={((hoverRating || rating) >= star) ? '#facc15' : 'none'}
+                  />
+                </button>
+              ))}
+            </div>
+            <textarea
+              className="w-full border border-gray-200 rounded-lg p-3 mb-4 resize-none focus:ring-2 focus:ring-blue-500 focus:outline-none"
+              rows={4}
+              placeholder="Write a review (optional)"
+              value={review}
+              onChange={e => setReview(e.target.value)}
+              maxLength={500}
+            />
+            <div className="flex gap-3 w-full mt-2">
+              <button
+                className="flex-1 px-4 py-2 bg-gray-200 text-gray-800 rounded-lg font-semibold hover:bg-gray-300 transition"
+                onClick={() => {
+                  setShowRatingModal(false);
+                  setShowCertificate(true);
+                }}
+                disabled={submittingReview}
+              >
+                Skip
+              </button>
+              <button
+                className="flex-1 px-4 py-2 bg-blue-600 text-white rounded-lg font-semibold hover:bg-blue-700 transition"
+                onClick={async () => {
+                  if (!courseId || !user) return;
+                  setSubmittingReview(true);
+                  try {
+                    await createCourseRating({
+                      courseId,
+                      rating,
+                      reviewContent: review.trim() || undefined,
+                    });
+                  } catch (e) {
+                    // Optionally show error to user
+                  }
+                  setSubmittingReview(false);
+                  setShowRatingModal(false);
+                  setShowCertificate(true);
+                }}
+                disabled={submittingReview || rating === 0}
+              >
+                {submittingReview ? 'Submitting...' : 'Submit'}
+              </button>
+            </div>
           </div>
         </div>
       )}
