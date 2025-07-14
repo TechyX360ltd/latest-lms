@@ -405,7 +405,9 @@ export function CourseViewer() {
               courseTitle={course?.title || ''}
               userId={user?.id || ''}
               courseId={course?.id || ''}
-              template="default"
+              user={user}
+              course={course}
+              onClose={() => setShowCertificate(false)}
             />
             <div className="flex justify-center gap-4 mt-6">
               <button
@@ -705,6 +707,10 @@ export function CourseViewer() {
             <h3 className="text-2xl font-bold mb-4 text-center">Your Certificate</h3>
             {/* CertificateDownload component should handle PDF generation, upload, and download */}
             <CertificateDownload
+              learnerName={`${user?.first_name || ''} ${user?.last_name || ''}`}
+              courseTitle={course?.title || ''}
+              userId={user?.id || ''}
+              courseId={course?.id || ''}
               user={user}
               course={course}
               onClose={() => setShowCertificateModal(false)}

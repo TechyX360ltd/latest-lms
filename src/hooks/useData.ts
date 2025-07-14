@@ -611,22 +611,20 @@ export function useCourses() {
     const fetchCourses = async () => {
       setLoading(true);
       setError(null);
-      // TEMP FIX: Use simple select to avoid 400 error
-      const { data, error } = await supabase
-        .from('courses')
-        .select('*');
-      // Uncomment and debug this after confirming the above works:
-      // const { data, error } = await supabase
-      //   .from('courses')
-      //   .select('*, lessons(*), assignments(*)')
-      //   .order('created_at', { ascending: false })
-      //   .order('created_at', { foreignTable: 'lessons', ascending: false })
-      //   .order('created_at', { foreignTable: 'assignments', ascending: false });
-      if (error) {
-        setError(error.message);
+      try {
+        // Always fetch all courses from Supabase backend
+        const { data, error } = await supabase
+          .from('courses')
+          .select('*');
+        if (error) {
+          setError(error.message);
+          setCourses([]);
+        } else {
+          setCourses(keysToCamel(data) as Course[]);
+        }
+      } catch (err) {
+        setError('Failed to fetch courses');
         setCourses([]);
-      } else {
-        setCourses(keysToCamel(data) as Course[]);
       }
       setLoading(false);
     };

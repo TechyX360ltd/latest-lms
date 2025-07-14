@@ -159,11 +159,33 @@ const CertificateManagementPage: React.FC = () => {
   const [previewTemplate, setPreviewTemplate] = useState<any | null>(null);
   const [deletingId, setDeletingId] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
+  const [previewImages, setPreviewImages] = useState<{ [url: string]: HTMLImageElement | undefined }>({});
 
   // Fetch templates on mount
   useEffect(() => {
     fetchTemplates();
   }, []);
+
+  useEffect(() => {
+    // Gather all unique image URLs from templates
+    const urls = new Set<string>();
+    templates.forEach(tpl => {
+      if (tpl.background_image) urls.add(tpl.background_image);
+      tpl.elements?.forEach((el: any) => {
+        if (el.type === 'image' && el.src) urls.add(el.src);
+      });
+    });
+
+    // Load all images
+    urls.forEach(url => {
+      if (!previewImages[url]) {
+        const img = new window.Image();
+        img.src = url;
+        img.onload = () => setPreviewImages(prev => ({ ...prev, [url]: img }));
+      }
+    });
+    // eslint-disable-next-line
+  }, [templates]);
 
   const fetchTemplates = async () => {
     setLoading(true);
@@ -412,7 +434,7 @@ const CertificateManagementPage: React.FC = () => {
                   <Stage width={180} height={110} style={{ background: '#f8fafc', borderRadius: 8 }}>
                     <Layer>
                       {tpl.background_image ? (
-                        <KonvaImage image={useImage(tpl.background_image)[0]} x={0} y={0} width={180} height={110} listening={false} />
+                        <KonvaImage image={previewImages[tpl.background_image]} x={0} y={0} width={180} height={110} listening={false} />
                       ) : (
                         <Rect x={0} y={0} width={180} height={110} fill="#fff" cornerRadius={8} shadowBlur={4} />
                       )}
@@ -437,7 +459,7 @@ const CertificateManagementPage: React.FC = () => {
                           return (
                             <KonvaImage
                               key={el.id || idx}
-                              image={useImage(el.src)[0]}
+                              image={previewImages[el.src]}
                               x={el.x}
                               y={el.y}
                               width={el.width}
@@ -711,7 +733,7 @@ const CertificateManagementPage: React.FC = () => {
             <Stage width={540} height={330} style={{ background: '#f8fafc', borderRadius: 16 }}>
               <Layer>
                 {previewTemplate.background_image ? (
-                  <KonvaImage image={useImage(previewTemplate.background_image)[0]} x={0} y={0} width={540} height={330} listening={false} />
+                  <KonvaImage image={previewImages[previewTemplate.background_image]} x={0} y={0} width={540} height={330} listening={false} />
                 ) : (
                   <Rect x={0} y={0} width={540} height={330} fill="#fff" cornerRadius={16} shadowBlur={8} />
                 )}
@@ -736,7 +758,7 @@ const CertificateManagementPage: React.FC = () => {
                     return (
                       <KonvaImage
                         key={el.id || idx}
-                        image={useImage(el.src)[0]}
+                        image={previewImages[el.src]}
                         x={el.x}
                         y={el.y}
                         width={el.width}

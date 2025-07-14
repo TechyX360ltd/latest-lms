@@ -470,6 +470,23 @@ export class GamificationService {
   }
 
   /**
+   * Award coins when an instructor publishes a course
+   */
+  static async awardCoinsOnCoursePublish(userId: string, courseId: string, courseTitle?: string) {
+    try {
+      const res = await fetch('/functions/v1/award-coins-on-course-publish', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ userId, courseId, courseTitle })
+      });
+      return await res.json();
+    } catch (err) {
+      console.error('Error awarding coins on course publish:', err);
+      throw err;
+    }
+  }
+
+  /**
    * Award coins for instructor listing a course
    */
   static async instructorListedCourse(userId: string, courseId: string) {

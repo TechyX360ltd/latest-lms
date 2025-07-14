@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect, useRef, Suspense } from 'react';
 import { 
   Save, 
   Plus, 
@@ -35,6 +35,8 @@ import { Header } from '../Layout/Header';
 import { supabase } from '../../lib/supabase';
 import { Course, Module, Lesson, Assignment } from '../../types';
 import { CertificateTemplateGallery } from '../common/CertificateTemplateGallery';
+import { useAuth } from '../../context/AuthContext';
+import { useGamification } from '../../hooks/useGamification';
 
 interface CreateCourseProps {
   onSave: (courseData: any) => Promise<{ data: any; error: any } | void>;
@@ -104,7 +106,12 @@ function isValidUUID(id: string | undefined | null): boolean {
   return !!id && /^[0-9a-fA-F-]{36}$/.test(id);
 }
 
+const ReactQuill = React.lazy(() => import('react-quill').then(module => ({ default: module.default })));
+import 'react-quill/dist/quill.snow.css';
+
 export function CreateCourse({ onSave, onCancel }: CreateCourseProps) {
+  const { user } = useAuth();
+  const { awardCoinsOnCoursePublish } = useGamification();
   const { categories, refreshCategories, loading: categoriesLoading } = useCategories();
   const { users, loading: usersLoading } = useUsers();
   // 1. Add stepper and step state
@@ -1007,14 +1014,6 @@ export function CreateCourse({ onSave, onCancel }: CreateCourseProps) {
                                 <button type="button" onClick={() => formatText(module.id, lesson.id, 'heading')} className="px-2 py-1 bg-gray-200 rounded hover:bg-gray-300 font-bold">H2</button>
                                 <button type="button" onClick={() => formatText(module.id, lesson.id, 'link')} className="px-2 py-1 bg-gray-200 rounded hover:bg-gray-300 text-blue-600">🔗</button>
                               </div>
-                              <textarea
-                                id={`lesson-content-${module.id}-${lesson.id}`}
-                                value={lesson.content}
-                                onChange={e => updateLesson(module.id, lesson.id, 'content', e.target.value)}
-                                className="w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent min-h-[100px]"
-                                placeholder="Lesson Content (supports rich text formatting)"
-                                rows={4}
-                              />
                             </div>
                           )}
                             {lesson.type === 'video' && ( // Changed from contentType to type

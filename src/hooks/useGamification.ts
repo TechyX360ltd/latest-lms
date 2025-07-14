@@ -270,6 +270,29 @@ export function useGamification() {
     }
   }, [user?.id, toast, loadUserStats]);
 
+  // Award coins for course publishing
+  const awardCoinsOnCoursePublish = useCallback(async (courseId: string, courseTitle?: string) => {
+    if (!user?.id) return;
+    try {
+      const result = await GamificationService.awardCoinsOnCoursePublish(user.id, courseId, courseTitle);
+      if (result && result.coinsAwarded) {
+        setShowCoinRain(true);
+        toast.showToast(
+          `+${result.coinsAwarded.toLocaleString()} coins!`,
+          'celebration',
+          8000,
+          'Congratulations! You earned coins for publishing your course!'
+        );
+        await loadUserStats();
+        setTimeout(() => setShowCoinRain(false), 3000);
+        return result;
+      }
+    } catch (err) {
+      toast.showToast('Could not award coins for course publishing', 'error');
+      console.error('Error awarding coins on course publish:', err);
+    }
+  }, [user?.id, toast, loadUserStats]);
+
   // Load initial data
   useEffect(() => {
     if (user?.id) {
@@ -328,6 +351,7 @@ export function useGamification() {
     triggerPerfectScore,
     awardCoinsOnLearning,
     handleReferralReward,
+    awardCoinsOnCoursePublish,
 
     // Utility functions
     clearError: () => setError(null),

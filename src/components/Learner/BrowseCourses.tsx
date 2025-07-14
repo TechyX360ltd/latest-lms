@@ -43,16 +43,25 @@ export function BrowseCourses() {
     async function fetchCourses() {
       setLoading(true);
       setError(null);
-      let query = supabase.from('courses').select('*').eq('is_published', true);
-      if (selectedCategory !== 'all') {
-        query = query.eq('category', selectedCategory);
-      }
-      const { data, error } = await query;
-      if (error) {
-        setError(error.message);
+      try {
+        // Fetch all published courses from Supabase, filter by category if needed
+        let query = supabase
+          .from('courses')
+          .select('*')
+          .eq('is_published', true);
+        if (selectedCategory !== 'all') {
+          query = query.eq('category', selectedCategory);
+        }
+        const { data, error } = await query;
+        if (error) {
+          setError(error.message);
+          setCourses([]);
+        } else {
+          setCourses(data || []);
+        }
+      } catch (err) {
+        setError('Failed to fetch courses');
         setCourses([]);
-      } else {
-        setCourses(data || []);
       }
       setLoading(false);
     }

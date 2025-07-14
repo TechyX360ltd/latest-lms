@@ -1,6 +1,7 @@
 import React, { useState, useRef, Suspense, useEffect } from 'react';
 import { useCategories } from '../../hooks/useData';
 import { useAuth } from '../../context/AuthContext';
+import { useGamification } from '../../hooks/useGamification';
 import { useParams } from 'react-router-dom';
 const ReactQuill = React.lazy(() => import('react-quill').then(module => ({ default: module.default })));
 import 'react-quill/dist/quill.snow.css';
@@ -101,6 +102,7 @@ interface Module {
 
 export default function CreateCourse() {
   const { user } = useAuth();
+  const { awardCoinsOnCoursePublish } = useGamification();
   const [step, setStep] = useState(1);
   const [title, setTitle] = useState('');
   const [category, setCategory] = useState('');
@@ -388,6 +390,7 @@ export default function CreateCourse() {
 
   // Save as Draft handler
   const handleSaveDraft = async () => {
+    console.log('handleSaveDraft called');
     setSavingDraft(true);
     setError('');
     try {
@@ -415,27 +418,29 @@ export default function CreateCourse() {
         updated_at: new Date().toISOString(),
         certificate_template_id: certificateTemplateId || null,
       };
+      console.log('Upserting course:', courseData);
       const { data, error } = await supabase
         .from('courses')
         .upsert([courseData], { onConflict: ['id'] })
         .select();
+      console.log('Upsert result:', { data, error });
       if (error) {
-        toast.error('Failed to save draft. ' + (error.message || ''));
+        toast.error('Failed to save draft: ' + (error.message || ''));
+        setError('Failed to save draft. ' + (error.message || ''));
         throw error;
       }
-      
-      const finalCourseId = data && data[0]?.id ? data[0].id : courseId;
-      if (!finalCourseId) {
-        throw new Error('Failed to get course ID');
+      if (!data || !data[0]) {
+        toast.error('No data returned from course upsert!');
+        console.error('No data returned from course upsert:', data);
+        return;
       }
+      const finalCourseId = data[0].id;
       setCourseId(finalCourseId);
-
       // Upsert modules and lessons to separate tables
       if (modules && modules.length > 0) {
         for (const mod of modules) {
           // Generate UUID for module if not present or invalid
           const moduleId = (mod.id && isValidUUID(mod.id)) ? mod.id : crypto.randomUUID();
-          
           // Upsert module
           const { error: modError } = await supabase
             .from('modules')
@@ -448,18 +453,17 @@ export default function CreateCourse() {
               created_at: new Date().toISOString(),
               updated_at: new Date().toISOString(),
             });
-          
+          console.log('Module upsert:', { moduleId, modError });
           if (modError) {
+            toast.error('Failed to save module: ' + (modError.message || ''));
             console.error('Module upsert error:', modError, mod);
             throw modError;
           }
-
           // Upsert lessons for this module
           if (mod.lessons && mod.lessons.length > 0) {
             for (const les of mod.lessons) {
               // Generate UUID for lesson if not present or invalid
               const lessonId = (les.id && isValidUUID(les.id)) ? les.id : crypto.randomUUID();
-              
               const { error: lesError } = await supabase
                 .from('lessons')
                 .upsert({
@@ -474,8 +478,9 @@ export default function CreateCourse() {
                   created_at: new Date().toISOString(),
                   updated_at: new Date().toISOString(),
                 });
-              
+              console.log('Lesson upsert:', { lessonId, lesError });
               if (lesError) {
+                toast.error('Failed to save lesson: ' + (lesError.message || ''));
                 console.error('Lesson upsert error:', lesError, les);
                 throw lesError;
               }
@@ -483,14 +488,14 @@ export default function CreateCourse() {
           }
         }
       }
-
       toast.success('Draft saved!');
     } catch (err: any) {
       setError('Failed to save draft. ' + (err.message || ''));
-      toast.error('Failed to save draft. ' + (err.message || ''));
-      console.error(err);
+      toast.error('Failed to save draft: ' + (err.message || ''));
+      console.error('Draft save error:', err);
     } finally {
       setSavingDraft(false);
+      console.log('handleSaveDraft finished');
     }
   };
 
@@ -530,22 +535,20 @@ export default function CreateCourse() {
         .upsert([courseData], { onConflict: ['id'] })
         .select();
       if (error) {
-        toast.error('Failed to publish course. ' + (error.message || ''));
+        toast.error('Failed to publish course: ' + (error.message || ''));
         throw error;
       }
-      
       const finalCourseId = data && data[0]?.id ? data[0].id : courseId;
       if (!finalCourseId) {
+        toast.error('Failed to get course ID');
         throw new Error('Failed to get course ID');
       }
       setCourseId(finalCourseId);
-
       // Upsert modules and lessons to separate tables
       if (modules && modules.length > 0) {
         for (const mod of modules) {
           // Generate UUID for module if not present or invalid
           const moduleId = (mod.id && isValidUUID(mod.id)) ? mod.id : crypto.randomUUID();
-          
           // Upsert module
           const { error: modError } = await supabase
             .from('modules')
@@ -558,18 +561,16 @@ export default function CreateCourse() {
               created_at: new Date().toISOString(),
               updated_at: new Date().toISOString(),
             });
-          
           if (modError) {
+            toast.error('Failed to save module: ' + (modError.message || ''));
             console.error('Module upsert error:', modError, mod);
             throw modError;
           }
-
           // Upsert lessons for this module
           if (mod.lessons && mod.lessons.length > 0) {
             for (const les of mod.lessons) {
               // Generate UUID for lesson if not present or invalid
               const lessonId = (les.id && isValidUUID(les.id)) ? les.id : crypto.randomUUID();
-              
               const { error: lesError } = await supabase
                 .from('lessons')
                 .upsert({
@@ -584,8 +585,8 @@ export default function CreateCourse() {
                   created_at: new Date().toISOString(),
                   updated_at: new Date().toISOString(),
                 });
-              
               if (lesError) {
+                toast.error('Failed to save lesson: ' + (lesError.message || ''));
                 console.error('Lesson upsert error:', lesError, les);
                 throw lesError;
               }
@@ -593,14 +594,17 @@ export default function CreateCourse() {
           }
         }
       }
-
+      toast.success('Course published!');
       setShowPublishConfirm(false);
+      
+      // Award coins for publishing
+      const coinResult = await awardCoinsOnCoursePublish(finalCourseId, title);
+      
       setShowCelebration(true);
-      toast.success('Course published successfully!');
     } catch (err: any) {
       setError('Failed to publish course. ' + (err.message || ''));
-      toast.error('Failed to publish course. ' + (err.message || ''));
-      console.error(err);
+      toast.error('Failed to publish course: ' + (err.message || ''));
+      console.error('Publish error:', err);
     } finally {
       setSavingDraft(false);
     }
@@ -842,7 +846,7 @@ export default function CreateCourse() {
                                     <ReactQuill
                                       value={newLessonContent}
                                       onChange={setNewLessonContent}
-                                      className="bg-white rounded-lg"
+                                      className="bg-white rounded-lg mb-20"
                                       theme="snow"
                                       placeholder="Lesson content..."
                                       modules={{
@@ -856,7 +860,7 @@ export default function CreateCourse() {
                                           ['clean']
                                         ]
                                       }}
-                                      style={{ minHeight: 200, height: 200 }}
+                                      style={{ minHeight: 200, height: 200, marginBottom: 70 }}
                                     />
                                   </Suspense>
                                 </div>
@@ -1115,8 +1119,8 @@ export default function CreateCourse() {
                       <h2 className="text-xl font-bold mb-4">Confirm Publish</h2>
                       <p className="mb-6">Are you sure you want to publish this course?</p>
                       <div className="flex justify-center gap-4">
-                        <button className="px-6 py-3 bg-gray-200 text-gray-800 rounded-lg font-semibold shadow hover:bg-gray-300 transition" onClick={() => setShowPublishConfirm(false)}>Cancel</button>
-                        <button className="px-6 py-3 bg-green-600 text-white rounded-lg font-semibold shadow hover:bg-green-700 transition" onClick={handlePublish}>Yes, Publish</button>
+                        <button className="px-6 py-3 bg-gray-200 text-gray-800 rounded-lg font-semibold shadow hover:bg-gray-300 transition" onClick={() => setShowPublishConfirm(false)} type="button">Cancel</button>
+                        <button className="px-6 py-3 bg-green-600 text-white rounded-lg font-semibold shadow hover:bg-green-700 transition" onClick={handlePublish} type="button">Yes, Publish</button>
                       </div>
                     </div>
                   </div>
@@ -1134,14 +1138,11 @@ export default function CreateCourse() {
                         <h2 className="text-3xl font-extrabold bg-gradient-to-r from-blue-600 via-pink-500 to-yellow-400 bg-clip-text text-transparent mb-2">Congratulations!</h2>
                       </div>
                       <div className="text-lg text-gray-700 mb-6">
-                        {isFirstCourse
-                          ? <><span className="font-semibold text-blue-700">You have published your first course!</span> <span role="img" aria-label="party">🎉</span> This is a <span className="font-semibold text-pink-600">big milestone</span>.</>
-                          : <>Your course has been <span className="font-semibold text-green-600">published successfully!</span></>}
+                        Dear <span className="font-bold text-blue-600">{user?.first_name || 'Instructor'}</span>, Your course has been <span className="font-semibold text-green-600">published successfully!</span>
+                        <br />
+                        <span className="text-yellow-600 font-semibold">You've been rewarded 100,000 coins for publishing your course! 🎉</span>
                       </div>
                       <div className="border-t border-gray-200 my-6"></div>
-                      <button className="w-full px-6 py-3 bg-gradient-to-r from-blue-600 via-pink-500 to-yellow-400 text-white rounded-xl font-bold shadow-lg hover:scale-105 transition mb-4 flex items-center justify-center gap-2 text-lg">
-                        <FaTrophy className="text-white text-xl" /> Boost Course
-                      </button>
                       <button className="w-full px-6 py-3 bg-gray-100 text-gray-800 rounded-xl font-semibold shadow hover:bg-gray-200 transition" onClick={() => setShowCelebration(false)}>Close</button>
                     </div>
                     <style>{`

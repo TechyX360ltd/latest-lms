@@ -87,9 +87,27 @@ export default function InstructorManagement() {
     const { data: userData } = await supabase.from('users').select('*').eq('id', i.id).single();
     setProfile(userData);
     setEditProfile(userData);
-    // Fetch courses
-    const { data: courseData } = await supabase.from('courses').select('id, title, enrolled_count, is_published').eq('instructor_id', i.id);
-    setCourses(courseData || []);
+    
+    // Fetch courses with real-time enrollment counts
+    const { data: courseData } = await supabase
+      .from('courses')
+      .select(`
+        id, 
+        title, 
+        is_published,
+        enrollments:user_courses!inner(count)
+      `)
+      .eq('instructor_id', i.id)
+      .eq('user_courses.status', 'enrolled');
+    
+    // Transform the data to include enrollment counts
+    const coursesWithEnrollments = (courseData || []).map(course => ({
+      ...course,
+      enrolled_count: course.enrollments?.[0]?.count || 0
+    }));
+    
+    setCourses(coursesWithEnrollments);
+    
     // Fetch earnings
     const { data: paymentData } = await supabase.from('payments').select('amount, status').eq('instructor_id', i.id);
     const totalEarnings = (paymentData || []).filter((p: any) => p.status === 'completed').reduce((sum: number, p: any) => sum + (p.amount || 0), 0);

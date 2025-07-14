@@ -65,6 +65,7 @@ import MyStoreItemsPage from './pages/MyStoreItemsPage';
 import JobBoardPage from './pages/JobBoardPage';
 import AdminJobBoardPage from './pages/AdminJobBoardPage';
 import AdminRoleManagementPage from './pages/AdminRoleManagementPage';
+import { Toaster } from 'react-hot-toast';
 
 function AuthPage() {
   const [isLogin, setIsLogin] = useState(true);
@@ -373,6 +374,7 @@ function AppContent() {
 function App() {
   return (
     <AuthProvider>
+      <Toaster position="top-right" />
       <ToastProvider>
         <AIChatWidget />
         <AppContent />

@@ -8,9 +8,9 @@ interface CertificateData {
   user_id: string;
   course_id: string;
   issue_date: string;
-  template?: string;
-  url?: string;
-  // Add more fields as needed
+  template_id?: string;
+  certificate_url?: string;
+  verification_code: string;
 }
 
 export default function CertificatePage() {
@@ -20,6 +20,8 @@ export default function CertificatePage() {
   const [error, setError] = useState<string | null>(null);
   const [userName, setUserName] = useState('');
   const [courseTitle, setCourseTitle] = useState('');
+  const [course, setCourse] = useState<any>(null);
+  const [user, setUser] = useState<any>(null);
 
   useEffect(() => {
     async function fetchCertificate() {
@@ -37,20 +39,25 @@ export default function CertificatePage() {
         return;
       }
       setCertificate(data);
+      
       // Fetch user name
       const { data: userData } = await supabase
         .from('users')
-        .select('first_name, last_name')
+        .select('first_name, last_name, *')
         .eq('id', data.user_id)
         .single();
       setUserName(userData ? `${userData.first_name} ${userData.last_name}` : '');
-      // Fetch course title
+      setUser(userData);
+      
+      // Fetch course title and data
       const { data: courseData } = await supabase
         .from('courses')
-        .select('title')
+        .select('title, *')
         .eq('id', data.course_id)
         .single();
       setCourseTitle(courseData ? courseData.title : '');
+      setCourse(courseData);
+      
       setLoading(false);
     }
     if (certificateId) fetchCertificate();
@@ -85,7 +92,8 @@ export default function CertificatePage() {
           userId={certificate.user_id}
           courseId={certificate.course_id}
           completionDate={certificate.issue_date?.split('T')[0]}
-          template={certificate.template as any}
+          user={user}
+          course={course}
         />
       </div>
     </div>

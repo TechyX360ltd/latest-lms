@@ -8,7 +8,7 @@ import { EditCourse } from '../Admin/EditCourse';
 export default function InstructorMyCourses() {
   const navigate = useNavigate();
   const { user } = useAuth();
-  const [activeTab, setActiveTab] = useState<'Active' | 'Inactive'>('Active');
+  const [activeTab, setActiveTab] = useState<'Active' | 'Inactive' | 'Drafts'>('Active');
   const [courses, setCourses] = useState<any[]>([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
@@ -22,13 +22,26 @@ export default function InstructorMyCourses() {
       setLoading(true);
       setError('');
       try {
+        // Get courses with real-time enrollment counts for this instructor
         const { data, error } = await supabase
           .from('courses')
-          .select('*')
+          .select(`
+            *,
+            enrollments:user_courses!inner(count)
+          `)
           .eq('instructor_id', user.id)
+          .eq('user_courses.status', 'enrolled')
           .order('created_at', { ascending: false });
+        
         if (error) throw error;
-        setCourses(data || []);
+        
+        // Transform the data to include enrollment counts
+        const coursesWithEnrollments = (data || []).map(course => ({
+          ...course,
+          enrollments: course.enrollments?.[0]?.count || 0
+        }));
+        
+        setCourses(coursesWithEnrollments);
       } catch (err: any) {
         setError('Failed to load courses.');
         setCourses([]);
@@ -39,7 +52,12 @@ export default function InstructorMyCourses() {
     fetchCourses();
   }, [user?.id]);
 
-  const filteredCourses = courses.filter(c => (activeTab === 'Active' ? c.status === 'published' || c.status === 'active' : c.status === 'inactive'));
+  const filteredCourses: any[] = courses.filter((c: any) => {
+    if (activeTab === 'Active') return c.is_published === true;
+    if (activeTab === 'Inactive') return c.status === 'inactive';
+    if (activeTab === 'Drafts') return c.is_published === false;
+    return false;
+  });
 
   useEffect(() => {
     const handlePopState = () => {
@@ -78,6 +96,12 @@ export default function InstructorMyCourses() {
                   onClick={() => setActiveTab('Inactive')}
                 >
                   Inactive
+                </button>
+                <button
+                  className={`px-4 py-2 text-lg font-semibold border-b-2 transition-all duration-200 ${activeTab === 'Drafts' ? 'border-blue-600 text-blue-700' : 'border-transparent text-gray-500 hover:text-blue-600'}`}
+                  onClick={() => setActiveTab('Drafts')}
+                >
+                  Drafts
                 </button>
               </div>
             </div>

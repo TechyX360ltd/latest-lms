@@ -13,7 +13,7 @@ interface LearnerDashboardProps {}
 
 export function LearnerDashboard({}: LearnerDashboardProps) {
   const { courses, loading: coursesLoading } = useCourses();
-  const { user } = useAuth();
+  const { user, isLoading } = useAuth();
   const navigate = useNavigate();
   const { onViewCourse } = useOutletContext<{ onViewCourse: (courseId: string) => void }>();
   const [showWelcomeModal, setShowWelcomeModal] = useState(false);
@@ -78,12 +78,16 @@ export function LearnerDashboard({}: LearnerDashboardProps) {
     fetchWeeklyReferrals();
   }, [user?.id]);
 
-  if (coursesLoading) {
+  if (isLoading) {
     return (
       <div className="flex items-center justify-center h-64">
         <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-500"></div>
       </div>
     );
+  }
+  if (!user) {
+    navigate('/login');
+    return null;
   }
 
   const enrolledCourses = courses.filter(course => user?.enrolledCourses.includes(course.id));

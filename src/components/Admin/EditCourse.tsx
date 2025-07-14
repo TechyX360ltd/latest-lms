@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, Suspense } from 'react';
 import { 
   Save, 
   Plus, 
@@ -31,6 +31,8 @@ import { useCategories, useUsers } from '../../hooks/useData';
 import { useToast } from '../Auth/ToastContext';
 import { supabase } from '../../lib/supabase';
 import { CertificateTemplateGallery } from '../common/CertificateTemplateGallery';
+import { useAuth } from '../../context/AuthContext';
+import { useGamification } from '../../hooks/useGamification';
 
 interface EditCourseProps {
   course: Course;
@@ -57,7 +59,12 @@ function isValidUUID(id: string | undefined | null): boolean {
   return !!id && /^[0-9a-fA-F-]{36}$/.test(id);
 }
 
+const ReactQuill = React.lazy(() => import('react-quill').then(module => ({ default: module.default })));
+import 'react-quill/dist/quill.snow.css';
+
 export function EditCourse({ course, onSave, onCancel }: EditCourseProps) {
+  const { user } = useAuth();
+  const { awardCoinsOnCoursePublish } = useGamification();
   const { categories, refreshCategories, loading: categoriesLoading } = useCategories();
   const { users, loading: usersLoading } = useUsers();
   const { showToast } = useToast();
@@ -845,102 +852,28 @@ export function EditCourse({ course, onSave, onCancel }: EditCourseProps) {
                             </div>
                           </div>
 
-                          {/* Rich Text Formatting Toolbar */}
-                          <div className="mb-2">
-                            <div className="flex flex-wrap gap-1 p-2 bg-gray-50 rounded-lg border">
-                              <button
-                                type="button"
-                                onClick={() => formatText(module.id, lesson.id, 'bold')}
-                                className="p-2 hover:bg-gray-200 rounded transition-colors"
-                                title="Bold"
-                              >
-                                <Bold className="w-4 h-4" />
-                              </button>
-                              <button
-                                type="button"
-                                onClick={() => formatText(module.id, lesson.id, 'italic')}
-                                className="p-2 hover:bg-gray-200 rounded transition-colors"
-                                title="Italic"
-                              >
-                                <Italic className="w-4 h-4" />
-                              </button>
-                              <button
-                                type="button"
-                                onClick={() => formatText(module.id, lesson.id, 'underline')}
-                                className="p-2 hover:bg-gray-200 rounded transition-colors"
-                                title="Underline"
-                              >
-                                <Underline className="w-4 h-4" />
-                              </button>
-                              <div className="w-px bg-gray-300 mx-1"></div>
-                              <button
-                                type="button"
-                                onClick={() => formatText(module.id, lesson.id, 'heading')}
-                                className="p-2 hover:bg-gray-200 rounded transition-colors text-xs font-bold"
-                                title="Heading"
-                              >
-                                H2
-                              </button>
-                              <button
-                                type="button"
-                                onClick={() => formatText(module.id, lesson.id, 'bullet')}
-                                className="p-2 hover:bg-gray-200 rounded transition-colors"
-                                title="Bullet List"
-                              >
-                                <List className="w-4 h-4" />
-                              </button>
-                              <button
-                                type="button"
-                                onClick={() => formatText(module.id, lesson.id, 'numbered')}
-                                className="p-2 hover:bg-gray-200 rounded transition-colors"
-                                title="Numbered List"
-                              >
-                                <ListOrdered className="w-4 h-4" />
-                              </button>
-                              <div className="w-px bg-gray-300 mx-1"></div>
-                              <button
-                                type="button"
-                                onClick={() => formatText(module.id, lesson.id, 'quote')}
-                                className="p-2 hover:bg-gray-200 rounded transition-colors"
-                                title="Quote"
-                              >
-                                <Quote className="w-4 h-4" />
-                              </button>
-                              <button
-                                type="button"
-                                onClick={() => formatText(module.id, lesson.id, 'code')}
-                                className="p-2 hover:bg-gray-200 rounded transition-colors"
-                                title="Code"
-                              >
-                                <Code className="w-4 h-4" />
-                              </button>
-                              <button
-                                type="button"
-                                onClick={() => formatText(module.id, lesson.id, 'link')}
-                                className="p-2 hover:bg-gray-200 rounded transition-colors"
-                                title="Link"
-                              >
-                                <Link className="w-4 h-4" />
-                              </button>
-                              <button
-                                type="button"
-                                onClick={() => formatText(module.id, lesson.id, 'indent')}
-                                className="p-2 hover:bg-gray-200 rounded transition-colors"
-                                title="Indent"
-                              >
-                                <AlignRight className="w-4 h-4" />
-                              </button>
-                            </div>
-                          </div>
-
-                          <textarea
-                            id={`lesson-content-${module.id}-${lesson.id}`}
+                          {/* Lesson Content Editor */}
+                          <Suspense fallback={<div>Loading editor...</div>}>
+                            <ReactQuill
                             value={lesson.content}
-                            onChange={(e) => updateLesson(module.id, lesson.id, 'content', e.target.value)}
-                            placeholder="Lesson content... Use the formatting toolbar above for rich text formatting"
-                            rows={6}
-                            className="w-full px-3 py-2 border border-gray-300 rounded focus:ring-2 focus:ring-blue-500 focus:border-transparent mb-4 font-mono text-sm"
-                          />
+                              onChange={val => updateLesson(module.id, lesson.id, 'content', val)}
+                              className="bg-white rounded-lg mb-20"
+                              theme="snow"
+                              placeholder="Lesson content..."
+                              modules={{
+                                toolbar: [
+                                  [{ 'header': [1, 2, 3, false] }],
+                                  ['bold', 'italic', 'underline', 'strike'],
+                                  [{ 'list': 'ordered'}, { 'list': 'bullet' }],
+                                  ['blockquote', 'code-block'],
+                                  ['link', 'image', 'video'],
+                                  [{ 'align': [] }],
+                                  ['clean']
+                                ]
+                              }}
+                              style={{ minHeight: 200, height: 200, marginBottom: 70 }}
+                            />
+                          </Suspense>
 
                           {/* Preview */}
                           {lesson.content && (
@@ -995,31 +928,6 @@ export function EditCourse({ course, onSave, onCancel }: EditCourseProps) {
               <p>No modules added yet. Click "Add Module" to get started.</p>
             </div>
           )}
-        </div>
-
-        {/* Formatting Guide */}
-        <div className="bg-blue-50 rounded-xl p-6 border border-blue-100">
-          <h3 className="text-lg font-bold text-blue-900 mb-4">Rich Text Formatting Guide</h3>
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4 text-sm">
-            <div>
-              <h4 className="font-semibold text-blue-800 mb-2">Text Formatting:</h4>
-              <ul className="space-y-1 text-blue-700">
-                <li><code>**Bold text**</code> → <strong>Bold text</strong></li>
-                <li><code>*Italic text*</code> → <em>Italic text</em></li>
-                <li><code>__Underlined__</code> → <u>Underlined</u></li>
-                <li><code>`Code text`</code> → <code className="bg-gray-100 px-1 rounded">Code text</code></li>
-              </ul>
-            </div>
-            <div>
-              <h4 className="font-semibold text-blue-800 mb-2">Structure:</h4>
-              <ul className="space-y-1 text-blue-700">
-                <li><code>## Heading</code> → Large heading</li>
-                <li><code>• Bullet point</code> → Bullet list</li>
-                <li><code>1. Numbered item</code> → Numbered list</li>
-                <li><code>{'>'} Quote</code> → Blockquote</li>
-              </ul>
-            </div>
-          </div>
         </div>
 
         {/* Submit Button */}

@@ -210,10 +210,10 @@ export function Header() {
           
           {/* Right side - Notifications and User */}
           <div className="flex items-center gap-2 lg:gap-4">
-            {/* Coin Balance for Learners */}
-            {user?.role === 'learner' && (
+            {/* Coin Balance for Learners and Instructors */}
+            {(user?.role === 'learner' || user?.role === 'instructor') && (
               <div className="flex items-center gap-1 px-2 py-1 bg-yellow-50 rounded-lg border border-yellow-200 mr-2">
-                <FaCoins className="text-yellow-500 w-5 h-5" />
+                <FaCoins className="w-4 h-4 text-yellow-600" />
                 <span className="font-bold text-yellow-700 text-sm">{stats?.coins ?? 0}</span>
               </div>
             )}
@@ -316,7 +316,7 @@ export function Header() {
                     <img src={user.avatar} alt="Profile" className="w-full h-full object-cover rounded-full" />
                   ) : (
                     <span className="text-white font-bold text-lg">
-                      {(user?.firstName?.[0] || '').toUpperCase()}{(user?.lastName?.[0] || '').toUpperCase()}
+                      {(user?.first_name?.[0] || '').toUpperCase()}{(user?.last_name?.[0] || '').toUpperCase()}
                     </span>
                   )}
                   {/* Facebook-style verification badge overlay (on top of the avatar) */}
@@ -330,7 +330,7 @@ export function Header() {
                   )}
                 </div>
                 <div className="hidden sm:block text-left">
-                  <div className="font-bold text-gray-900 leading-tight">{user?.firstName}</div>
+                  <div className="font-bold text-gray-900 leading-tight">{user?.first_name}</div>
                   <div className="text-xs text-gray-500 capitalize">{user?.role}</div>
                 </div>
               </div>
