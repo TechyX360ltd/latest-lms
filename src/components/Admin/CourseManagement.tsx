@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { Search, Plus, Edit, Trash2, Eye, Users, Clock } from 'lucide-react';
 import { useCourses } from '../../hooks/useData';
+import { useUsers } from '../../hooks/useData';
 import { CreateCourse } from './CreateCourse';
 import { EditCourse } from './EditCourse';
 import { ViewCourse } from './ViewCourse';
@@ -9,6 +10,7 @@ import { useToast } from '../Auth/ToastContext';
 
 export function CourseManagement() {
   const { courses, addCourse, updateCourse, deleteCourse, loading } = useCourses();
+  const { users } = useUsers();
   const { showToast } = useToast();
   const [searchTerm, setSearchTerm] = useState('');
   const [selectedStatus, setSelectedStatus] = useState('all');
@@ -262,85 +264,96 @@ export function CourseManagement() {
 
       {/* Courses Grid */}
       <div className="grid grid-cols-1 lg:grid-cols-2 xl:grid-cols-3 gap-6">
-        {filteredCourses.map((course) => (
-          <div key={course.id} className="bg-white rounded-xl shadow-sm border border-gray-100 overflow-hidden">
-            <div className="relative">
-              <img
-                src={course.thumbnail}
-                alt={course.title}
-                className="w-full h-48 object-cover"
-              />
-              <div className="absolute top-4 right-4 flex flex-col gap-2">
-                <span className={`px-2 py-1 rounded-full text-xs font-medium ${
-                  course.is_published 
-                    ? 'bg-green-100 text-green-800' 
-                    : 'bg-yellow-100 text-yellow-800'
-                }`}>
-                  {course.is_published ? 'Published' : 'Draft'}
-                </span>
-                {course.modules && Array.isArray(course.modules) && course.modules.length > 0 && (
-                  <span className="px-2 py-1 rounded-full text-xs font-medium bg-orange-100 text-orange-800" title="This course has modules in JSON format and may need migration">
-                    Needs Migration
+        {filteredCourses.map((course) => {
+          // Find instructor by ID
+          const instructor = users.find(u => u.id === course.instructor_id);
+          return (
+            <div key={course.id} className="bg-white rounded-xl shadow-sm border border-gray-100 overflow-hidden hover:shadow-lg transition-shadow flex flex-col">
+              <div className="relative">
+                <img
+                  src={course.thumbnail}
+                  alt={course.title}
+                  className="w-full h-48 object-cover"
+                />
+                <div className="absolute top-4 right-4 flex flex-col gap-2">
+                  <span className={`px-2 py-1 rounded-full text-xs font-medium ${
+                    course.is_published 
+                      ? 'bg-green-100 text-green-800' 
+                      : 'bg-yellow-100 text-yellow-800'
+                  }`}>
+                    {course.is_published ? 'Published' : 'Draft'}
                   </span>
-                )}
+                  {course.modules && Array.isArray(course.modules) && course.modules.length > 0 && (
+                    <span className="px-2 py-1 rounded-full text-xs font-medium bg-orange-100 text-orange-800" title="This course has modules in JSON format and may need migration">
+                      Needs Migration
+                    </span>
+                  )}
+                </div>
+              </div>
+              
+              <div className="p-6 flex flex-col gap-2">
+                <h2 className="text-xl font-bold text-gray-900 mb-1">{course.title}</h2>
+                <p className="text-gray-600 text-sm mb-2 line-clamp-2">{course.description}</p>
+                <div className="flex items-center gap-2 text-sm text-gray-500 mb-2">
+                  <span>by </span>
+                  {instructor ? (
+                    <span className="font-semibold text-gray-800">{instructor.firstName || instructor.first_name} {instructor.lastName || instructor.last_name}</span>
+                  ) : (
+                    <span className="text-gray-400">Unknown Instructor</span>
+                  )}
+                </div>
+
+                <div className="flex items-center gap-4 mb-4 text-sm text-gray-500">
+                  <div className="flex items-center gap-1">
+                    <Clock className="w-4 h-4" />
+                    <span>{course.duration}h</span>
+                  </div>
+                  <div className="flex items-center gap-1">
+                    <Users className="w-4 h-4" />
+                    <span>{course.enrolled_count}</span>
+                  </div>
+                  <div className="text-green-600 font-medium">
+                    ₦{course.price.toLocaleString()}
+                  </div>
+                </div>
+
+                <div className="flex items-center gap-2">
+                  <button 
+                    onClick={() => setEditingCourse(course.id)}
+                    className="flex-1 bg-blue-600 text-white py-2 px-3 rounded-lg text-sm font-medium hover:bg-blue-700 transition-colors flex items-center justify-center gap-2"
+                    title="Edit course details, modules, and lessons"
+                  >
+                    <Edit className="w-4 h-4" />
+                    Edit
+                  </button>
+                  <button 
+                    onClick={() => setViewingCourse(course.id)}
+                    className="p-2 text-gray-400 hover:text-blue-600 hover:bg-blue-50 rounded-lg transition-colors"
+                    title="View course details and preview content"
+                  >
+                    <Eye className="w-4 h-4" />
+                  </button>
+                  <button 
+                    onClick={() => migrateCourseStructure(course.id)}
+                    className="p-2 text-gray-400 hover:text-green-600 hover:bg-green-50 rounded-lg transition-colors"
+                    title="Migrate course structure from JSON to database tables (fixes missing modules/lessons for learners)"
+                  >
+                    <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
+                    </svg>
+                  </button>
+                  <button 
+                    onClick={() => handleDeleteCourse(course.id)}
+                    className="p-2 text-gray-400 hover:text-red-600 hover:bg-red-50 rounded-lg transition-colors"
+                    title="Delete course permanently (this action cannot be undone)"
+                  >
+                    <Trash2 className="w-4 h-4" />
+                  </button>
+                </div>
               </div>
             </div>
-            
-            <div className="p-6">
-              <h3 className="text-lg font-bold text-gray-900 mb-2">{course.title}</h3>
-              <p className="text-gray-600 mb-3 text-sm line-clamp-2">{course.description}</p>
-              <p className="text-sm text-gray-500 mb-4">by {course.instructor}</p>
-
-              <div className="flex items-center gap-4 mb-4 text-sm text-gray-500">
-                <div className="flex items-center gap-1">
-                  <Clock className="w-4 h-4" />
-                  <span>{course.duration}h</span>
-                </div>
-                <div className="flex items-center gap-1">
-                  <Users className="w-4 h-4" />
-                  <span>{course.enrolled_count}</span>
-                </div>
-                <div className="text-green-600 font-medium">
-                  ₦{course.price.toLocaleString()}
-                </div>
-              </div>
-
-              <div className="flex items-center gap-2">
-                <button 
-                  onClick={() => setEditingCourse(course.id)}
-                  className="flex-1 bg-blue-600 text-white py-2 px-3 rounded-lg text-sm font-medium hover:bg-blue-700 transition-colors flex items-center justify-center gap-2"
-                  title="Edit course details, modules, and lessons"
-                >
-                  <Edit className="w-4 h-4" />
-                  Edit
-                </button>
-                <button 
-                  onClick={() => setViewingCourse(course.id)}
-                  className="p-2 text-gray-400 hover:text-blue-600 hover:bg-blue-50 rounded-lg transition-colors"
-                  title="View course details and preview content"
-                >
-                  <Eye className="w-4 h-4" />
-                </button>
-                <button 
-                  onClick={() => migrateCourseStructure(course.id)}
-                  className="p-2 text-gray-400 hover:text-green-600 hover:bg-green-50 rounded-lg transition-colors"
-                  title="Migrate course structure from JSON to database tables (fixes missing modules/lessons for learners)"
-                >
-                  <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
-                  </svg>
-                </button>
-                <button 
-                  onClick={() => handleDeleteCourse(course.id)}
-                  className="p-2 text-gray-400 hover:text-red-600 hover:bg-red-50 rounded-lg transition-colors"
-                  title="Delete course permanently (this action cannot be undone)"
-                >
-                  <Trash2 className="w-4 h-4" />
-                </button>
-              </div>
-            </div>
-          </div>
-        ))}
+          );
+        })}
       </div>
 
       {filteredCourses.length === 0 && (

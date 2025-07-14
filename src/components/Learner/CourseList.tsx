@@ -7,6 +7,7 @@ import { useOutletContext } from 'react-router-dom';
 import { useGamification } from '../../hooks/useGamification';
 import { supabase } from '../../lib/supabase';
 import CourseDetailsModal from './CourseDetailsModal';
+import jsPDF from 'jspdf';
 
 interface CourseListProps {}
 
@@ -92,6 +93,81 @@ export function CourseList({}: CourseListProps) {
       setCoinModalError(err.message || 'Could not enroll with coins.');
       setCoinModalLoading(false);
     }
+  };
+
+  // Download all notes as PDF for a course
+  const handleDownloadNotesPDF = async (course: any) => {
+    if (!user?.id || !course?.id) return;
+    // Fetch all lessons for the course
+    const { data: lessons, error: lessonsError } = await supabase
+      .from('lessons')
+      .select('id, title')
+      .eq('course_id', course.id);
+    if (lessonsError || !lessons) {
+      alert('Could not fetch lessons for this course.');
+      return;
+    }
+    // Fetch all notes for the user and lessons in this course
+    const lessonIds = lessons.map((l: any) => l.id);
+    const { data: notes, error: notesError } = await supabase
+      .from('lesson_notes')
+      .select('lesson_id, content')
+      .eq('user_id', user.id)
+      .in('lesson_id', lessonIds);
+    if (notesError) {
+      alert('Could not fetch your notes.');
+      return;
+    }
+    // Map lesson titles to notes
+    const notesByLesson: { [lessonId: string]: string } = {};
+    notes.forEach((n: any) => { notesByLesson[n.lesson_id] = n.content; });
+    // Generate PDF
+    const pdf = new jsPDF();
+    let y = 20;
+    pdf.setFontSize(18);
+    pdf.text('My Notes', 14, y);
+    y += 10;
+    pdf.setFontSize(12);
+    pdf.setFont(undefined, 'bold');
+    pdf.text(`Course:`, 14, y);
+    pdf.setFont(undefined, 'normal');
+    pdf.text(`${course.title}`, 40, y);
+    y += 8;
+    pdf.setFont(undefined, 'bold');
+    pdf.text(`Instructor:`, 14, y);
+    pdf.setFont(undefined, 'normal');
+    pdf.text(`${course.instructor || ''}`, 44, y);
+    y += 8;
+    pdf.setFont(undefined, 'bold');
+    pdf.text(`Date:`, 14, y);
+    pdf.setFont(undefined, 'normal');
+    pdf.text(`${new Date().toLocaleDateString()}`, 32, y);
+    y += 8;
+    pdf.setFont(undefined, 'bold');
+    pdf.text(`Course summary:`, 14, y);
+    pdf.setFont(undefined, 'normal');
+    const summaryLines = pdf.splitTextToSize(course.description || '', 180);
+    pdf.text(summaryLines, 14, y + 7);
+    y += summaryLines.length * 7 + 10;
+    pdf.setFontSize(14);
+    pdf.setFont(undefined, 'bold');
+    pdf.text('Lesson Notes', 14, y);
+    y += 10;
+    pdf.setFontSize(12);
+    lessons.forEach((lesson: any, idx: number) => {
+      const note = notesByLesson[lesson.id];
+      if (note && note.trim()) {
+        pdf.setFont(undefined, 'bold');
+        pdf.text(`${idx + 1}. ${lesson.title}`, 14, y);
+        y += 8;
+        pdf.setFont(undefined, 'normal');
+        const lines = pdf.splitTextToSize(note, 180);
+        pdf.text(lines, 18, y);
+        y += lines.length * 7 + 8;
+        if (y > 270) { pdf.addPage(); y = 20; }
+      }
+    });
+    pdf.save(`My-Notes-${course.title.replace(/\s+/g, '-')}.pdf`);
   };
 
   return (
@@ -240,6 +316,7 @@ export function CourseList({}: CourseListProps) {
                         <h3 className="text-lg font-bold text-gray-900 mb-1 line-clamp-2">{course.title}</h3>
                         {(() => {
                           const instructor = users.find(u => u.id === course.instructor_id);
+                          console.log('Course:', course.title, 'Instructor ID:', course.instructor_id, 'Instructor found:', instructor);
                           if (instructor) {
                             return (
                               <div className="flex items-center gap-2 mb-1">
@@ -286,12 +363,21 @@ export function CourseList({}: CourseListProps) {
                           </button>
                         </>
                       ) : (
+                        <>
                         <button
                           onClick={handleViewCertificate}
                           className="w-full bg-green-600 text-white py-2 px-4 rounded-lg font-medium hover:bg-green-700 transition-colors flex items-center justify-center gap-2"
                         >
-                          <Award className="w-4 h-4" /> View Certificate
+                          View Certificate
                         </button>
+                        <button
+                          onClick={() => handleDownloadNotesPDF(course)}
+                          className="w-full border border-purple-600 text-purple-700 bg-white py-1.5 px-3 rounded-lg font-medium hover:bg-purple-50 transition-colors flex items-center justify-center gap-2 text-sm mt-2"
+                          style={{ maxWidth: '160px' }}
+                        >
+                          Download notes
+                        </button>
+                        </>
                       )}
                       {eligible && !!user && user.enrolledCourses && !user.enrolledCourses.includes(course.id) && (
                         <button

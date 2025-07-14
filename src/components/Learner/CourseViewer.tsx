@@ -39,7 +39,7 @@ export function CourseViewer() {
   const { courseSlug } = useParams<{ courseSlug?: string }>();
   const navigate = useNavigate();
   const { getCourseBySlug } = useCourses();
-  const { user } = useAuth();
+  const { user, completeCourse } = useAuth();
   const { users: allUsers, loading: usersLoading } = useUsers();
 
   // State management
@@ -360,8 +360,11 @@ export function CourseViewer() {
               </button>
               <button
                 className="px-6 py-3 bg-blue-600 text-white rounded-lg font-semibold shadow hover:bg-blue-700 transition"
-                onClick={() => {
+                onClick={async () => {
                   setShowCompleteConfirm(false);
+                  if (courseId && completeCourse) {
+                    await completeCourse(courseId);
+                  }
                   setShowCelebration(true);
                 }}
               >
@@ -705,7 +708,6 @@ export function CourseViewer() {
         <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
           <div className="bg-white rounded-2xl shadow-2xl p-8 max-w-xl w-full mx-4 flex flex-col items-center relative">
             <h3 className="text-2xl font-bold mb-4 text-center">Your Certificate</h3>
-            {/* CertificateDownload component should handle PDF generation, upload, and download */}
             <CertificateDownload
               learnerName={`${user?.first_name || ''} ${user?.last_name || ''}`}
               courseTitle={course?.title || ''}
@@ -715,12 +717,14 @@ export function CourseViewer() {
               course={course}
               onClose={() => setShowCertificateModal(false)}
             />
-            <button
-              onClick={() => setShowCertificateModal(false)}
-              className="mt-6 px-4 py-2 bg-gray-200 text-gray-800 rounded-lg hover:bg-gray-300"
-            >
-              Close
-            </button>
+            <div className="flex justify-center gap-4 mt-6">
+              <button
+                className="px-6 py-3 bg-blue-600 text-white rounded-lg font-semibold shadow hover:bg-blue-700 transition"
+                onClick={() => setShowCertificateModal(false)}
+              >
+                Close
+              </button>
+            </div>
           </div>
         </div>
       )}

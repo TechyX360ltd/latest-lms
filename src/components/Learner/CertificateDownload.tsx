@@ -1,9 +1,9 @@
 import React from 'react';
-import jsPDF from 'jspdf';
 import html2canvas from 'html2canvas';
 import { v4 as uuidv4 } from 'uuid';
 import QRCode from 'qrcode';
 import { supabase } from '../../lib/supabase';
+import jsPDF from 'jspdf';
 
 interface CertificateDownloadProps {
   learnerName: string;
@@ -152,15 +152,20 @@ export const CertificateDownload: React.FC<CertificateDownloadProps> = ({
     return null;
   };
 
-  const handleDownload = async () => {
+  // PNG download logic
+  const handleDownloadPNG = async () => {
     if (!certificateRef.current) return;
-    setUploading(false);
-    setUploadedUrl(null);
-    setUploadError(null);
-    setDbSuccess(false);
-    setDbError(null);
-    
-    // Render the certificate to canvas
+    const canvas = await html2canvas(certificateRef.current, { scale: 2 });
+    const imgData = canvas.toDataURL('image/png');
+    const link = document.createElement('a');
+    link.href = imgData;
+    link.download = `Certificate-${courseTitle.replace(/\s+/g, '-')}.png`;
+    link.click();
+  };
+
+  // PDF download logic
+  const handleDownloadPDF = async () => {
+    if (!certificateRef.current) return;
     const canvas = await html2canvas(certificateRef.current, { scale: 2 });
     const imgData = canvas.toDataURL('image/png');
     const pdf = new jsPDF({
@@ -170,52 +175,82 @@ export const CertificateDownload: React.FC<CertificateDownloadProps> = ({
     });
     pdf.addImage(imgData, 'PNG', 0, 0, 841.89, 595.28);
     pdf.save(`Certificate-${courseTitle.replace(/\s+/g, '-')}.pdf`);
+  };
 
-    // Upload to Supabase Storage
-    setUploading(true);
-    try {
-      const pdfBlob = pdf.output('blob');
-      const filePath = `user-${userId}/certificate-${certificateId}.pdf`;
-      const { data, error } = await supabase.storage
-        .from('certificates')
-        .upload(filePath, pdfBlob, { upsert: true });
-      if (error) {
-        setUploadError(error.message);
-        setUploading(false);
-        return;
-      }
-      // Get public URL
-      const { publicUrl } = supabase.storage
-        .from('certificates')
-        .getPublicUrl(filePath);
-      setUploadedUrl(publicUrl);
-
-      // Insert into certificates table
-      const issueDate = new Date().toISOString();
-      const { error: dbInsertError } = await supabase
-        .from('certificates')
-        .insert([
-          {
-            id: certificateId,
-            user_id: userId,
-            course_id: courseId,
-            template_id: certificateTemplate?.id,
-            issue_date: issueDate,
-            certificate_url: publicUrl,
-          },
-        ]);
-      if (dbInsertError) {
-        setDbError(dbInsertError.message);
-      } else {
-        setDbSuccess(true);
-        if (onCertificateCreated) onCertificateCreated(certificateId);
-      }
-    } catch (err: any) {
-      setUploadError(err.message || 'Upload failed');
-    } finally {
-      setUploading(false);
+  // Download all notes as PDF
+  const handleDownloadNotesPDF = async () => {
+    if (!userId || !courseId) return;
+    // Fetch all lessons for the course
+    const { data: lessons, error: lessonsError } = await supabase
+      .from('lessons')
+      .select('id, title')
+      .eq('course_id', courseId);
+    if (lessonsError || !lessons) {
+      alert('Could not fetch lessons for this course.');
+      return;
     }
-  }
+    // Fetch all notes for the user and lessons in this course
+    const lessonIds = lessons.map((l: any) => l.id);
+    const { data: notes, error: notesError } = await supabase
+      .from('lesson_notes')
+      .select('lesson_id, content')
+      .eq('user_id', userId)
+      .in('lesson_id', lessonIds);
+    if (notesError) {
+      alert('Could not fetch your notes.');
+      return;
+    }
+    // Map lesson titles to notes
+    const notesByLesson: { [lessonId: string]: string } = {};
+    notes.forEach((n: any) => { notesByLesson[n.lesson_id] = n.content; });
+    // Generate PDF
+    const pdf = new jsPDF();
+    let y = 20;
+    pdf.setFontSize(18);
+    pdf.text('My Notes', 14, y);
+    y += 10;
+    pdf.setFontSize(12);
+    pdf.setFont(undefined, 'bold');
+    pdf.text(`Course:`, 14, y);
+    pdf.setFont(undefined, 'normal');
+    pdf.text(`${courseTitle}`, 40, y);
+    y += 8;
+    pdf.setFont(undefined, 'bold');
+    pdf.text(`Instructor:`, 14, y);
+    pdf.setFont(undefined, 'normal');
+    pdf.text(`${course?.instructor || ''}`, 44, y);
+    y += 8;
+    pdf.setFont(undefined, 'bold');
+    pdf.text(`Date:`, 14, y);
+    pdf.setFont(undefined, 'normal');
+    pdf.text(`${completionDate || new Date().toLocaleDateString()}`, 32, y);
+    y += 8;
+    pdf.setFont(undefined, 'bold');
+    pdf.text(`Course summary:`, 14, y);
+    pdf.setFont(undefined, 'normal');
+    const summaryLines = pdf.splitTextToSize(course?.description || '', 180);
+    pdf.text(summaryLines, 14, y + 7);
+    y += summaryLines.length * 7 + 10;
+    pdf.setFontSize(14);
+    pdf.setFont(undefined, 'bold');
+    pdf.text('Lesson Notes', 14, y);
+    y += 10;
+    pdf.setFontSize(12);
+    lessons.forEach((lesson: any, idx: number) => {
+      const note = notesByLesson[lesson.id];
+      if (note && note.trim()) {
+        pdf.setFont(undefined, 'bold');
+        pdf.text(`${idx + 1}. ${lesson.title}`, 14, y);
+        y += 8;
+        pdf.setFont(undefined, 'normal');
+        const lines = pdf.splitTextToSize(note, 180);
+        pdf.text(lines, 18, y);
+        y += lines.length * 7 + 8;
+        if (y > 270) { pdf.addPage(); y = 20; }
+      }
+    });
+    pdf.save(`My-Notes-${courseTitle.replace(/\s+/g, '-')}.pdf`);
+  };
 
   if (loadingTemplate) {
     return (
@@ -236,7 +271,7 @@ export const CertificateDownload: React.FC<CertificateDownloadProps> = ({
 
   return (
     <div className="w-full max-w-2xl mx-auto bg-white rounded-2xl shadow-2xl p-8 flex flex-col items-center">
-      <h2 className="text-2xl font-bold text-blue-700 mb-4">Your Certificate</h2>
+      <h2 className="text-2xl font-bold text-blue-700 mb-4">Course Certificate</h2>
       <div className="w-full flex justify-center mb-6">
         {/* Certificate preview - A4 landscape size */}
         <div
@@ -262,7 +297,6 @@ export const CertificateDownload: React.FC<CertificateDownloadProps> = ({
         >
           {/* Render template elements */}
           {certificateTemplate.elements.map((element) => renderTemplateElement(element))}
-          
           {/* QR Code */}
           {qrCodeUrl && (
             <img
@@ -277,12 +311,25 @@ export const CertificateDownload: React.FC<CertificateDownloadProps> = ({
       <div className="flex flex-col items-center w-full">
         <div className="flex justify-center gap-4 w-full mb-4">
           <button
-            onClick={handleDownload}
-            className="px-6 py-3 bg-blue-600 text-white rounded-lg font-semibold shadow hover:bg-blue-700 transition"
-            disabled={uploading}
+            onClick={handleDownloadPDF}
+            className="px-6 py-3 bg-green-600 text-white rounded-lg font-semibold shadow hover:bg-green-700 transition"
           >
-            {uploading ? 'Uploading...' : 'Download & Save Certificate'}
+            Download as PDF
           </button>
+          <button
+            onClick={handleDownloadPNG}
+            className="px-6 py-3 bg-blue-600 text-white rounded-lg font-semibold shadow hover:bg-blue-700 transition"
+          >
+            Download as PNG
+          </button>
+          {userId && courseId && (
+            <button
+              onClick={handleDownloadNotesPDF}
+              className="px-6 py-3 bg-purple-600 text-white rounded-lg font-semibold shadow hover:bg-purple-700 transition"
+            >
+              Download My Notes as PDF
+            </button>
+          )}
           {onClose && (
             <button
               onClick={onClose}
@@ -292,20 +339,6 @@ export const CertificateDownload: React.FC<CertificateDownloadProps> = ({
             </button>
           )}
         </div>
-        {uploadedUrl && (
-          <div className="mt-2 text-green-700">
-            Uploaded! <a href={uploadedUrl} target="_blank" rel="noopener noreferrer" className="underline">View Certificate</a>
-          </div>
-        )}
-        {uploadError && (
-          <div className="mt-2 text-red-600">Upload error: {uploadError}</div>
-        )}
-        {dbSuccess && (
-          <div className="mt-2 text-green-700">Certificate record saved to database!</div>
-        )}
-        {dbError && (
-          <div className="mt-2 text-red-600">DB error: {dbError}</div>
-        )}
       </div>
     </div>
   );

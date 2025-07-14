@@ -13,11 +13,28 @@ serve(async (req) => {
     Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!
   )
 
-  // Insert or ignore if already issued
+  // First, check if certificate already exists
+  const { data: existing, error: fetchError } = await supabase
+    .from('certificates')
+    .select('*')
+    .eq('user_id', user_id)
+    .eq('course_id', course_id)
+    .single();
+
+  if (fetchError && fetchError.code !== 'PGRST116') {
+    return new Response(JSON.stringify({ error: fetchError.message }), { status: 400 })
+  }
+
+  if (existing) {
+    return new Response(JSON.stringify({ success: true, data: existing }), { status: 200 })
+  }
+
+  // Insert new certificate if not exists
   const { data, error } = await supabase
     .from('certificates')
-    .upsert([{ user_id, course_id }], { onConflict: 'user_id,course_id' })
+    .insert([{ user_id, course_id }])
     .select()
+    .single();
 
   if (error) {
     return new Response(JSON.stringify({ error: error.message }), { status: 400 })

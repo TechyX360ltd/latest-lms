@@ -33,7 +33,7 @@ export function isValidUUID(id: string | undefined | null): boolean {
   return !!id && /^[0-9a-fA-F-]{36}$/.test(id);
 }
 
-// Get a user's note for a lesson
+// Get a user's note for a lesson (from lesson_notes table)
 export async function getLessonNote(userId: string, lessonId: string) {
   if (!isValidUUID(lessonId)) return null;
   const { data, error } = await supabase
@@ -46,7 +46,7 @@ export async function getLessonNote(userId: string, lessonId: string) {
   return { note: data };
 }
 
-// Upsert (insert or update) a user's note for a lesson
+// Upsert (insert or update) a user's note for a lesson (in lesson_notes table)
 export async function upsertLessonNote(userId: string, lessonId: string, content: string) {
   if (!isValidUUID(lessonId)) throw new Error('Invalid lessonId');
   const { data, error } = await supabase
