@@ -2,6 +2,7 @@ import React, { useEffect, useState } from 'react';
 import CourseSessionCalendar from '../components/Course/CourseSessionCalendar';
 import { supabase } from '../lib/supabase';
 import { useAuth } from '../context/AuthContext';
+import { Breadcrumbs } from '../components/common/Breadcrumbs';
 
 export default function LearnerCalendarPage() {
   const { user } = useAuth();
@@ -79,6 +80,7 @@ export default function LearnerCalendarPage() {
   return (
     <div className="w-full max-w-full mx-auto p-0">
       <div className="mt-2 mb-2">
+        <Breadcrumbs />
         <h1 className="text-2xl sm:text-3xl font-bold mb-0 ml-2">My Events</h1>
       </div>
       <div className="w-full">

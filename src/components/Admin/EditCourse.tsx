@@ -33,6 +33,8 @@ import { supabase } from '../../lib/supabase';
 import { CertificateTemplateGallery } from '../common/CertificateTemplateGallery';
 import { useAuth } from '../../context/AuthContext';
 import { useGamification } from '../../hooks/useGamification';
+import ReactQuill from 'react-quill';
+import 'react-quill/dist/quill.snow.css';
 
 interface EditCourseProps {
   course: Course;
@@ -58,9 +60,6 @@ function slugify(text: string) {
 function isValidUUID(id: string | undefined | null): boolean {
   return !!id && /^[0-9a-fA-F-]{36}$/.test(id);
 }
-
-const ReactQuill = React.lazy(() => import('react-quill').then(module => ({ default: module.default })));
-import 'react-quill/dist/quill.snow.css';
 
 export function EditCourse({ course, onSave, onCancel }: EditCourseProps) {
   const { user } = useAuth();
@@ -89,6 +88,7 @@ export function EditCourse({ course, onSave, onCancel }: EditCourseProps) {
   const [refreshingSchools, setRefreshingSchools] = useState(false);
   const [instructorSearch, setInstructorSearch] = useState('');
   const [certificateTemplateId, setCertificateTemplateId] = useState<string | null>((course as any).certificate_template_id || null);
+  const [certificateTemplates, setCertificateTemplates] = useState([]);
 
   // Refresh schools/categories when component mounts
   useEffect(() => {
@@ -100,6 +100,17 @@ export function EditCourse({ course, onSave, onCancel }: EditCourseProps) {
       setCertificateTemplateId((course as any).certificate_template_id);
     }
   }, [course]);
+
+  useEffect(() => {
+    async function fetchTemplates() {
+      const { data } = await supabase
+        .from('certificate_templates')
+        .select('*')
+        .eq('is_active', true);
+      setCertificateTemplates(data || []);
+    }
+    fetchTemplates();
+  }, []);
 
   const handleRefreshSchools = async () => {
     setRefreshingSchools(true);
@@ -732,10 +743,16 @@ export function EditCourse({ course, onSave, onCancel }: EditCourseProps) {
         {/* Certificate Template Selection */}
         <div className="bg-white rounded-xl shadow-sm p-6 border border-gray-100">
           <h2 className="text-xl font-bold text-gray-900 mb-6">Certificate Template</h2>
-          <CertificateTemplateGallery
-            selectedTemplateId={certificateTemplateId}
-            onSelect={setCertificateTemplateId}
-          />
+          <select
+            value={certificateTemplateId || ''}
+            onChange={e => setCertificateTemplateId(e.target.value)}
+            className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+          >
+            <option value="">Select a certificate template</option>
+            {certificateTemplates.map(t => (
+              <option key={t.id} value={t.id}>{t.name}</option>
+            ))}
+          </select>
           {!certificateTemplateId && (
             <p className="text-red-600 text-sm mt-2">Please select a certificate template.</p>
           )}
@@ -853,7 +870,6 @@ export function EditCourse({ course, onSave, onCancel }: EditCourseProps) {
                           </div>
 
                           {/* Lesson Content Editor */}
-                          <Suspense fallback={<div>Loading editor...</div>}>
                             <ReactQuill
                             value={lesson.content}
                               onChange={val => updateLesson(module.id, lesson.id, 'content', val)}
@@ -873,7 +889,6 @@ export function EditCourse({ course, onSave, onCancel }: EditCourseProps) {
                               }}
                               style={{ minHeight: 200, height: 200, marginBottom: 70 }}
                             />
-                          </Suspense>
 
                           {/* Preview */}
                           {lesson.content && (

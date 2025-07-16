@@ -16,6 +16,7 @@ import {
 } from 'lucide-react';
 import { supabase } from '../../lib/supabase';
 import { Coupon, CouponStatistics } from '../../types';
+import { useToast } from '../Auth/ToastContext';
 
 export function CouponManagement() {
   const [coupons, setCoupons] = useState<Coupon[]>([]);
@@ -41,6 +42,8 @@ export function CouponManagement() {
     applicable_courses: [] as string[],
     applicable_categories: [] as string[]
   });
+
+  const { showToast } = useToast();
 
   useEffect(() => {
     fetchCoupons();
@@ -84,9 +87,13 @@ export function CouponManagement() {
           usage_limit: formData.usage_limit || null
         }])
         .select()
-        .single();
+        .maybeSingle();
 
       if (error) throw error;
+      if (!data) {
+        showToast('Coupon not found or not updated.', 'error');
+        return;
+      }
       
       setCoupons([data, ...coupons]);
       setShowCreateModal(false);
@@ -94,6 +101,7 @@ export function CouponManagement() {
       fetchStatistics();
     } catch (error) {
       console.error('Error creating coupon:', error);
+      showToast(error.message || 'Error creating coupon', 'error');
     }
   };
 
@@ -111,9 +119,13 @@ export function CouponManagement() {
         })
         .eq('id', selectedCoupon.id)
         .select()
-        .single();
+        .maybeSingle();
 
       if (error) throw error;
+      if (!data) {
+        showToast('Coupon not found or not updated.', 'error');
+        return;
+      }
       
       setCoupons(coupons.map(c => c.id === selectedCoupon.id ? data : c));
       setShowEditModal(false);
@@ -122,6 +134,7 @@ export function CouponManagement() {
       fetchStatistics();
     } catch (error) {
       console.error('Error updating coupon:', error);
+      showToast(error.message || 'Error updating coupon', 'error');
     }
   };
 

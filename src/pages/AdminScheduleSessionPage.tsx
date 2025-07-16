@@ -3,6 +3,7 @@ import { supabase } from '../lib/supabase';
 import { Calendar, Edit, Eye, Trash2 } from 'lucide-react';
 import { LiveSession, Course } from '../types';
 import ScheduleSessionForm from '../components/Admin/ScheduleSessionForm';
+import { Breadcrumbs } from '../components/common/Breadcrumbs';
 
 export default function AdminScheduleSessionPage() {
   const [sessions, setSessions] = useState<LiveSession[]>([]);
@@ -93,6 +94,7 @@ export default function AdminScheduleSessionPage() {
 
   return (
     <div className="w-full px-2 md:px-4 p-0">
+      <Breadcrumbs />
       <h1 className="text-3xl font-bold text-gray-900 mb-6">Schedule a Live Session</h1>
       {/* Place the form directly under the main title, no container or inner title */}
       <ScheduleSessionForm courses={courses} onSessionCreated={() => window.location.reload()} />

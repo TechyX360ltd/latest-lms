@@ -264,7 +264,7 @@ export default function Enrollments() {
     }
     doc.setFontSize(14);
     doc.setTextColor(0, 0, 0);
-    doc.text('TECHYX 360', pageWidth / 2, 44, { align: 'center' });
+            doc.text('SKILL SAGE', pageWidth / 2, 44, { align: 'center' });
     doc.setFontSize(10);
     doc.text('Learning Management System', pageWidth / 2, 50, { align: 'center' });
     doc.setFontSize(16);
@@ -331,7 +331,7 @@ export default function Enrollments() {
           doc.setTextColor(100, 100, 100);
           doc.text(`Page ${data.pageNumber} of ${pageCount}`, pageWidth / 2, pageHeight - 10, { align: 'center' });
           doc.setFontSize(8);
-          doc.text('© 2024 TECHYX 360 - Learning Management System', margin, pageHeight - 5);
+          doc.text('© 2024 SKILL SAGE - Learning Management System', margin, pageHeight - 5);
           doc.text('Confidential - For internal use only', pageWidth - margin - 60, pageHeight - 5);
         },
         willDrawCell: function(data) {

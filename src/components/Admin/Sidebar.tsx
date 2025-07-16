@@ -79,7 +79,7 @@ export function AdminSidebar() {
   }, []);
 
   const visibleModules =
-    adminUser.role === 'super_admin'
+    String(adminUser.role) === 'super_admin'
       ? allAdminModules
       : allAdminModules.filter(mod => adminUser.modules?.includes(mod.id));
 
@@ -90,7 +90,7 @@ export function AdminSidebar() {
       </div>
       <nav className="flex-1 px-2 space-y-2 overflow-y-auto">
         {visibleModules.map(item => {
-          if (item.superAdminOnly && adminUser.role !== 'super_admin') return null;
+          if (item.superAdminOnly && String(adminUser.role) !== 'super_admin') return null;
           return (
             <NavLink
               key={item.id}
@@ -106,17 +106,19 @@ export function AdminSidebar() {
             </NavLink>
           );
         })}
-        <NavLink
-          to="/admin/certificates"
-          className={({ isActive }) =>
-            `flex items-center gap-3 px-4 py-2 rounded-lg font-medium transition-colors ${
-              isActive ? 'bg-green-100 text-green-700' : 'text-gray-700 hover:bg-gray-50'
-            }`
-          }
-        >
-          <Award className="w-5 h-5" />
-          Certificate Templates
-        </NavLink>
+        {String(adminUser.role) === 'super_admin' && (
+          <NavLink
+            to="/admin/certificate-template-editor"
+            className={({ isActive }) =>
+              `flex items-center gap-3 px-4 py-2 rounded-lg font-medium transition-colors ${
+                isActive ? 'bg-green-100 text-green-700' : 'text-gray-700 hover:bg-gray-50'
+              }`
+            }
+          >
+            <Award className="w-5 h-5" />
+            Certificate Templates
+          </NavLink>
+        )}
       </nav>
     </aside>
   );

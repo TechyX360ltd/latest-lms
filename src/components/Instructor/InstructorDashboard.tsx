@@ -22,10 +22,10 @@ function WelcomeInstructorModal({ onClose }: { onClose: () => void }) {
           ×
         </button>
         <div className="flex flex-col items-center text-center">
-          <img src="/BLACK-1-removebg-preview.png" alt="TECHYX 360" className="h-16 w-auto mb-4" />
-          <h2 className="text-2xl font-bold text-blue-700 mb-2">Welcome to TECHYX 360, Instructor!</h2>
+          <img src="/BLACK-1-removebg-preview.png" alt="SKILL SAGE" className="h-16 w-auto mb-4" />
+          <h2 className="text-2xl font-bold text-blue-700 mb-2">Welcome to SKILL SAGE, Instructor!</h2>
           <p className="text-gray-700 mb-4">
-            You're now an instructor on TECHYX 360.<br />
+            You're now an instructor on SKILL SAGE.<br />
             To unlock all features and start earning, please verify your profile.
           </p>
           <button
@@ -394,7 +394,7 @@ export function InstructorDashboard() {
               <p className="text-gray-600">Here's your instructor dashboard overview</p>
             </div>
             <div className="flex items-center gap-4">
-              <img src="/BLACK-1-removebg-preview.png" alt="TECHYX 360" className="h-10 w-auto opacity-60" />
+              <img src="/BLACK-1-removebg-preview.png" alt="SKILL SAGE" className="h-10 w-auto opacity-60" />
             </div>
           </div>
 

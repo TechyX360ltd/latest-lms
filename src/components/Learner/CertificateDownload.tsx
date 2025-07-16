@@ -4,6 +4,8 @@ import { v4 as uuidv4 } from 'uuid';
 import QRCode from 'qrcode';
 import { supabase } from '../../lib/supabase';
 import jsPDF from 'jspdf';
+import { CertificateCanvas } from '../common/CertificateCanvas';
+import { FacebookShareButton, TwitterShareButton, LinkedinShareButton } from 'react-share';
 
 interface CertificateDownloadProps {
   learnerName: string;
@@ -274,54 +276,26 @@ export const CertificateDownload: React.FC<CertificateDownloadProps> = ({
       <h2 className="text-2xl font-bold text-blue-700 mb-4">Course Certificate</h2>
       <div className="w-full flex justify-center mb-6">
         {/* Certificate preview - A4 landscape size */}
-        <div
-          ref={certificateRef}
-          style={{
-            width: 1123,
-            maxWidth: '100%',
-            height: 794,
-            padding: 40,
-            background: certificateTemplate.background_color,
-            color: '#222',
-            border: `${certificateTemplate.border_width}px solid ${certificateTemplate.border_color}`,
-            borderRadius: 24,
-            margin: '0 auto',
-            position: 'relative',
-            fontFamily: certificateTemplate.font_family,
-            boxSizing: 'border-box',
-            backgroundImage: certificateTemplate.background_image ? `url(${certificateTemplate.background_image})` : 'none',
-            backgroundSize: 'cover',
-            backgroundPosition: 'center',
-          }}
-          className="shadow-lg"
-        >
-          {/* Render template elements */}
-          {certificateTemplate.elements.map((element) => renderTemplateElement(element))}
-          {/* QR Code */}
-          {qrCodeUrl && (
-            <img
-              src={qrCodeUrl}
-              alt="QR Code"
-              style={{ position: 'absolute', bottom: 40, left: 40, width: 80 }}
-            />
-          )}
-        </div>
+        <CertificateCanvas
+          template={certificateTemplate}
+          user={{ name: learnerName }}
+          course={{ title: courseTitle }}
+          completionDate={completionDate}
+        />
       </div>
       <hr className="w-full border-t border-gray-200 my-6" />
       <div className="flex flex-col items-center w-full">
         <div className="flex justify-center gap-4 w-full mb-4">
-          <button
-            onClick={handleDownloadPDF}
-            className="px-6 py-3 bg-green-600 text-white rounded-lg font-semibold shadow hover:bg-green-700 transition"
-          >
-            Download as PDF
-          </button>
-          <button
-            onClick={handleDownloadPNG}
-            className="px-6 py-3 bg-blue-600 text-white rounded-lg font-semibold shadow hover:bg-blue-700 transition"
-          >
-            Download as PNG
-          </button>
+          <button onClick={handleDownloadPDF}>Download PDF</button>
+          <FacebookShareButton url={window.location.href}>
+            <button className="bg-blue-600 text-white px-4 py-2 rounded-lg">Share on Facebook</button>
+          </FacebookShareButton>
+          <TwitterShareButton url={window.location.href}>
+            <button className="bg-blue-400 text-white px-4 py-2 rounded-lg">Share on Twitter</button>
+          </TwitterShareButton>
+          <LinkedinShareButton url={window.location.href}>
+            <button className="bg-blue-700 text-white px-4 py-2 rounded-lg">Share on LinkedIn</button>
+          </LinkedinShareButton>
           {userId && courseId && (
             <button
               onClick={handleDownloadNotesPDF}

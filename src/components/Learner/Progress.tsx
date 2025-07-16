@@ -23,6 +23,8 @@ import {
 } from 'lucide-react';
 import { useCourses } from '../../hooks/useData';
 import { useAuth } from '../../context/AuthContext';
+import { Link } from 'react-router-dom';
+import { supabase } from '../../lib/supabase';
 
 interface ProgressStats {
   totalCourses: number;
@@ -79,12 +81,56 @@ export function Progress() {
   const [selectedTimeframe, setSelectedTimeframe] = useState<'week' | 'month' | 'year'>('month');
   const [learningSessions, setLearningSessions] = useState<LearningSession[]>([]);
   const [weeklyActivity, setWeeklyActivity] = useState<number[]>([]);
+  const [instructorMap, setInstructorMap] = useState<Record<string, { fullName: string }>>({});
+  const [assignmentsMap, setAssignmentsMap] = useState<Record<string, any[]>>({});
 
   useEffect(() => {
     if (!loading && user) {
       loadUserProgressData();
     }
-  }, [courses, user, loading]);
+  }, [courses, user, loading, assignmentsMap]);
+
+  // Batch fetch assignments for all courses
+  useEffect(() => {
+    const fetchAssignmentsBatch = async () => {
+      const courseIds = courses.map(c => c.id);
+      if (courseIds.length === 0) return;
+      const { data, error } = await supabase
+        .from('assignments')
+        .select('*')
+        .in('course_id', courseIds);
+      if (!error && data) {
+        // Map assignments to courseId
+        const map: Record<string, any[]> = {};
+        data.forEach((a: any) => {
+          if (!map[a.course_id]) map[a.course_id] = [];
+          map[a.course_id].push(a);
+        });
+        setAssignmentsMap(map);
+      }
+    };
+    fetchAssignmentsBatch();
+  }, [courses]);
+
+  // Fetch instructor full names for all unique instructor IDs in courses
+  useEffect(() => {
+    const fetchInstructors = async () => {
+      const instructorIds = Array.from(new Set(courses.map(c => c.instructor).filter(Boolean)));
+      if (instructorIds.length === 0) return;
+      const { data, error } = await supabase
+        .from('users')
+        .select('id, first_name, last_name')
+        .in('id', instructorIds);
+      if (!error && data) {
+        const map: Record<string, { fullName: string }> = {};
+        data.forEach((u: any) => {
+          map[u.id] = { fullName: `${u.first_name} ${u.last_name}`.trim() };
+        });
+        setInstructorMap(map);
+      }
+    };
+    fetchInstructors();
+  }, [courses]);
 
   const loadUserProgressData = () => {
     if (!user) return;
@@ -119,12 +165,11 @@ export function Progress() {
       const totalLessons = course.lessons?.length || 0;
       const progress = totalLessons > 0 ? Math.round((completedLessons / totalLessons) * 100) : 0;
       const timeSpent = courseProgressInfo.timeSpent || 0;
-      
-      // Count assignments for this course
+      // Use real assignments from assignmentsMap
+      const courseAssignments = assignmentsMap[course.id] || [];
       const courseSubmissions = submissions.filter((s: any) => s.courseId === course.id);
-      const totalAssignments = 3; // Assume 3 assignments per course
-      const completedAssignments = courseSubmissions.length;
-
+      const completedAssignments = courseSubmissions.filter((s: any) => courseAssignments.some(a => a.id === s.assignmentId)).length;
+      const totalAssignments = courseAssignments.length;
       courseProgressData.push({
         courseId: course.id,
         courseName: course.title,
@@ -149,12 +194,11 @@ export function Progress() {
     completedCourses.forEach(course => {
       const courseProgressInfo = storedProgress[course.id] || {};
       const timeSpent = courseProgressInfo.timeSpent || course.duration * 60;
-      
-      // Count assignments for this course
+      // Use real assignments from assignmentsMap
+      const courseAssignments = assignmentsMap[course.id] || [];
       const courseSubmissions = submissions.filter((s: any) => s.courseId === course.id);
-      const totalAssignments = 3;
-      const completedAssignments = courseSubmissions.length;
-
+      const completedAssignments = courseSubmissions.filter((s: any) => courseAssignments.some(a => a.id === s.assignmentId)).length;
+      const totalAssignments = courseAssignments.length;
       courseProgressData.push({
         courseId: course.id,
         courseName: course.title,
@@ -645,7 +689,18 @@ export function Progress() {
                       </div>
                     </div>
                     
-                    <p className="text-sm text-gray-600 mb-3">by {course.instructor}</p>
+                    <p className="text-sm text-gray-600 mb-3">by{' '}
+                      {course.instructor && instructorMap[course.instructor] ? (
+                        <Link
+                          to={`/instructor/${course.instructor}`}
+                          className="text-blue-600 hover:underline font-medium"
+                        >
+                          {instructorMap[course.instructor].fullName}
+                        </Link>
+                      ) : (
+                        <span className="text-gray-400">Unknown Instructor</span>
+                      )}
+                    </p>
                     
                     <div className="grid grid-cols-1 md:grid-cols-5 gap-4">
                       <div>

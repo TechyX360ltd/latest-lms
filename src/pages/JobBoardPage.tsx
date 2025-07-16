@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { Search, Filter, MapPin, Briefcase, DollarSign, Star, X } from 'lucide-react';
 import { supabase } from '../lib/supabase';
+import { Breadcrumbs } from '../components/common/Breadcrumbs';
 
 interface Job {
   id: string;
@@ -199,6 +200,7 @@ const JobBoardPage: React.FC = () => {
 
   return (
     <div className="min-h-screen bg-gray-50 py-3 px-1 md:px-2 lg:px-4 w-full">
+      <Breadcrumbs />
       <div className="w-full">
         <header className="mb-8">
           <h1 className="text-3xl font-bold text-gray-900 mb-2">Job Board</h1>

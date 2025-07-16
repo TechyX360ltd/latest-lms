@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { Clock, Users, Star, CheckCircle, Award, Tag } from 'lucide-react';
 import { useCategories } from '../../hooks/useData';
+import { useUsers } from '../../hooks/useData';
 import { useAuth } from '../../context/AuthContext';
 import { supabase } from '../../lib/supabase';
 import { Link, useNavigate } from 'react-router-dom';
@@ -22,6 +23,7 @@ const FILTERS = [
 
 export function BrowseCourses() {
   const { categories, loading: categoriesLoading } = useCategories();
+  const { users } = useUsers();
   const { user, updateUserEnrollment, updateUserProfile, refreshUserEnrollments } = useAuth();
   const [selectedCategory, setSelectedCategory] = useState('all');
   const [enrollingCourses, setEnrollingCourses] = useState<Set<string>>(new Set());
@@ -215,6 +217,11 @@ export function BrowseCourses() {
     const isEnrolled = user?.enrolledCourses.includes(course.id);
     const isCompleted = user?.completedCourses?.includes(course.id);
     const isEnrolling = enrollingCourses.has(course.id);
+    // Find instructor by ID
+    const instructor = users.find((u: any) => u.id === course.instructor_id);
+    const instructorName = instructor
+      ? `${instructor.first_name || instructor.firstName || ''} ${instructor.last_name || instructor.lastName || ''}`.trim() || instructor.email || 'Instructor'
+      : 'Instructor';
     return (
       <div className="bg-white rounded-xl shadow-sm border border-gray-100 overflow-hidden hover:shadow-md transition-shadow min-w-[270px] max-w-xs flex-shrink-0">
         <div className="relative">
@@ -247,7 +254,7 @@ export function BrowseCourses() {
               to={`/instructor/${course.instructor_id}`}
               className="text-blue-600 hover:underline font-medium"
             >
-              {course.instructor || 'Instructor'}
+              {instructorName}
             </Link>
           </p>
           <div className="flex items-center gap-3 mb-3 text-xs text-gray-500">

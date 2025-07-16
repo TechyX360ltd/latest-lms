@@ -20,7 +20,6 @@ export function CourseRatingModal({
 }: CourseRatingModalProps) {
   const [rating, setRating] = useState(0);
   const [hoveredRating, setHoveredRating] = useState(0);
-  const [reviewTitle, setReviewTitle] = useState('');
   const [reviewContent, setReviewContent] = useState('');
   const [submitting, setSubmitting] = useState(false);
   const { createCourseRating } = useRatings();
@@ -37,8 +36,7 @@ export function CourseRatingModal({
       await createCourseRating({
         courseId,
         rating,
-        reviewTitle: reviewTitle.trim() || undefined,
-        reviewContent: reviewContent.trim() || undefined
+        review: reviewContent.trim() || undefined
       });
 
       showToast('Thank you for your review!', 'success');
@@ -54,7 +52,6 @@ export function CourseRatingModal({
   const handleClose = () => {
     setRating(0);
     setHoveredRating(0);
-    setReviewTitle('');
     setReviewContent('');
     onClose();
   };
@@ -121,24 +118,6 @@ export function CourseRatingModal({
             </div>
             <p className="text-sm text-gray-600">
               {getRatingText(hoveredRating || rating)}
-            </p>
-          </div>
-
-          {/* Review Title */}
-          <div>
-            <label className="block text-sm font-medium text-gray-700 mb-2">
-              Review Title (Optional)
-            </label>
-            <input
-              type="text"
-              value={reviewTitle}
-              onChange={(e) => setReviewTitle(e.target.value)}
-              placeholder="Summarize your experience in a few words"
-              className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-              maxLength={100}
-            />
-            <p className="text-xs text-gray-500 mt-1">
-              {reviewTitle.length}/100 characters
             </p>
           </div>
 

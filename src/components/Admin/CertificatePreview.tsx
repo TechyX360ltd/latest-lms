@@ -441,7 +441,7 @@ export function CertificatePreview({ onClose }: CertificatePreviewProps) {
                   <div className="mb-8">
                     <img 
                       src="/BLACK-1-removebg-preview.png" 
-                      alt="TECHYX 360" 
+                      alt="SKILL SAGE" 
                       className="h-16 w-auto mx-auto mb-6"
                     />
                     <div className={`inline-block bg-gradient-to-r ${currentTemplate.colors.primary} text-white px-8 py-3 rounded-full shadow-lg`}>
@@ -485,7 +485,7 @@ export function CertificatePreview({ onClose }: CertificatePreviewProps) {
                     
                     <div className={`text-center bg-gradient-to-r ${currentTemplate.colors.primary} text-white p-4 rounded-lg shadow-lg`}>
                       <Award className="w-8 h-8 mx-auto mb-2" />
-                      <p className="text-xs font-medium">TECHYX 360</p>
+                      <p className="text-xs font-medium">SKILL SAGE</p>
                       <p className="text-xs">Learning Platform</p>
                     </div>
                     
@@ -500,7 +500,7 @@ export function CertificatePreview({ onClose }: CertificatePreviewProps) {
                   {/* Certificate ID */}
                   <div className="mt-8 text-center">
                     <p className="text-xs text-gray-500">
-                      Certificate ID: TECHYX-{selectedTemplate.toUpperCase()}-{Date.now().toString().slice(-6)}
+                      Certificate ID: SKILLSAGE-{selectedTemplate.toUpperCase()}-{Date.now().toString().slice(-6)}
                     </p>
                   </div>
                 </div>

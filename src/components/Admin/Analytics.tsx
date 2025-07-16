@@ -792,7 +792,7 @@ export function Analytics() {
       <div className="bg-gradient-to-r from-indigo-500 via-purple-500 to-pink-500 rounded-xl shadow-lg p-8 text-white">
         <div className="text-center mb-8">
           <h2 className="text-2xl font-bold mb-2">Platform Performance Summary</h2>
-          <p className="text-lg opacity-90">Your TECHYX 360 platform is performing excellently</p>
+          <p className="text-lg opacity-90">Your SKILL SAGE platform is performing excellently</p>
         </div>
         
         <div className="grid grid-cols-1 md:grid-cols-4 gap-6">

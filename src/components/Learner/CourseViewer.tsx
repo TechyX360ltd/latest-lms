@@ -10,6 +10,8 @@ import { getLessonNote, upsertLessonNote, getLessonDiscussions, addLessonDiscuss
 import { Course, Module, Lesson, Assignment, User } from '../../types';
 import { CertificateDownload } from './CertificateDownload';
 import Confetti from 'react-confetti';
+import { CertificateCompletionModal } from './CertificateCompletionModal';
+import { supabase } from '../../lib/supabase';
 
 // Types for discussion and notes
 interface Discussion {
@@ -70,6 +72,7 @@ export function CourseViewer() {
   const [deletingId, setDeletingId] = useState<string | null>(null);
   const [showCertificate, setShowCertificate] = useState(false);
   const [showCompleteConfirm, setShowCompleteConfirm] = useState(false);
+  const [certificateTemplate, setCertificateTemplate] = useState<any>(null);
   const [showCertificateModal, setShowCertificateModal] = useState(false);
   const [showRatingModal, setShowRatingModal] = useState(false);
   const [rating, setRating] = useState(0);
@@ -301,6 +304,32 @@ export function CourseViewer() {
     setShowCompleteConfirm(true);
   };
 
+  const handleShowCertificateModal = async () => {
+    let templateId = course?.certificate_template || course?.certificatetemplate;
+    let template = null;
+    if (templateId) {
+      const { data } = await supabase
+        .from('certificate_templates')
+        .select('*')
+        .eq('id', templateId)
+        .eq('is_active', true)
+        .single();
+      template = data;
+    }
+    if (!template) {
+      // fallback to default
+      const { data: defaultTemplate } = await supabase
+        .from('certificate_templates')
+        .select('*')
+        .eq('is_default', true)
+        .eq('is_active', true)
+        .single();
+      template = defaultTemplate;
+    }
+    setCertificateTemplate(template);
+    setShowCertificateModal(true);
+  };
+
   // Loading and error states
   if (modulesLoading) {
     return (
@@ -439,7 +468,7 @@ export function CourseViewer() {
                 className="flex-1 px-4 py-2 bg-gray-200 text-gray-800 rounded-lg font-semibold hover:bg-gray-300 transition"
                 onClick={() => {
                   setShowRatingModal(false);
-                  setShowCertificate(true);
+                  handleShowCertificateModal();
                 }}
                 disabled={submittingReview}
               >
@@ -461,7 +490,7 @@ export function CourseViewer() {
                   }
                   setSubmittingReview(false);
                   setShowRatingModal(false);
-                  setShowCertificate(true);
+                  handleShowCertificateModal();
                 }}
                 disabled={submittingReview || rating === 0}
               >
@@ -471,33 +500,14 @@ export function CourseViewer() {
           </div>
         </div>
       )}
-      {showCertificate && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-50">
-          <div className="bg-white rounded-xl p-8 shadow-2xl text-center max-w-2xl w-full relative">
-            <button
-              className="absolute top-4 right-4 text-gray-400 hover:text-gray-700 text-2xl font-bold"
-              onClick={() => setShowCertificate(false)}
-            >×</button>
-            <CertificateDownload
-              learnerName={`${user?.first_name || ''} ${user?.last_name || ''}`}
-              courseTitle={course?.title || ''}
-              userId={user?.id || ''}
-              courseId={course?.id || ''}
-              user={user}
-              course={course}
-              onClose={() => setShowCertificate(false)}
-            />
-            <div className="flex justify-center gap-4 mt-6">
-              <button
-                className="px-6 py-3 bg-blue-600 text-white rounded-lg font-semibold shadow hover:bg-blue-700 transition"
-                onClick={() => navigate('/dashboard/courses')}
-              >
-                Go to My Courses
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
+      {/* Certificate Completion Modal */}
+      <CertificateCompletionModal
+        open={showCertificateModal}
+        onClose={() => setShowCertificateModal(false)}
+        user={user}
+        course={course}
+        template={certificateTemplate}
+      />
       {!showCelebration && !showCertificate && !showCompleteConfirm && (
         <div className="flex flex-col md:flex-row h-full">
           {/* Mobile Hamburger Button */}
@@ -779,39 +789,15 @@ export function CourseViewer() {
       )}
 
       {/* Certificate modal (shown after celebration) */}
-      {showCertificateModal && (
-        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
-          <div className="bg-white rounded-2xl shadow-2xl p-8 max-w-xl w-full mx-4 flex flex-col items-center relative">
-            <h3 className="text-2xl font-bold mb-4 text-center">Your Certificate</h3>
-            <CertificateDownload
-              learnerName={`${user?.first_name || ''} ${user?.last_name || ''}`}
-              courseTitle={course?.title || ''}
-              userId={user?.id || ''}
-              courseId={course?.id || ''}
-              user={user}
-              course={course}
-              onClose={() => setShowCertificateModal(false)}
-            />
-            <div className="flex justify-center gap-4 mt-6">
-            <button
-                className="px-6 py-3 bg-blue-600 text-white rounded-lg font-semibold shadow hover:bg-blue-700 transition"
-              onClick={() => setShowCertificateModal(false)}
-            >
-              Close
-            </button>
-            </div>
-          </div>
-        </div>
-      )}
-      {/* Only show the parent Go to My Courses button if certificate modal is not open */}
-      {!showCertificateModal && (
+      {/* This block is now handled by CertificateCompletionModal */}
+      {/* {!showCertificateModal && (
         <button
           onClick={() => navigate('/dashboard')}
           className="mt-8 px-6 py-3 bg-blue-600 text-white rounded-lg font-semibold shadow hover:bg-blue-700 transition"
         >
           Go to My Courses
         </button>
-      )}
+      )} */}
     </>
   );
 }

@@ -93,8 +93,7 @@ export function useRatings() {
   const createCourseRating = async (ratingData: {
     courseId: string;
     rating: number;
-    reviewTitle?: string;
-    reviewContent?: string;
+    review?: string;
   }) => {
     try {
       const { data, error } = await supabase
@@ -103,9 +102,9 @@ export function useRatings() {
           course_id: ratingData.courseId,
           user_id: (await supabase.auth.getUser()).data.user?.id,
           rating: ratingData.rating,
-          review_title: ratingData.reviewTitle,
-          review_content: ratingData.reviewContent,
-          is_verified_purchase: true // Assuming they can only rate if enrolled
+          review: ratingData.review,
+          is_verified_purchase: true, // Assuming they can only rate if enrolled
+          rated_at: new Date().toISOString()
         }])
         .select()
         .single();
@@ -159,17 +158,15 @@ export function useRatings() {
 
   const updateCourseRating = async (ratingId: string, updates: {
     rating?: number;
-    reviewTitle?: string;
-    reviewContent?: string;
+    review?: string;
   }) => {
     try {
       const { data, error } = await supabase
         .from('course_ratings')
         .update({
           rating: updates.rating,
-          review_title: updates.reviewTitle,
-          review_content: updates.reviewContent,
-          updated_at: new Date().toISOString()
+          review: updates.review,
+          rated_at: new Date().toISOString()
         })
         .eq('id', ratingId)
         .select()

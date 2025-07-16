@@ -1,49 +1,69 @@
-import React, { useState, useEffect, useRef, Suspense } from 'react';
-import { 
-  Save, 
-  Plus, 
-  Trash2, 
-  Upload, 
-  FileText, 
-  Video, 
-  Image, 
-  ChevronDown,
-  ChevronRight,
-  Clock,
-  BookOpen,
-  Award,
-  Bold,
-  Italic,
-  List,
-  ListOrdered,
-  Underline,
-  AlignLeft,
-  AlignCenter,
-  AlignRight,
-  Quote,
-  Code,
-  Link,
-  Eye,
-  Minimize2,
-  Maximize2,
-  RefreshCw
-} from 'lucide-react';
+import React, { useState, useRef, useEffect } from 'react';
 import { useCategories, useUsers } from '../../hooks/useData';
-import { uploadToCloudinary } from '../../lib/cloudinary';
-import { useToast } from '../Auth/ToastContext';
-import { Header } from '../Layout/Header';
-import { supabase } from '../../lib/supabase';
-import { Course, Module, Lesson, Assignment } from '../../types';
-import { CertificateTemplateGallery } from '../common/CertificateTemplateGallery';
 import { useAuth } from '../../context/AuthContext';
 import { useGamification } from '../../hooks/useGamification';
+import { useParams } from 'react-router-dom';
+import ReactQuill from 'react-quill';
+import 'react-quill/dist/quill.snow.css';
+import { uploadToCloudinary } from '../../lib/cloudinary';
+import Confetti from 'react-confetti';
+import { FaTrophy } from 'react-icons/fa';
+import { supabase } from '../../lib/supabase';
+import { toast } from 'react-hot-toast';
+import { Module as ModuleType, Lesson as LessonType, Assignment } from '../../types';
+import { 
+  Clock,
+  BookOpen,
+  Plus, 
+  Trash2, 
+  FileText, 
+  Video
+} from 'lucide-react';
 
-interface CreateCourseProps {
-  onSave: (courseData: any) => Promise<{ data: any; error: any } | void>;
-  onCancel: () => void;
+// Helper function to validate UUID
+function isValidUUID(id: string | undefined | null): boolean {
+  if (!id) return false;
+  const uuidRegex = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
+  return uuidRegex.test(id);
 }
 
-// Add a modal component for video upload
+// Add slugify utility (inline, since not found in shared utils)
+function slugify(text: string) {
+  return text
+    .toString()
+    .toLowerCase()
+    .trim()
+    .replace(/\s+/g, '-')
+    .replace(/&/g, '-and-')
+    .replace(/[\u0300-\u036f]/g, '')
+    .replace(/[^a-z0-9-]/g, '')
+    .replace(/--+/g, '-')
+    .replace(/^-+/, '')
+    .replace(/-+$/, '');
+}
+
+const courseTypes = [
+  { label: 'Text Only', value: 'text' },
+  { label: 'Video Only', value: 'video' },
+  { label: 'Mixed (Text + Video)', value: 'mixed' },
+];
+
+function Stepper({ step }: { step: number }) {
+  const steps = ['Course Basics', 'Content', 'Publish'];
+  return (
+    <div className="flex items-center justify-center gap-4 mb-8">
+      {steps.map((label, idx) => (
+        <div key={label} className="flex items-center gap-2">
+          <div className={`w-8 h-8 rounded-full flex items-center justify-center font-bold text-lg border-2 transition-all duration-200 ${step === idx + 1 ? 'bg-blue-600 text-white border-blue-600' : 'bg-white text-blue-700 border-blue-300'}`}>{idx + 1}</div>
+          <span className={`text-sm font-medium ${step === idx + 1 ? 'text-blue-700' : 'text-gray-400'}`}>{label}</span>
+          {idx < steps.length - 1 && <div className="w-8 h-1 bg-blue-200 rounded-full" />}
+        </div>
+      ))}
+    </div>
+  );
+}
+
+// Video upload modal component
 function VideoUploadModal({ open, onClose, onUpload, progress, error }: {
   open: boolean;
   onClose: () => void;
@@ -87,29 +107,22 @@ function VideoUploadModal({ open, onClose, onUpload, progress, error }: {
   );
 }
 
-// Add a simple slugify function at the top (after imports)
-function slugify(text: string) {
-  return text
-    .toString()
-    .toLowerCase()
-    .trim()
-    .replace(/\s+/g, '-')           // Replace spaces with -
-    .replace(/&/g, '-and-')          // Replace & with 'and'
-    .replace(/[\u0300-\u036f]/g, '') // Remove accents
-    .replace(/[^a-z0-9-]/g, '')      // Remove all non-word chars
-    .replace(/--+/g, '-')            // Replace multiple - with single -
-    .replace(/^-+/, '')              // Trim - from start of text
-    .replace(/-+$/, '');             // Trim - from end of text
+// Types for modules and lessons
+interface Lesson extends LessonType {
+  // Add any extra fields used in this component
+  videoUrl?: string;
+  assignment?: string;
+  assignmentFile?: string;
+  attachments?: string[];
+  sort_order?: number;
+}
+interface Module extends ModuleType {
+  lessons: Lesson[];
+  assignments?: Assignment[];
+  description?: string;
 }
 
-function isValidUUID(id: string | undefined | null): boolean {
-  return !!id && /^[0-9a-fA-F-]{36}$/.test(id);
-}
-
-const ReactQuill = React.lazy(() => import('react-quill').then(module => ({ default: module.default })));
-import 'react-quill/dist/quill.snow.css';
-
-export function CreateCourse({ onSave, onCancel }: CreateCourseProps) {
+export default function CreateCourse() {
   const { user } = useAuth();
   const { awardCoinsOnCoursePublish } = useGamification();
   const { categories, refreshCategories, loading: categoriesLoading } = useCategories();
@@ -142,17 +155,23 @@ export function CreateCourse({ onSave, onCancel }: CreateCourseProps) {
   const [videoUploadProgress, setVideoUploadProgress] = useState(0);
   const [videoUploadError, setVideoUploadError] = useState<string | null>(null);
   const [isDirty, setIsDirty] = useState(false);
-  const { showToast } = useToast();
   const [instructorSearch, setInstructorSearch] = useState('');
+  const [selectedInstructorId, setSelectedInstructorId] = useState<string | undefined>('');
   const [certificateTemplateId, setCertificateTemplateId] = useState<string | null>(null);
   // Add missing state for courseCategory
   const [courseCategory, setCourseCategory] = useState('');
+  const [certificateTemplates, setCertificateTemplates] = useState<any[]>([]);
 
-  const certificateTemplates = [
-    { id: 'default', name: 'Default Template', description: 'Classic blue and white design' },
-    { id: 'modern', name: 'Modern Template', description: 'Sleek contemporary design' },
-    { id: 'elegant', name: 'Elegant Template', description: 'Sophisticated gold accents' },
-  ];
+  useEffect(() => {
+    async function fetchTemplates() {
+      const { data } = await supabase
+        .from('certificate_templates')
+        .select('*')
+        .eq('is_active', true);
+      setCertificateTemplates(data || []);
+    }
+    fetchTemplates();
+  }, []);
 
   // Refresh schools/categories when component mounts or when user clicks refresh
   useEffect(() => {
@@ -287,7 +306,7 @@ export function CreateCourse({ onSave, onCancel }: CreateCourseProps) {
       newErrors.description = 'Course description is required';
     }
 
-    if (!instructorSearch.trim()) {
+    if (!selectedInstructorId) {
       newErrors.instructor = 'Instructor is required';
     }
 
@@ -337,7 +356,7 @@ export function CreateCourse({ onSave, onCancel }: CreateCourseProps) {
       id: crypto.randomUUID(),
       title: '',
       content: '',
-      video_url: null, // Changed from contentType to type
+      videoUrl: null, // Changed from contentType to type
       attachments: [],
       duration: 0,
       sort_order: 1,
@@ -415,9 +434,12 @@ export function CreateCourse({ onSave, onCancel }: CreateCourseProps) {
     setExpandedModules(newExpanded);
   };
 
+  // Fix reduce for total duration
   const calculateTotalDuration = () => {
-    return modules.reduce((total, module) => 
-      total + module.lessons.reduce((moduleTotal, lesson) => moduleTotal + lesson.duration, 0), 0
+    return modules.reduce(
+      (total, module) =>
+        total + module.lessons.reduce((lessonTotal, lesson) => lessonTotal + (lesson.duration || 0), 0),
+      0
     );
   };
 
@@ -468,7 +490,7 @@ export function CreateCourse({ onSave, onCancel }: CreateCourseProps) {
             const res = JSON.parse(xhr.responseText);
             // Save the video URL to the lesson
             if (videoModal.moduleId && videoModal.lessonId) {
-              updateLesson(videoModal.moduleId, videoModal.lessonId, 'video_url', res.secure_url);
+              updateLesson(videoModal.moduleId, videoModal.lessonId, 'videoUrl', res.secure_url);
             }
             setVideoModal({ open: false, moduleId: null, lessonId: null });
             setVideoUploadProgress(0);
@@ -490,13 +512,10 @@ export function CreateCourse({ onSave, onCancel }: CreateCourseProps) {
   };
 
   // Filter instructors for dropdown
-  const instructors = users
+  const filteredInstructors = users
     .filter(u => u.role === 'instructor' && (
       (u.first_name + ' ' + u.last_name).toLowerCase().includes(instructorSearch.toLowerCase()) ||
       u.email.toLowerCase().includes(instructorSearch.toLowerCase())
-    ))
-    .map(i => (
-      <option key={i.id} value={i.id}>{i.first_name} {i.last_name} ({i.email})</option>
     ));
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -517,7 +536,7 @@ export function CreateCourse({ onSave, onCancel }: CreateCourseProps) {
         title: courseTitle,
         slug,
         description: courseDescription,
-        instructor_id: instructorSearch.trim(), // Assuming instructorSearch is the selected instructor ID
+        instructor: selectedInstructorId,
         category: courseCategory, // Assuming courseCategory is the selected category ID
         format: courseFormat,
         duration: Number(courseDuration),
@@ -587,7 +606,7 @@ export function CreateCourse({ onSave, onCancel }: CreateCourseProps) {
               module_id: mod.id,
               title: les.title,
               content: les.content,
-              video_url: les.video_url || null,
+              video_url: les.videoUrl || null,
               duration: les.duration,
               order: les.sort_order,
               created_at: new Date().toISOString(),
@@ -632,10 +651,10 @@ export function CreateCourse({ onSave, onCancel }: CreateCourseProps) {
         }
       }
 
-      showToast(`Course created successfully${courseIsPublished ? ' and published!' : ' (saved as draft).'}`, 'success');
+      toast.success(`Course created successfully${courseIsPublished ? ' and published!' : ' (saved as draft).'}`);
     } catch (error) {
       console.error('Error creating course:', error);
-      showToast('Error creating course. Please try again.', 'error');
+      toast.error('Error creating course. Please try again.');
     } finally {
       setIsLoading(false);
     }
@@ -678,6 +697,16 @@ export function CreateCourse({ onSave, onCancel }: CreateCourseProps) {
           }
         : module
     ));
+  };
+
+  // Add placeholder onSave and onCancel if not provided as props
+  const onSave = async (coursePayload: any) => {
+    // TODO: Replace with actual save logic or receive as prop
+    return { data: { id: crypto.randomUUID() } };
+  };
+  const onCancel = () => {
+    // TODO: Replace with actual cancel logic or receive as prop
+    window.history.back();
   };
 
   return (
@@ -750,48 +779,8 @@ export function CreateCourse({ onSave, onCancel }: CreateCourseProps) {
 
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-2">
-                    Instructor *
-                  </label>
-                  <input
-                    type="text"
-                    value={instructorSearch}
-                    onChange={e => setInstructorSearch(e.target.value)}
-                    className="w-full px-4 py-3 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent mb-2"
-                    placeholder="Search instructor by name or email"
-                    autoComplete="off"
-                  />
-                  <select
-                      value={instructorSearch.trim()}
-                    onChange={e => {
-                      const selected = users.find(u => u.id === e.target.value);
-                        setInstructorSearch(selected?.id || '');
-                    }}
-                    className="w-full px-4 py-3 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                    required
-                    disabled={usersLoading}
-                  >
-                    <option value="">{usersLoading ? 'Loading instructors...' : 'Select instructor'}</option>
-                    {instructors}
-                  </select>
-                  {errors.instructor && <p className="text-red-600 text-sm mt-1">{errors.instructor}</p>}
-                </div>
-
-                <div>
-                  <div className="flex items-center justify-between mb-2">
-                    <label className="block text-sm font-medium text-gray-700">
                       Course Category *
                     </label>
-                    <button
-                      type="button"
-                      onClick={handleRefreshSchools}
-                      disabled={refreshingSchools || categoriesLoading}
-                      className="flex items-center gap-1 text-xs text-blue-600 hover:text-blue-700 transition-colors disabled:opacity-50"
-                      title="Refresh schools list"
-                    >
-                      <RefreshCw className={`w-3 h-3 ${refreshingSchools ? 'animate-spin' : ''}`} />
-                      Refresh
-                    </button>
-                  </div>
                   <select
                       value={courseCategory}
                       onChange={(e) => setCourseCategory(e.target.value)}
@@ -895,6 +884,25 @@ export function CreateCourse({ onSave, onCancel }: CreateCourseProps) {
                     <span className="ml-2 text-gray-600">{courseIsPublished ? 'Published' : 'Draft'}</span>
                 </div>
               </div>
+
+              {user?.role === 'admin' && (
+                <div className="mb-4 flex flex-col md:flex-row gap-4 items-start md:items-end">
+                  <div className="flex-1">
+                    <label className="block text-sm font-medium mb-1">Instructor</label>
+                    <select
+                      value={selectedInstructorId || ''}
+                      onChange={e => setSelectedInstructorId(e.target.value)}
+                      className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent text-lg font-semibold"
+                      disabled={usersLoading}
+                    >
+                      <option value="">Select instructor</option>
+                      {users.filter(u => u.role === 'instructor').map(u => (
+                        <option key={u.id} value={u.id}>{u.first_name} {u.last_name} ({u.email})</option>
+                      ))}
+                    </select>
+                  </div>
+                </div>
+              )}
 
               <div className="mt-6">
                 <label className="block text-sm font-medium text-gray-700 mb-2">
@@ -1002,9 +1010,8 @@ export function CreateCourse({ onSave, onCancel }: CreateCourseProps) {
                                 <FileText className="w-4 h-4 text-blue-500" />
                                 <span className="font-semibold text-blue-700">Text Content</span>
                               </div>
-                              {/* Rich text formatting buttons */}
+                              {/* Rich text formatting buttons (optional, can keep or remove) */}
                               <div className="flex gap-2 mb-1">
-                                <button type="button" onClick={() => formatText(module.id, lesson.id, 'bold')} className="px-2 py-1 bg-gray-200 rounded hover:bg-gray-300 font-bold">B</button>
                                 <button type="button" onClick={() => formatText(module.id, lesson.id, 'italic')} className="px-2 py-1 bg-gray-200 rounded hover:bg-gray-300 italic">I</button>
                                 <button type="button" onClick={() => formatText(module.id, lesson.id, 'underline')} className="px-2 py-1 bg-gray-200 rounded hover:bg-gray-300 underline">U</button>
                                 <button type="button" onClick={() => formatText(module.id, lesson.id, 'code')} className="px-2 py-1 bg-gray-200 rounded hover:bg-gray-300 font-mono">&lt;/&gt;</button>
@@ -1027,10 +1034,10 @@ export function CreateCourse({ onSave, onCancel }: CreateCourseProps) {
                                 onClick={() => setVideoModal({ open: true, moduleId: module.id, lessonId: lesson.id })}
                                 className="bg-blue-100 text-blue-700 px-3 py-1 rounded text-xs font-medium hover:bg-blue-200"
                               >
-                                {lesson.video_url ? 'Replace Video' : 'Upload Video'}
+                                {lesson.videoUrl ? 'Replace Video' : 'Upload Video'}
                               </button>
-                              {lesson.video_url && (
-                                <video src={lesson.video_url} controls className="w-full mt-2 rounded" />
+                              {lesson.videoUrl && (
+                                <video src={lesson.videoUrl} controls className="w-full mt-2 rounded" />
                               )}
                             </div>
                           )}
@@ -1108,10 +1115,16 @@ export function CreateCourse({ onSave, onCancel }: CreateCourseProps) {
             {step === 3 && (
               <div className="bg-white rounded-xl shadow-sm p-6 border border-gray-100">
                 <h2 className="text-xl font-bold text-gray-900 mb-6">Certificate Template</h2>
-                <CertificateTemplateGallery
-                  selectedTemplateId={certificateTemplateId}
-                  onSelect={setCertificateTemplateId}
-                />
+                <select
+                  value={certificateTemplateId || ''}
+                  onChange={e => setCertificateTemplateId(e.target.value)}
+                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                >
+                  <option value="">Select a certificate template</option>
+                  {certificateTemplates.map(t => (
+                    <option key={t.id} value={t.id}>{t.name}</option>
+                  ))}
+                </select>
                 {!certificateTemplateId && (
                   <p className="text-red-600 text-sm mt-2">Please select a certificate template.</p>
                 )}

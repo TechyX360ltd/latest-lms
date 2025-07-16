@@ -28,7 +28,7 @@ CREATE TABLE IF NOT EXISTS certificates (
   template_id uuid REFERENCES certificate_templates(id),
   issue_date timestamptz DEFAULT now(),
   certificate_url text, -- URL to stored PDF/image
-  verification_code text UNIQUE NOT NULL DEFAULT 'TECHYX-' || substr(md5(gen_random_uuid()::text), 1, 8),
+  verification_code text UNIQUE NOT NULL DEFAULT 'SKILLSAGE-' || substr(md5(gen_random_uuid()::text), 1, 8),
   status text DEFAULT 'issued' CHECK (status IN ('issued', 'revoked')),
   created_at timestamptz DEFAULT now()
 );
@@ -192,7 +192,7 @@ INSERT INTO certificate_templates (id, name, description, elements, background_c
     {
       "type": "text",
       "id": "footer",
-      "text": "TECHYX 360 LMS",
+      "text": "SKILL SAGE LMS",
       "x": 50,
       "y": 90,
       "fontSize": 16,
@@ -302,7 +302,7 @@ INSERT INTO certificate_templates (id, name, description, elements, background_c
     {
       "type": "text",
       "id": "footer",
-      "text": "TECHYX 360",
+      "text": "SKILL SAGE",
       "x": 50,
       "y": 90,
       "fontSize": 16,
@@ -412,7 +412,7 @@ INSERT INTO certificate_templates (id, name, description, elements, background_c
     {
       "type": "text",
       "id": "footer",
-      "text": "TECHYX 360 LMS",
+      "text": "SKILL SAGE LMS",
       "x": 50,
       "y": 90,
       "fontSize": 16,

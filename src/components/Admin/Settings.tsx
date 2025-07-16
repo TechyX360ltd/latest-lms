@@ -32,8 +32,8 @@ export function Settings() {
   
   // General Settings
   const [generalSettings, setGeneralSettings] = useState({
-    platformName: 'TECHYX 360',
-    supportEmail: 'support@techyx360.com',
+            platformName: 'SKILL SAGE',
+        supportEmail: 'support@skillsage.com',
     contactPhone: '+234 800 123 4567',
     timezone: 'Africa/Lagos',
     defaultLanguage: 'en',
@@ -199,12 +199,12 @@ export function Settings() {
   const [emailSettings, setEmailSettings] = useState({
     smtpServer: 'smtp.example.com',
     smtpPort: 587,
-    smtpUsername: 'notifications@techyx360.com',
+    smtpUsername: 'notifications@skillsage.com',
     smtpPassword: '••••••••••••',
-    senderName: 'TECHYX 360',
-    senderEmail: 'notifications@techyx360.com',
+    senderName: 'SKILL SAGE',
+    senderEmail: 'notifications@skillsage.com',
     enableEmailTemplates: true,
-    emailFooter: 'TECHYX 360 Learning Management System'
+    emailFooter: 'SKILL SAGE Learning Management System'
   });
 
   // Database Status
@@ -1340,7 +1340,7 @@ export function Settings() {
             <SettingsIcon className="w-8 h-8 text-blue-600" />
             Settings
           </h1>
-          <p className="text-gray-600">Configure your TECHYX 360 platform settings</p>
+          <p className="text-gray-600">Configure your SKILL SAGE platform settings</p>
         </div>
         
         {/* Database Connection Status */}

@@ -141,7 +141,7 @@ export function LoginForm({
             {/* Logo or App Name */}
           <img 
             src="/BLACK-1-removebg-preview.png" 
-            alt="TECHYX 360" 
+            alt="SKILL SAGE" 
               className="h-12 w-auto mb-4"
               onError={e => { (e.target as HTMLImageElement).style.display = 'none'; }}
           />

@@ -204,7 +204,7 @@ export function CourseList({}: CourseListProps) {
           <div className="hidden md:block">
             <img 
               src="/BLACK-1-removebg-preview.png" 
-              alt="TECHYX 360" 
+              alt="SKILL SAGE" 
               className="h-10 w-auto opacity-60"
             />
           </div>
@@ -342,7 +342,12 @@ export function CourseList({}: CourseListProps) {
                                     {instructor.firstName?.[0] || ''}{instructor.lastName?.[0] || ''}
                                   </div>
                                 )}
-                                <span className="font-bold text-gray-800 text-sm">{instructor.firstName} {instructor.lastName}</span>
+                                <Link
+                                  to={`/instructor/${course.instructor_id}`}
+                                  className="font-bold text-gray-800 text-sm hover:text-blue-600 transition-colors"
+                                >
+                                  {instructor.firstName} {instructor.lastName}
+                                </Link>
                               </div>
                             );
                           }

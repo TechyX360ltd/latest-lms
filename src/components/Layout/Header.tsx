@@ -1,10 +1,23 @@
 import React, { useState, useEffect } from 'react';
-import { LogOut, User, Bell, Search, X, GraduationCap, CheckCircle } from 'lucide-react';
+import { LogOut, User, Bell, Search, X, GraduationCap, CheckCircle, BookOpen, FileText, CreditCard, Star, Tag, MessageSquare, Award } from 'lucide-react';
 import { FaCoins } from 'react-icons/fa';
 import { useAuth } from '../../context/AuthContext';
-import { useNotifications, useUsers, useCourses } from '../../hooks/useData';
+import { useNotifications, useUsers, useCourses, useCategories, usePayments } from '../../hooks/useData';
 import { useNavigate } from 'react-router-dom';
 import { useGamification } from '../../hooks/useGamification';
+import { supabase } from '../../lib/supabase';
+
+// Enhanced search result types
+interface SearchResult {
+  id: string;
+  type: 'user' | 'course' | 'category' | 'module' | 'lesson' | 'assignment' | 'notification' | 'payment' | 'coupon' | 'rating';
+  title: string;
+  subtitle?: string;
+  description?: string;
+  icon: React.ReactNode;
+  url: string;
+  relevance: number;
+}
 
 export function Header() {
   const { user, logout } = useAuth();
@@ -14,21 +27,242 @@ export function Header() {
   const [showNotificationDropdown, setShowNotificationDropdown] = useState(false);
   const [showSearch, setShowSearch] = useState(false);
 
-  // Global search state
+  // Enhanced global search state
   const [searchTerm, setSearchTerm] = useState('');
   const [searchActive, setSearchActive] = useState(false);
+  const [searchResults, setSearchResults] = useState<SearchResult[]>([]);
+  const [searchLoading, setSearchLoading] = useState(false);
   const { users } = useUsers();
   const { courses } = useCourses();
+  const { categories } = useCategories();
+  const { payments } = usePayments();
   const navigate = useNavigate();
 
-  // Filtered results
-  const filteredUsers = searchTerm.length > 0 ? users.filter((u: any) =>
-    (u.fullName || '').toLowerCase().includes(searchTerm.toLowerCase()) ||
-    (u.email || '').toLowerCase().includes(searchTerm.toLowerCase())
-  ) : [];
-  const filteredCourses = searchTerm.length > 0 ? courses.filter((c: any) =>
-    (c.title || '').toLowerCase().includes(searchTerm.toLowerCase())
-  ) : [];
+  // Enhanced search function
+  const performGlobalSearch = async (term: string) => {
+    if (!term.trim()) {
+      setSearchResults([]);
+      return;
+    }
+
+    setSearchLoading(true);
+    const results: SearchResult[] = [];
+    const searchLower = term.toLowerCase();
+
+    try {
+      // 1. Search Users
+      const filteredUsers = users.filter((u: any) =>
+        (u.fullName || '').toLowerCase().includes(searchLower) ||
+        (u.email || '').toLowerCase().includes(searchLower) ||
+        (u.first_name || '').toLowerCase().includes(searchLower) ||
+        (u.last_name || '').toLowerCase().includes(searchLower)
+      );
+      
+      filteredUsers.forEach((u: any) => {
+        results.push({
+          id: u.id,
+          type: 'user',
+          title: u.fullName || `${u.first_name || ''} ${u.last_name || ''}`.trim() || u.email,
+          subtitle: u.email,
+          description: `${u.role} • ${u.verification_status || 'Not verified'}`,
+          icon: <User className="w-4 h-4 text-blue-500" />,
+          url: `/admin/users/${u.id}`,
+          relevance: 10
+        });
+      });
+
+      // 2. Search Courses
+      const filteredCourses = courses.filter((c: any) =>
+        (c.title || '').toLowerCase().includes(searchLower) ||
+        (c.description || '').toLowerCase().includes(searchLower) ||
+        (c.slug || '').toLowerCase().includes(searchLower)
+      );
+      
+      filteredCourses.forEach((c: any) => {
+        results.push({
+          id: c.id,
+          type: 'course',
+          title: c.title,
+          subtitle: c.instructor_name || 'Unknown Instructor',
+          description: c.description?.substring(0, 100) + (c.description?.length > 100 ? '...' : ''),
+          icon: <GraduationCap className="w-4 h-4 text-green-500" />,
+          url: `/courses/${c.id}`,
+          relevance: 9
+        });
+      });
+
+      // 3. Search Categories
+      const filteredCategories = categories.filter((c: any) =>
+        (c.name || '').toLowerCase().includes(searchLower) ||
+        (c.description || '').toLowerCase().includes(searchLower)
+      );
+      
+      filteredCategories.forEach((c: any) => {
+        results.push({
+          id: c.id,
+          type: 'category',
+          title: c.name,
+          subtitle: `${c.courseCount || 0} courses`,
+          description: c.description,
+          icon: <BookOpen className="w-4 h-4 text-purple-500" />,
+          url: `/categories/${c.id}`,
+          relevance: 8
+        });
+      });
+
+      // 4. Search Modules and Lessons
+      const { data: modulesData } = await supabase
+        .from('modules')
+        .select('*, lessons(*)')
+        .or(`title.ilike.%${term}%,description.ilike.%${term}%`);
+
+      if (modulesData) {
+        modulesData.forEach((mod: any) => {
+          results.push({
+            id: mod.id,
+            type: 'module',
+            title: mod.title,
+            subtitle: `${mod.lessons?.length || 0} lessons`,
+            description: mod.description,
+            icon: <BookOpen className="w-4 h-4 text-indigo-500" />,
+            url: `/courses/${mod.course_id}/modules/${mod.id}`,
+            relevance: 7
+          });
+        });
+      }
+
+      // 5. Search Assignments
+      const { data: assignmentsData } = await supabase
+        .from('assignments')
+        .select('*, modules(title, course_id)')
+        .or(`title.ilike.%${term}%,description.ilike.%${term}%,instructions.ilike.%${term}%`);
+
+      if (assignmentsData) {
+        assignmentsData.forEach((assignment: any) => {
+          results.push({
+            id: assignment.id,
+            type: 'assignment',
+            title: assignment.title,
+            subtitle: `${assignment.max_points || 0} points`,
+            description: assignment.description,
+            icon: <FileText className="w-4 h-4 text-orange-500" />,
+            url: `/courses/${assignment.modules?.course_id}/assignments/${assignment.id}`,
+            relevance: 6
+          });
+        });
+      }
+
+      // 6. Search Notifications
+      const filteredNotifications = notifications.filter((n: any) =>
+        (n.title || '').toLowerCase().includes(searchLower) ||
+        (n.message || '').toLowerCase().includes(searchLower)
+      );
+      
+      filteredNotifications.forEach((n: any) => {
+        results.push({
+          id: n.id,
+          type: 'notification',
+          title: n.title,
+          subtitle: n.senderName,
+          description: n.message?.substring(0, 100) + (n.message?.length > 100 ? '...' : ''),
+          icon: <MessageSquare className="w-4 h-4 text-yellow-500" />,
+          url: `/notifications/${n.id}`,
+          relevance: 5
+        });
+      });
+
+      // 7. Search Payments
+      const filteredPayments = payments.filter((p: any) =>
+        (p.id || '').toLowerCase().includes(searchLower) ||
+        (p.status || '').toLowerCase().includes(searchLower)
+      );
+      
+      filteredPayments.forEach((p: any) => {
+        results.push({
+          id: p.id,
+          type: 'payment',
+          title: `Payment ${p.id.substring(0, 8)}`,
+          subtitle: `$${p.amount} • ${p.status}`,
+          description: `Created ${new Date(p.createdAt).toLocaleDateString()}`,
+          icon: <CreditCard className="w-4 h-4 text-green-600" />,
+          url: `/admin/payments/${p.id}`,
+          relevance: 4
+        });
+      });
+
+      // 8. Search Coupons
+      const { data: couponsData } = await supabase
+        .from('coupons')
+        .select('*')
+        .or(`code.ilike.%${term}%,description.ilike.%${term}%`);
+
+      if (couponsData) {
+        couponsData.forEach((coupon: any) => {
+          results.push({
+            id: coupon.id,
+            type: 'coupon',
+            title: coupon.code,
+            subtitle: `${coupon.discount_percentage || coupon.discount_amount}% off`,
+            description: coupon.description,
+            icon: <Tag className="w-4 h-4 text-red-500" />,
+            url: `/admin/coupons/${coupon.id}`,
+            relevance: 3
+          });
+        });
+      }
+
+      // 9. Search Ratings/Reviews
+      const { data: ratingsData } = await supabase
+        .from('course_ratings')
+        .select('*, users(first_name, last_name, email)')
+        .or(`comment.ilike.%${term}%`);
+
+      if (ratingsData) {
+        ratingsData.forEach((rating: any) => {
+          const userName = rating.users ? 
+            `${rating.users.first_name || ''} ${rating.users.last_name || ''}`.trim() || rating.users.email : 
+            'Anonymous';
+          
+          results.push({
+            id: rating.id,
+            type: 'rating',
+            title: `${rating.rating}/5 stars`,
+            subtitle: userName,
+            description: rating.comment?.substring(0, 100) + (rating.comment?.length > 100 ? '...' : ''),
+            icon: <Star className="w-4 h-4 text-yellow-400" />,
+            url: `/courses/${rating.course_id}/reviews`,
+            relevance: 2
+          });
+        });
+      }
+
+      // Sort by relevance and limit results
+      const sortedResults = results
+        .sort((a, b) => b.relevance - a.relevance)
+        .slice(0, 20);
+
+      setSearchResults(sortedResults);
+
+    } catch (error) {
+      console.error('Search error:', error);
+      setSearchResults([]);
+    } finally {
+      setSearchLoading(false);
+    }
+  };
+
+  // Debounced search
+  useEffect(() => {
+    const timeoutId = setTimeout(() => {
+      if (searchTerm.trim()) {
+        performGlobalSearch(searchTerm);
+      } else {
+        setSearchResults([]);
+      }
+    }, 300);
+
+    return () => clearTimeout(timeoutId);
+  }, [searchTerm, users, courses, categories, notifications, payments]);
 
   // Close dropdown on outside click or escape
   useEffect(() => {
@@ -117,6 +351,22 @@ export function Header() {
     }
   }, [showNotificationDropdown]);
 
+  const handleSearchResultClick = (result: SearchResult) => {
+    setSearchActive(false);
+    setSearchTerm('');
+    navigate(result.url);
+  };
+
+  const getSearchPlaceholder = () => {
+    if (user?.role === 'admin') {
+      return 'Search users, courses, modules, assignments, payments...';
+    } else if (user?.role === 'instructor') {
+      return 'Search courses, modules, lessons, assignments...';
+    } else {
+      return 'Search courses, lessons, assignments...';
+    }
+  };
+
   return (
     <>
       <header className="bg-white border-b border-gray-200 px-4 lg:px-6 py-4">
@@ -127,17 +377,17 @@ export function Header() {
             <div className="hidden lg:flex items-center gap-3">
               <img 
                 src="/BLACK-1-removebg-preview.png" 
-                alt="TECHYX 360" 
+                alt="SKILL SAGE" 
                 className="h-8 w-auto"
               />
             </div>
             
-            {/* Search - Responsive */}
+            {/* Enhanced Search - Responsive */}
             <div className="relative block ml-12 md:ml-0">
               <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-4 h-4" />
               <input
                 type="text"
-                placeholder={user?.role === 'admin' ? 'Search users, courses...' : 'Search courses...'}
+                placeholder={getSearchPlaceholder()}
                 className="pl-10 pr-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent w-64 lg:w-80 global-search-input"
                 value={searchTerm}
                 onChange={e => {
@@ -147,53 +397,46 @@ export function Header() {
                 onFocus={() => setSearchActive(true)}
                 autoComplete="off"
               />
-              {/* Autocomplete Dropdown */}
+              
+              {/* Enhanced Autocomplete Dropdown */}
               {searchActive && (searchTerm.length > 0) && (
                 <div className="absolute left-0 mt-2 w-full bg-white border border-gray-200 rounded-xl shadow-xl z-50 max-h-96 overflow-y-auto global-search-dropdown">
-                  {(filteredUsers.length > 0 || filteredCourses.length > 0) ? (
-                    <>
-                      {filteredUsers.length > 0 && (
-                        <div>
-                          <div className="px-4 py-2 text-xs font-semibold text-gray-500">Users</div>
-                          {filteredUsers.map((u: any) => (
-                            <button
-                              key={u.id}
-                              className="w-full text-left px-4 py-2 hover:bg-blue-50 flex items-center gap-2"
-                              onClick={() => {
-                                setSearchActive(false);
-                                setSearchTerm('');
-                                navigate(`/admin/users/${u.id}`);
-                              }}
-                            >
-                              <User className="w-4 h-4 text-blue-500" />
-                              <span className="font-medium">{u.fullName}</span>
-                              <span className="text-xs text-gray-500 ml-2">{u.email}</span>
-                            </button>
-                          ))}
-                        </div>
-                      )}
-                      {filteredCourses.length > 0 && (
-                        <div>
-                          <div className="px-4 py-2 text-xs font-semibold text-gray-500">Courses</div>
-                          {filteredCourses.map((c: any) => (
-                            <button
-                              key={c.id}
-                              className="w-full text-left px-4 py-2 hover:bg-green-50 flex items-center gap-2"
-                              onClick={() => {
-                                setSearchActive(false);
-                                setSearchTerm('');
-                                navigate(`/courses/${c.id}`);
-                              }}
-                            >
-                              <GraduationCap className="w-4 h-4 text-green-500" />
-                              <span className="font-medium">{c.title}</span>
-                            </button>
-                          ))}
-                        </div>
-                      )}
-                    </>
+                  {searchLoading ? (
+                    <div className="px-4 py-6 text-center text-gray-400 text-sm">
+                      <div className="animate-spin rounded-full h-6 w-6 border-b-2 border-blue-500 mx-auto mb-2"></div>
+                      Searching...
+                    </div>
+                  ) : searchResults.length > 0 ? (
+                    <div className="py-2">
+                      {searchResults.map((result) => (
+                        <button
+                          key={`${result.type}-${result.id}`}
+                          className="w-full text-left px-4 py-3 hover:bg-gray-50 flex items-center gap-3 border-b border-gray-100 last:border-b-0"
+                          onClick={() => handleSearchResultClick(result)}
+                        >
+                          <div className="flex-shrink-0">
+                            {result.icon}
+                          </div>
+                          <div className="flex-1 min-w-0">
+                            <div className="font-medium text-gray-900 truncate">{result.title}</div>
+                            {result.subtitle && (
+                              <div className="text-sm text-gray-600 truncate">{result.subtitle}</div>
+                            )}
+                            {result.description && (
+                              <div className="text-xs text-gray-500 mt-1 line-clamp-2">{result.description}</div>
+                            )}
+                          </div>
+                          <div className="flex-shrink-0">
+                            <span className="text-xs text-gray-400 capitalize">{result.type}</span>
+                          </div>
+                        </button>
+                      ))}
+                    </div>
                   ) : (
-                    <div className="px-4 py-6 text-center text-gray-400 text-sm">No results found</div>
+                    <div className="px-4 py-6 text-center text-gray-400 text-sm">
+                      <Search className="w-8 h-8 mx-auto mb-2 text-gray-300" />
+                      No results found for "{searchTerm}"
+                    </div>
                   )}
                 </div>
               )}
@@ -329,8 +572,12 @@ export function Header() {
                     </span>
                   )}
                 </div>
-                <div className="hidden sm:block text-left">
-                  <div className="font-bold text-gray-900 leading-tight">{user?.first_name}</div>
+                <div className="text-left">
+                  {user && (
+                    <div className="font-bold text-gray-900 leading-tight text-sm">
+                      {([user.first_name, user.last_name].filter(Boolean).join(' ') || [user.firstName, user.lastName].filter(Boolean).join(' ') || user.email || 'User')}
+                    </div>
+                  )}
                   <div className="text-xs text-gray-500 capitalize">{user?.role}</div>
                 </div>
               </div>
@@ -353,7 +600,7 @@ export function Header() {
               <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-4 h-4" />
               <input
                 type="text"
-                placeholder={user?.role === 'admin' ? 'Search users, courses...' : 'Search courses...'}
+                placeholder={getSearchPlaceholder()}
                 className="w-full pl-10 pr-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
                 autoFocus
               />

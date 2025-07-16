@@ -255,31 +255,20 @@ export function Profile() {
     setErrorMessage('');
 
     try {
-      // Simulate API call
-      await new Promise(resolve => setTimeout(resolve, 1000));
-
-      // Verify current password (in real app, this would be done on server)
-      const allUsers = JSON.parse(localStorage.getItem('allUsers') || '[]');
-      const currentUser = allUsers.find((u: any) => u.id === user?.id);
-      
-      if (currentUser?.password !== passwordData.currentPassword) {
-        setErrors({ currentPassword: 'Current password is incorrect' });
+      // Use Supabase Auth to update the password
+      const { error } = await supabase.auth.updateUser({
+        password: passwordData.newPassword,
+      });
+      if (error) {
+        setErrorMessage(error.message || 'Failed to change password. Please try again.');
         return;
       }
-
-      // Update password in localStorage
-      const updatedUsers = allUsers.map((u: any) => 
-        u.id === user?.id ? { ...u, password: passwordData.newPassword } : u
-      );
-      localStorage.setItem('allUsers', JSON.stringify(updatedUsers));
-
       setSuccessMessage('Password changed successfully!');
       setPasswordData({
         currentPassword: '',
         newPassword: '',
         confirmPassword: ''
       });
-      
       // Clear success message after 3 seconds
       setTimeout(() => setSuccessMessage(''), 3000);
     } catch (error) {
@@ -534,13 +523,19 @@ export function Profile() {
               <div className="flex-1">
                 <h2 className="text-3xl font-bold mb-2">
                   {(
-                    (profileData.firstName && profileData.lastName)
+                    (user?.first_name && user?.last_name)
+                      ? `${user.first_name} ${user.last_name}`
+                    : ((user as any)?.firstName && (user as any)?.lastName)
+                      ? `${(user as any).firstName} ${(user as any).lastName}`
+                    : (profileData.firstName && profileData.lastName)
                       ? `${profileData.firstName} ${profileData.lastName}`
-                      : (user?.firstName && user?.lastName)
-                        ? `${user.firstName} ${user.lastName}`
-                        : (profileData.firstName || profileData.lastName || user?.firstName || user?.lastName)
-                          ? `${profileData.firstName || user?.firstName || ''}${(profileData.lastName || user?.lastName) ? ' ' + (profileData.lastName || user?.lastName) : ''}`
-                          : 'Unnamed User'
+                    : (user?.first_name || user?.last_name)
+                      ? `${user.first_name || ''}${user?.last_name ? ' ' + user.last_name : ''}`
+                    : ((user as any)?.firstName)
+                      ? `${(user as any).firstName}${(user as any).lastName ? ' ' + (user as any).lastName : ''}`
+                    : (profileData.firstName || profileData.lastName)
+                      ? `${profileData.firstName || ''}${profileData.lastName ? ' ' + profileData.lastName : ''}`
+                    : 'Unnamed User'
                   )}
                   {gamificationStats?.badges && gamificationStats.badges.length > 0 && (
                     <span className="ml-2 align-middle inline-flex items-center gap-1">
@@ -573,7 +568,27 @@ export function Profile() {
                 <div className="mt-4 flex items-center gap-4">
                   <div className="flex items-center gap-2">
                     <Calendar className="w-4 h-4" />
-                    <span className="text-sm">Joined {new Date(user?.created_at || '').toLocaleDateString()}</span>
+                    <span className="text-sm">
+                      Joined {
+                        (user?.created_at && !isNaN(Date.parse(user.created_at)))
+                          ? new Date(user.created_at).toLocaleDateString()
+                        : ((user as any)?.createdAt && !isNaN(Date.parse((user as any).createdAt)))
+                          ? new Date((user as any).createdAt).toLocaleDateString()
+                        : ((profileData as any)?.created_at && !isNaN(Date.parse((profileData as any).created_at)))
+                          ? new Date((profileData as any).created_at).toLocaleDateString()
+                        : ((profileData as any)?.createdAt && !isNaN(Date.parse((profileData as any).createdAt)))
+                          ? new Date((profileData as any).createdAt).toLocaleDateString()
+                        : (user?.updated_at && !isNaN(Date.parse(user.updated_at)))
+                          ? new Date(user.updated_at).toLocaleDateString()
+                        : ((user as any)?.updatedAt && !isNaN(Date.parse((user as any).updatedAt)))
+                          ? new Date((user as any).updatedAt).toLocaleDateString()
+                        : ((profileData as any)?.updated_at && !isNaN(Date.parse((profileData as any).updated_at)))
+                          ? new Date((profileData as any).updated_at).toLocaleDateString()
+                        : ((profileData as any)?.updatedAt && !isNaN(Date.parse((profileData as any).updatedAt)))
+                          ? new Date((profileData as any).updatedAt).toLocaleDateString()
+                        : 'Unknown'
+                      }
+                    </span>
                   </div>
                   <div className="flex items-center gap-2">
                     <BookOpen className="w-4 h-4" />

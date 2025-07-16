@@ -66,6 +66,7 @@ import JobBoardPage from './pages/JobBoardPage';
 import AdminJobBoardPage from './pages/AdminJobBoardPage';
 import AdminRoleManagementPage from './pages/AdminRoleManagementPage';
 import { Toaster } from 'react-hot-toast';
+import CertificateTemplateEditor from './components/Admin/CertificateTemplateEditor';
 
 function AuthPage() {
   const [isLogin, setIsLogin] = useState(true);
@@ -311,6 +312,7 @@ function AppContent() {
           <Route path="users" element={<UserManagement />} />
           <Route path="users/:userSlug" element={<AdminUserDetailPage />} />
           <Route path="courses" element={<CourseManagement />} />
+          <Route path="courses/add" element={<CreateCourse />} />
           <Route path="schools" element={<SchoolManagement />} />
           <Route path="progress-tracking" element={<ProgressTracking />} />
           <Route path="notifications" element={<NotificationCenter />} />
@@ -348,6 +350,7 @@ function AppContent() {
               </ProtectedRoute>
             }
           />
+          <Route path="certificate-template-editor" element={<CertificateTemplateEditor />} />
         </Route>
 
         {/* Course Viewer Route */}

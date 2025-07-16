@@ -104,7 +104,7 @@ export function Certificates() {
                   <div className="mb-4">
                     <img 
                       src="/BLACK-1-removebg-preview.png" 
-                      alt="TECHYX 360" 
+                      alt="SKILL SAGE" 
                       className="h-8 w-auto mx-auto mb-2"
                     />
                     <h3 className="text-lg font-bold text-gray-900">Certificate of Completion</h3>

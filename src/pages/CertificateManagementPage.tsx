@@ -3,6 +3,7 @@ import { Stage, Layer, Rect, Text, Image as KonvaImage, Transformer } from 'reac
 import useImage from 'use-image';
 import { createClient } from '@supabase/supabase-js';
 import { supabase } from '../lib/supabase';
+import { Breadcrumbs } from '../components/common/Breadcrumbs';
 
 const CANVAS_WIDTH = 900;
 const CANVAS_HEIGHT = 600;
@@ -387,6 +388,7 @@ const CertificateManagementPage: React.FC = () => {
 
   return (
     <div className="p-8 bg-gray-50 min-h-screen">
+      <Breadcrumbs />
       <h1 className="text-3xl font-bold mb-6 text-gray-800">Certificate Management</h1>
       {/* Search and Gallery */}
       <div className="mb-8">

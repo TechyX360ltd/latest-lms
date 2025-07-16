@@ -8,6 +8,7 @@ import { useNavigate } from 'react-router-dom';
 import { useOutletContext } from 'react-router-dom';
 import { useGamification } from '../../hooks/useGamification';
 import { useEffect, useState } from 'react';
+import { Breadcrumbs } from '../common/Breadcrumbs';
 
 interface LearnerDashboardProps {}
 
@@ -158,7 +159,8 @@ export function LearnerDashboard({}: LearnerDashboardProps) {
   };
 
   return (
-    <div className="space-y-8">
+    <div>
+      <Breadcrumbs />
       {showWelcomeModal && (
         <WelcomeModal onClose={handleCloseWelcomeModal} />
       )}
@@ -167,7 +169,7 @@ export function LearnerDashboard({}: LearnerDashboardProps) {
           <h1 className="text-3xl font-bold mb-2">
             Welcome back, {user?.first_name}!
           </h1>
-          <p className="text-gray-600">Continue your learning journey with TECHYX 360</p>
+          <p className="text-gray-600">Continue your learning journey with SKILL SAGE</p>
         </div>
         <div className="flex items-center gap-4">
           <button
@@ -181,7 +183,7 @@ export function LearnerDashboard({}: LearnerDashboardProps) {
           <div className="hidden md:block">
             <img 
               src="/BLACK-1-removebg-preview.png" 
-              alt="TECHYX 360" 
+              alt="SKILL SAGE" 
               className="h-10 w-auto opacity-60"
             />
           </div>
@@ -280,7 +282,7 @@ export function LearnerDashboard({}: LearnerDashboardProps) {
             <BookOpen className="w-12 lg:w-16 h-12 lg:h-16 text-blue-500 mx-auto mb-4" />
             <h3 className="text-xl font-bold text-gray-900 mb-2">Start Your Learning Journey!</h3>
             <p className="text-gray-600 mb-6">
-              Welcome to TECHYX 360! You haven't enrolled in any courses yet. 
+              Welcome to SKILL SAGE! You haven't enrolled in any courses yet. 
               Browse our extensive catalog and start learning today.
             </p>
             <div className="flex flex-col sm:flex-row gap-4 justify-center">

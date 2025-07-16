@@ -141,7 +141,7 @@ export function Sidebar({}: SidebarProps) {
           <div className="flex items-center gap-3">
             <img 
               src="/BLACK-1-removebg-preview.png" 
-              alt="TECHYX 360" 
+              alt="SKILL SAGE" 
               className="h-8 w-auto"
             />
           </div>
@@ -175,7 +175,7 @@ export function Sidebar({}: SidebarProps) {
         {/* Mobile Footer */}
         <div className="lg:hidden p-4 border-t border-gray-200 mt-auto">
           <div className="text-center">
-            <p className="text-xs text-gray-500">© 2024 TECHYX 360</p>
+            <p className="text-xs text-gray-500">© 2024 SKILL SAGE</p>
             <p className="text-xs text-gray-400">Learning Platform</p>
           </div>
         </div>

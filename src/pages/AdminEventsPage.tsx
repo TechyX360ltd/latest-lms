@@ -3,6 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import CourseSessionCalendar from '../components/Course/CourseSessionCalendar';
 import { Eye, Pencil, Trash2 } from 'lucide-react';
 import { supabase } from '../lib/supabase';
+import { Breadcrumbs } from '../components/common/Breadcrumbs';
 
 function formatDate(date: Date) {
   return date.toLocaleDateString();
@@ -89,6 +90,7 @@ export default function AdminEventsPage() {
         <main className="flex-1 p-4 lg:p-8 overflow-auto">
     <div className="w-full max-w-6xl mx-auto px-4">
       <div className="flex items-center justify-between mt-2 mb-4">
+        <Breadcrumbs />
         <h1 className="text-2xl sm:text-3xl font-bold ml-2">My Events</h1>
         <button
                 onClick={() => navigate('/instructor/schedule-session')}

@@ -1,6 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import { supabase } from '../lib/supabase';
 import { Gift, Search, Download, TrendingUp, Users, Award, Calendar } from 'lucide-react';
+import { Breadcrumbs } from '../components/common/Breadcrumbs';
 
 export default function AdminReferralsPage() {
   const [referrals, setReferrals] = useState<any[]>([]);
@@ -140,6 +141,7 @@ export default function AdminReferralsPage() {
 
   return (
     <div className="max-w-7xl mx-auto py-10 px-4">
+      <Breadcrumbs />
       <div className="flex items-center justify-between mb-6">
         <div className="flex items-center gap-3">
           <Gift className="w-8 h-8 text-yellow-500" />

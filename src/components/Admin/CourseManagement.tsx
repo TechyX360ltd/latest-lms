@@ -1,12 +1,13 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Search, Plus, Edit, Trash2, Eye, Users, Clock } from 'lucide-react';
 import { useAllCourses } from '../../hooks/useData';
 import { useUsers } from '../../hooks/useData';
-import { CreateCourse } from './CreateCourse';
+import CreateCourse from './CreateCourse';
 import { EditCourse } from './EditCourse';
 import { ViewCourse } from './ViewCourse';
 import { supabase } from '../../lib/supabase'; // Fixed import path
 import { useToast } from '../Auth/ToastContext';
+import { Course } from '../../types/course';
 
 export function CourseManagement() {
   const { courses, loading, error, deleteCourse } = useAllCourses();
@@ -20,6 +21,15 @@ export function CourseManagement() {
   // In-app delete confirmation modal state
   const [deleteConfirmOpen, setDeleteConfirmOpen] = useState(false);
   const [courseToDelete, setCourseToDelete] = useState<string | null>(null);
+  const [localCourses, setLocalCourses] = useState<Course[]>([]);
+
+  useEffect(() => {
+    // Only sync localCourses with courses if localCourses is empty (initial load)
+    if (localCourses.length === 0 && courses.length > 0) {
+      setLocalCourses(courses);
+    }
+    // Do not overwrite localCourses after a delete
+  }, [courses]);
 
   if (loading) {
     return (
@@ -65,9 +75,22 @@ export function CourseManagement() {
 
   const confirmDeleteCourse = async () => {
     if (courseToDelete) {
-      await deleteCourse(courseToDelete);
+      console.log('Before delete:', localCourses.map(c => c.id), 'Deleting:', courseToDelete);
+      setLocalCourses(prev => {
+        const filtered = prev.filter(c => String(c.id) !== String(courseToDelete));
+        console.log('After delete:', filtered.map(c => c.id));
+        return filtered;
+      });
       setDeleteConfirmOpen(false);
       setCourseToDelete(null);
+      const { error } = await deleteCourse(courseToDelete);
+      if (error) {
+        showToast('Failed to delete course', 'error');
+        // Optionally, re-add the course if deletion failed
+        setLocalCourses(courses);
+      } else {
+        showToast('Course deleted successfully', 'success');
+      }
     }
   };
 
@@ -224,7 +247,7 @@ export function CourseManagement() {
   }
 
   // Filtering logic
-  const filteredCourses = courses.filter(course => {
+  const filteredCourses = localCourses.filter(course => {
     const matchesSearch = course.title.toLowerCase().includes(searchTerm.toLowerCase()) ||
                          course.instructor.toLowerCase().includes(searchTerm.toLowerCase());
     const matchesStatus = selectedStatus === 'all' || 

@@ -3,7 +3,7 @@ import { useCategories } from '../../hooks/useData';
 import { useAuth } from '../../context/AuthContext';
 import { useGamification } from '../../hooks/useGamification';
 import { useParams } from 'react-router-dom';
-const ReactQuill = React.lazy(() => import('react-quill').then(module => ({ default: module.default })));
+import ReactQuill from 'react-quill';
 import 'react-quill/dist/quill.snow.css';
 import { uploadToCloudinary } from '../../lib/cloudinary';
 import Confetti from 'react-confetti';
@@ -842,7 +842,6 @@ export default function CreateCourse() {
                               {newLessonType === 'text' && (
                                 <div className="mb-2">
                                   <label className="block text-sm font-medium mb-1">Lesson Content</label>
-                                  <Suspense fallback={<div>Loading editor...</div>}>
                                     <ReactQuill
                                       value={newLessonContent}
                                       onChange={setNewLessonContent}
@@ -862,14 +861,12 @@ export default function CreateCourse() {
                                       }}
                                       style={{ minHeight: 200, height: 200, marginBottom: 70 }}
                                     />
-                                  </Suspense>
                                 </div>
                               )}
                               {newLessonType === 'video' && (
                                 <div className="flex flex-col gap-2 mb-2">
                                   <div>
                                     <label className="block text-sm font-medium mb-1">Lesson Content</label>
-                                    <Suspense fallback={<div>Loading editor...</div>}>
                                       <ReactQuill
                                         value={newLessonContent}
                                         onChange={setNewLessonContent}
@@ -889,7 +886,6 @@ export default function CreateCourse() {
                                         }}
                                         style={{ minHeight: 200, height: 200 }}
                                       />
-                                    </Suspense>
                                   </div>
                                   <div>
                                     <label className="block text-sm font-medium mb-1">Lesson Video</label>
@@ -923,7 +919,6 @@ export default function CreateCourse() {
                                 <div className="flex flex-col gap-2 mb-2">
                                   <div>
                                     <label className="block text-sm font-medium mb-1">Lesson Content</label>
-                                    <Suspense fallback={<div>Loading editor...</div>}>
                                       <ReactQuill
                                         value={newLessonContent}
                                         onChange={setNewLessonContent}
@@ -943,7 +938,6 @@ export default function CreateCourse() {
                                         }}
                                         style={{ minHeight: 200, height: 200 }}
                                       />
-                                    </Suspense>
                                   </div>
                                   <div>
                                     <label className="block text-sm font-medium mb-1">Lesson Video</label>
@@ -976,7 +970,6 @@ export default function CreateCourse() {
                               {/* Assignment section (optional) */}
                               <div className="mt-8">
                                 <label className="block text-sm font-medium mb-1">Assignment (optional)</label>
-                                <Suspense fallback={<div>Loading editor...</div>}>
                                   <ReactQuill
                                     value={assignmentQuestion}
                                     onChange={setAssignmentQuestion}
@@ -996,7 +989,6 @@ export default function CreateCourse() {
                                     }}
                                     style={{ minHeight: 120, height: 120 }}
                                   />
-                                </Suspense>
                                 <input
                                   type="file"
                                   accept=".pdf,.doc,.docx,.zip,.rar,.jpg,.png"

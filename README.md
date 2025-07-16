@@ -1,4 +1,4 @@
-# TECHYX 360 Learning Management System
+# SKILL SAGE Learning Management System
 
 A comprehensive Learning Management System built with React, TypeScript, and Supabase.
 
@@ -32,8 +32,8 @@ A comprehensive Learning Management System built with React, TypeScript, and Sup
 
 1. Clone the repository
    ```
-   git clone https://github.com/yourusername/techyx-360-lms.git
-   cd techyx-360-lms
+   git clone https://github.com/yourusername/skill-sage-lms.git
+   cd skill-sage-lms
    ```
 
 2. Install dependencies

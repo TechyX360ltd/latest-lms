@@ -12,6 +12,7 @@
   "dependencies": {
     "@supabase/storage-js": "^2.10.1",
     "@supabase/supabase-js": "^2.50.5",
+    "@tailwindcss/line-clamp": "^0.4.4",
     "cors": "^2.8.5",
     "date-fns": "^4.1.0",
     "dotenv": "^17.2.0",
@@ -19,6 +20,7 @@
     "file-saver": "^2.0.5",
     "framer-motion": "^12.23.0",
     "html2canvas": "^1.4.1",
+    "html2pdf.js": "^0.10.3",
     "jspdf": "^3.0.1",
     "lucide-react": "^0.344.0",
     "qrcode": "^1.5.4",
@@ -31,6 +33,7 @@
     "react-konva": "^18.2.12",
     "react-paystack": "^6.0.0",
     "react-router-dom": "^6.30.1",
+    "react-share": "^5.2.2",
     "react-use": "^17.6.0",
     "recharts": "^3.1.0",
     "use-image": "^1.1.4",

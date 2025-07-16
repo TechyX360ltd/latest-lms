@@ -181,7 +181,7 @@ export function ResetPasswordPage() {
           <div className="flex justify-center mb-6">
             <img 
               src="/BLACK-1-removebg-preview.png" 
-              alt="TECHYX 360" 
+              alt="SKILL SAGE" 
               className="h-12 w-auto"
             />
           </div>

@@ -1,6 +1,7 @@
 import React from 'react';
 import { X, Users, Star, BookOpen, Coins, CheckCircle, Banknote } from 'lucide-react';
 import { useCourseStructure } from '../../hooks/useData';
+import { Link } from 'react-router-dom';
 
 interface CourseDetailsModalProps {
   course: any;
@@ -50,7 +51,12 @@ const CourseDetailsModal: React.FC<CourseDetailsModalProps> = ({ course, onClose
           <div className="flex items-center gap-4 mb-2">
             <div className="flex items-center gap-2 text-sm text-gray-500">
               <Users className="w-4 h-4" />
-              <span>{course.instructor || 'Instructor Name'}</span>
+              <Link
+                to={`/instructor/${course.instructor_id}`}
+                className="text-blue-600 hover:underline font-medium"
+              >
+                {course.instructor || 'Instructor Name'}
+              </Link>
             </div>
             <div className="flex items-center gap-2 text-sm text-gray-500">
               <Users className="w-4 h-4" />

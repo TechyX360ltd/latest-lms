@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
 import { supabase } from '../lib/supabase';
+import { Breadcrumbs } from '../components/common/Breadcrumbs';
 
 export function CertificateVerificationPage() {
   const [certificateId, setCertificateId] = useState('');
@@ -53,11 +54,12 @@ export function CertificateVerificationPage() {
       {/* Logo */}
       <img
         src="/BLACK-1-removebg-preview.png"
-        alt="TECHYX 360 Logo"
+                    alt="SKILL SAGE Logo"
         className="h-16 w-auto mb-6 drop-shadow-lg"
         style={{ filter: 'drop-shadow(0 2px 8px #2563eb33)' }}
       />
       <div className="bg-white rounded-3xl shadow-2xl max-w-xl w-full p-8 md:p-12 text-center border border-blue-100">
+        <Breadcrumbs />
         <h1 className="text-3xl md:text-4xl font-extrabold text-blue-700 mb-2 tracking-tight">
           Certificate Verification
         </h1>
@@ -121,7 +123,7 @@ export function CertificateVerificationPage() {
           </div>
         )}
       </div>
-      <div className="mt-10 text-gray-400 text-sm">© {new Date().getFullYear()} TECHYX 360 LMS</div>
+              <div className="mt-10 text-gray-400 text-sm">© {new Date().getFullYear()} SKILL SAGE LMS</div>
     </div>
   );
 } 
