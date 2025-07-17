@@ -68,7 +68,7 @@ const authReducer = (state: AuthState, action: AuthAction): AuthState => {
 
 interface AuthContextType extends AuthState {
   login: (email: string, password: string) => Promise<void>;
-  register: (userData: Omit<User, 'id' | 'createdAt' | 'enrolledCourses' | 'completedCourses'> & { password: string }) => Promise<void>;
+  register: (userData: Omit<User, 'id' | 'createdAt' | 'enrolledCourses' | 'completedCourses'> & { password: string; referralCode?: string }) => Promise<void>;
   logout: () => void;
   addUserToAuth: (userData: any) => void;
   updateUserEnrollment: (enrolledCourses: string[]) => void;
@@ -403,7 +403,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     }
   };
 
-  const register = async (userData: Omit<User, 'id' | 'createdAt' | 'enrolledCourses' | 'completedCourses'> & { password: string }) => {
+  const register = async (userData: Omit<User, 'id' | 'createdAt' | 'enrolledCourses' | 'completedCourses'> & { password: string; referralCode?: string }) => {
     dispatch({ type: 'SET_LOADING', payload: true });
     try {
       if (isSupabaseConnected) {
@@ -413,8 +413,8 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
           password: userData.password,
           options: {
             data: {
-              first_name: userData.firstName,
-              last_name: userData.lastName,
+              first_name: userData.first_name,
+              last_name: userData.last_name,
               role: userData.role,
             }
           }
@@ -439,23 +439,24 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
           id: authData.user.id,
           email: userData.email,
           role: userData.role,
-              first_name: userData.firstName,
-              last_name: userData.lastName,
+          first_name: userData.first_name,
+          last_name: userData.last_name,
           points: 0,
           coins: 0,
           current_streak: 0,
           longest_streak: 0,
           referral_code: crypto.randomUUID(),
+          referred_by: userData.referralCode || null, // Set the referral code if provided
           verification_status: 'unverified',
           phone: userData.phone || '',
           bio: userData.bio || '',
           location: userData.location || '',
           occupation: userData.occupation || '',
           education: userData.education || '',
-              avatar_url: null,
+          avatar_url: null,
           payout_email: userData.role === 'instructor' ? userData.payoutEmail || '' : '',
           expertise: userData.role === 'instructor' ? userData.expertise || '' : '',
-              is_approved: userData.role === 'instructor' ? false : null,
+          is_approved: userData.role === 'instructor' ? false : null,
           created_at: new Date().toISOString(),
         };
         console.log('User insert payload:', userPayload);
@@ -675,6 +676,37 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
           });
         
         if (certError) throw certError;
+        
+        // Check if this is the user's first completed course and trigger referral reward
+        const { data: completedCourses, error: completedError } = await supabase
+          .from('user_courses')
+          .select('course_id')
+          .eq('user_id', state.user.id)
+          .eq('status', 'completed');
+        
+        if (!completedError && completedCourses && completedCourses.length === 1) {
+          // This is the first completed course, trigger referral reward
+          try {
+            const response = await fetch(`${process.env.REACT_APP_SUPABASE_URL}/functions/v1/handle-referral-reward`, {
+              method: 'POST',
+              headers: {
+                'Content-Type': 'application/json',
+                'Authorization': `Bearer ${process.env.REACT_APP_SUPABASE_ANON_KEY}`
+              },
+              body: JSON.stringify({
+                referredUserId: state.user.id,
+                courseId: courseId
+              })
+            });
+            
+            if (response.ok) {
+              const result = await response.json();
+              console.log('Referral reward result:', result);
+            }
+          } catch (referralError) {
+            console.error('Error triggering referral reward:', referralError);
+          }
+        }
         
         // Get updated enrollments
         const { data: enrollments, error: fetchError } = await supabase

@@ -1064,7 +1064,7 @@ export function Profile() {
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4 text-sm">
               <div>
                 <span className="font-medium text-indigo-800">Member Since:</span>
-                <p className="text-indigo-700">{new Date(user?.created_at || '').toLocaleDateString()}</p>
+                <p className="text-indigo-700">{new Date(user?.createdAt || '').toLocaleDateString()}</p>
               </div>
               <div>
                 <span className="font-medium text-indigo-800">Account Type:</span>

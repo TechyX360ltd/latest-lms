@@ -65,8 +65,31 @@ const JobDetailsModal: React.FC<{
         </div>
         {job.requirements && (
           <div className="mb-4">
-            <h3 className="font-semibold text-gray-800 mb-1">Requirements</h3>
-            <p className="text-gray-700 whitespace-pre-line text-sm">{job.requirements}</p>
+            <h3 className="font-semibold text-gray-800 mb-2">Requirements</h3>
+            <div className="text-gray-700 text-sm">
+              {job.requirements.includes('\n') || job.requirements.includes('•') || job.requirements.includes('-') ? (
+                // If requirements contain line breaks or bullet points, format as list
+                <ul className="space-y-1">
+                  {job.requirements
+                    .split(/\n|(?=•)|(?=-)/)
+                    .map((requirement, index) => {
+                      const cleanRequirement = requirement.trim().replace(/^[•\-]\s*/, '');
+                      return cleanRequirement ? (
+                        <li key={index} className="flex items-start gap-2">
+                          <span className="text-blue-500 mt-1.5 flex-shrink-0">•</span>
+                          <span className="leading-relaxed">{cleanRequirement}</span>
+                        </li>
+                      ) : null;
+                    })
+                    .filter(Boolean)}
+                </ul>
+              ) : (
+                // If requirements are in a single paragraph, format nicely
+                <div className="bg-gray-50 rounded-lg p-3 border border-gray-100">
+                  <p className="leading-relaxed">{job.requirements}</p>
+                </div>
+              )}
+            </div>
           </div>
         )}
         <div className="flex gap-2 mt-6">

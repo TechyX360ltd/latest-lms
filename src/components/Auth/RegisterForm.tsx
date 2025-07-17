@@ -52,6 +52,19 @@ export function RegisterForm() {
   const { showToast } = useToast();
   const { settings: userSettings, loading: userSettingsLoading } = useUserSettings();
 
+  // Get referral code from URL parameter
+  const [referralCode, setReferralCode] = useState<string | null>(null);
+
+  useEffect(() => {
+    // Extract referral code from URL
+    const urlParams = new URLSearchParams(window.location.search);
+    const refCode = urlParams.get('ref');
+    if (refCode) {
+      setReferralCode(refCode);
+      console.log('Referral code found in URL:', refCode);
+    }
+  }, []);
+
   useEffect(() => {
     if (userSettings && userSettings.defaultUserRole) {
       setFormData(prev => ({ ...prev, role: userSettings.defaultUserRole }));
@@ -93,19 +106,26 @@ export function RegisterForm() {
         password: formData.password,
         expertise: formData.role === 'instructor' ? formData.expertise : undefined,
         payoutEmail: formData.role === 'instructor' ? formData.payoutEmail : undefined,
+        referralCode: referralCode, // Add referral code to registration data
       });
       
       console.log('Is Supabase connected:', isSupabaseConnected);
       
       await register({
-        firstName: formData.firstName,
-        lastName: formData.lastName,
+        first_name: formData.firstName,
+        last_name: formData.lastName,
         email: formData.email,
         phone: formData.phone,
         password: formData.password,
         role: userSettings?.defaultUserRole || formData.role,
         expertise: formData.role === 'instructor' ? formData.expertise : undefined,
         payoutEmail: formData.role === 'instructor' ? formData.payoutEmail : undefined,
+        referralCode: referralCode || undefined, // Pass referral code to registration
+        bio: '',
+        location: '',
+        occupation: '',
+        education: '',
+        created_at: new Date().toISOString(),
       });
       
       console.log('Registration successful');
@@ -159,6 +179,16 @@ export function RegisterForm() {
               onError={e => { (e.target as HTMLImageElement).style.display = 'none'; }}
           />
             <h2 className="text-3xl font-bold text-gray-900 mb-2">Welcome Back</h2>
+            
+            {/* Referral Code Indicator */}
+            {referralCode && (
+              <div className="bg-green-50 border border-green-200 rounded-lg px-4 py-2 mb-4">
+                <div className="flex items-center gap-2 text-green-700">
+                  <span className="text-sm font-medium">🎁 Referral Bonus Applied!</span>
+                  <span className="text-xs">You'll earn bonus coins when you complete your first course.</span>
+                </div>
+              </div>
+            )}
       </div>
       <form onSubmit={handleSubmit} className="space-y-6">
         <div className="flex gap-4">

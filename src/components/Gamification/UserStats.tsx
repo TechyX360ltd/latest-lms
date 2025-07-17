@@ -50,8 +50,8 @@ export function UserStats() {
     );
   }
 
-  const completionPercentage = stats.total_courses > 0 
-    ? Math.round((stats.completed_courses / stats.total_courses) * 100) 
+  const completionPercentage = (stats.total_courses || 0) > 0 
+    ? Math.round(((stats.completed_courses || 0) / (stats.total_courses || 0)) * 100) 
     : 0;
 
   const streakProgress = stats.longest_streak > 0 
@@ -147,7 +147,7 @@ export function UserStats() {
             </div>
           </div>
           <div className="text-2xl font-bold text-gray-900 mb-1">
-            {stats.badges?.length || 0}
+            {stats.total_badges || 0}
           </div>
           <div className="text-sm text-gray-600">Badges Earned</div>
           <div className="mt-3 flex items-center gap-2 text-xs text-gray-500">
@@ -220,7 +220,7 @@ export function UserStats() {
             <div className="flex items-center justify-between">
               <span className="text-sm text-gray-600">Last Active</span>
               <span className="font-medium text-gray-900">
-                {stats.last_activity ? new Date(stats.last_activity).toLocaleDateString() : 'Never'}
+                {stats.last_activity && stats.last_activity !== 'Never' ? new Date(stats.last_activity).toLocaleDateString() : 'Today'}
               </span>
             </div>
           </div>
@@ -252,14 +252,14 @@ export function UserStats() {
                   </span>
                 </div>
                 <div className="flex items-center gap-2">
-                  {event.points_earned > 0 && (
+                  {event.points > 0 && (
                     <span className="text-xs font-medium text-blue-600">
-                      +{event.points_earned} pts
+                      +{event.points} pts
                     </span>
                   )}
-                  {event.coins_earned > 0 && (
+                  {event.coins > 0 && (
                     <span className="text-xs font-medium text-yellow-600">
-                      +{event.coins_earned} coins
+                      +{event.coins} coins
                     </span>
                   )}
                 </div>
@@ -302,7 +302,7 @@ export function UserStats() {
           </div>
           <p className="text-purple-100 mb-4">Unlock new badges and rewards</p>
           <div className="flex items-center gap-2">
-            <span className="text-2xl font-bold">{stats.badges?.length || 0}</span>
+            <span className="text-2xl font-bold">{stats.total_badges || 0}</span>
             <span className="text-purple-200">badges earned</span>
           </div>
         </div>

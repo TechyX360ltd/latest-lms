@@ -120,7 +120,7 @@ export class GamificationService {
       if (userCoursesError) { console.error('UserCourses query error:', userCoursesError); throw userCoursesError; }
       const completedCourses = userCourses.filter((uc: any) => uc.status === 'completed').length;
 
-      // Get all lessons for user's courses
+      // Get all lessons for user's courses and calculate completion
       const courseIds = userCourses.map((uc: any) => uc.course_id).filter(isValidUUID);
       let lessonsCompleted = 0;
       if (courseIds.length > 0) {
@@ -129,10 +129,19 @@ export class GamificationService {
           .select('id, course_id')
           .in('course_id', courseIds);
         if (lessonsError) { console.error('Lessons query error:', lessonsError); throw lessonsError; }
-        // Optionally, you can track lesson completion per user if you have such a table
-        // For now, count all lessons in completed courses as completed
-        const completedCourseIds = userCourses.filter((uc: any) => uc.status === 'completed').map((uc: any) => uc.course_id).filter(isValidUUID);
-        lessonsCompleted = (lessons || []).filter((l: any) => completedCourseIds.includes(l.course_id)).length;
+        
+        // Calculate lessons completed based on course progress
+        userCourses.forEach((userCourse: any) => {
+          const courseLessons = (lessons || []).filter((l: any) => l.course_id === userCourse.course_id);
+          if (userCourse.status === 'completed') {
+            // All lessons completed for completed courses
+            lessonsCompleted += courseLessons.length;
+          } else if (userCourse.progress > 0) {
+            // Partial completion based on progress percentage
+            const completedLessonsInCourse = Math.floor((userCourse.progress / 100) * courseLessons.length);
+            lessonsCompleted += completedLessonsInCourse;
+          }
+        });
       }
 
       // Get assignments submitted
@@ -142,6 +151,54 @@ export class GamificationService {
         .eq('user_id', userId);
       if (assignmentsError) { console.error('Assignments query error:', assignmentsError); throw assignmentsError; }
       const assignmentsSubmitted = assignments.length;
+
+      // Calculate days active (unique days with activity)
+      const { data: activityEvents, error: activityError } = await supabase
+        .from('gamification_events')
+        .select('created_at')
+        .eq('user_id', userId);
+      if (activityError) { console.error('Activity query error:', activityError); throw activityError; }
+      
+      // Also get course access activity
+      const { data: courseActivity, error: courseActivityError } = await supabase
+        .from('user_courses')
+        .select('last_accessed, created_at')
+        .eq('user_id', userId);
+      if (courseActivityError) { console.error('Course activity query error:', courseActivityError); throw courseActivityError; }
+      
+      const uniqueActivityDays = new Set();
+      
+      // Add gamification events
+      (activityEvents || []).forEach((event: any) => {
+        const date = new Date(event.created_at).toDateString();
+        uniqueActivityDays.add(date);
+      });
+      
+      // Add course access activity
+      (courseActivity || []).forEach((activity: any) => {
+        if (activity.last_accessed) {
+          const date = new Date(activity.last_accessed).toDateString();
+          uniqueActivityDays.add(date);
+        }
+        if (activity.created_at) {
+          const date = new Date(activity.created_at).toDateString();
+          uniqueActivityDays.add(date);
+        }
+      });
+      
+      const daysActive = uniqueActivityDays.size;
+
+      // Get user purchases count
+      const { data: purchases, error: purchasesError } = await supabase
+        .from('user_purchases')
+        .select('id')
+        .eq('user_id', userId);
+      if (purchasesError) { console.error('Purchases query error:', purchasesError); throw purchasesError; }
+      const purchasesCount = purchases.length;
+
+      // Calculate badge statistics
+      const totalBadges = badges.length;
+      const rareBadgesCount = badges.filter((b: any) => b.badge?.rarity === 'rare' || b.badge?.rarity === 'epic' || b.badge?.rarity === 'legendary').length;
 
       return {
         points: user.points || 0,
@@ -156,6 +213,11 @@ export class GamificationService {
         total_courses: totalCourses,
         lessons_completed: lessonsCompleted,
         assignments_submitted: assignmentsSubmitted,
+        days_active: daysActive,
+        last_activity: user.last_active_date || (activityEvents && activityEvents.length > 0 ? activityEvents[0].created_at : new Date().toISOString()),
+        total_badges: totalBadges,
+        rare_badges_count: rareBadgesCount,
+        purchases_count: purchasesCount,
       };
     } catch (error) {
       console.error('Failed to get user stats:', error);
@@ -310,17 +372,6 @@ export class GamificationService {
 
         if (stockError) throw stockError;
       }
-
-      // Insert a gift record for the buyer
-      const { error: giftError } = await supabase.from('gifts').insert({
-        recipient_id: userId,
-        sender_id: userId,
-        coin_value: item.price,
-        cashed_out: false,
-        created_at: new Date().toISOString(),
-        gift_type: 'store_purchase',
-      });
-      if (giftError) console.error('Gift insert error:', giftError);
 
       return purchase;
     } catch (error) {
