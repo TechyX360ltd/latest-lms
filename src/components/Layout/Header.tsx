@@ -376,9 +376,9 @@ export function Header() {
             {/* Logo - Hidden on mobile when sidebar is present */}
             <div className="hidden lg:flex items-center gap-3">
               <img 
-                src="/BLACK-1-removebg-preview.png" 
+                src="/Skill Sage Logo.png" 
                 alt="SKILL SAGE" 
-                className="h-8 w-auto"
+                className="h-10 w-auto"
               />
             </div>
             

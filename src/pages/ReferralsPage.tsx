@@ -81,7 +81,7 @@ export default function ReferralsPage() {
           <div className="max-w-4xl mx-auto">
             <div className="bg-gradient-to-r from-yellow-100 to-pink-100 rounded-2xl shadow-lg p-8 mb-8 flex flex-col items-center">
               <div className="flex items-center gap-3 mb-4">
-                <Breadcrumbs />
+                {/* <Breadcrumbs /> */}
                 <Gift className="w-8 h-8 text-yellow-500" />
                 <h1 className="text-3xl font-extrabold text-pink-700">My Referrals</h1>
               </div>

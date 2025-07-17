@@ -445,7 +445,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
           coins: 0,
           current_streak: 0,
           longest_streak: 0,
-          referral_code: crypto.randomUUID(),
+          // referral_code: crypto.randomUUID(), // Removed so DB default is used
           referred_by: userData.referralCode || null, // Set the referral code if provided
           verification_status: 'unverified',
           phone: userData.phone || '',

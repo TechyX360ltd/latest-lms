@@ -173,7 +173,7 @@ export function RegisterForm() {
           <div className="flex flex-col items-center mb-8">
             {/* Logo or App Name */}
           <img 
-            src="/BLACK-1-removebg-preview.png" 
+            src="/Skill Sage Logo.png" 
             alt="SKILL SAGE" 
               className="h-12 w-auto mb-4"
               onError={e => { (e.target as HTMLImageElement).style.display = 'none'; }}

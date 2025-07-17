@@ -124,121 +124,162 @@ export function LoginForm({
     }));
   };
 
-  return (
-    <div className="min-h-screen flex flex-col md:flex-row bg-gray-50">
-      {/* Left: Image (hidden on mobile) */}
-      <div className="hidden md:block md:w-1/2 h-screen">
-        <img
-          src="/man-wearing-glasses-reading-from-his-digital-tablet.jpg"
-          alt="Login Visual"
-          className="object-cover w-full h-full"
-        />
-      </div>
-      {/* Right: Login Form */}
-      <div className="flex flex-1 items-center justify-center p-4">
-        <div className="w-full max-w-md bg-white rounded-2xl shadow-2xl p-8">
-          <div className="flex flex-col items-center mb-8">
-            {/* Logo or App Name */}
-          <img 
-            src="/BLACK-1-removebg-preview.png" 
-            alt="SKILL SAGE" 
-              className="h-12 w-auto mb-4"
-              onError={e => { (e.target as HTMLImageElement).style.display = 'none'; }}
-          />
-        <h2 className="text-3xl font-bold text-gray-900 mb-2">Welcome Back</h2>
-      </div>
-      <form onSubmit={handleSubmit} className="space-y-6">
-        <div>
-          <label className="block text-sm font-medium text-gray-700 mb-2">
-                Email <span className="text-red-500">*</span>
-          </label>
-          <div className="relative">
-            <Mail className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-5 h-5" />
+  const forgotPasswordModal = showForgotModal && (
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-40">
+      <div className="bg-white rounded-xl shadow-2xl p-8 max-w-md w-full relative animate-fade-in">
+        <button
+          onClick={() => setShowForgotModal(false)}
+          className="absolute top-4 right-4 text-gray-400 hover:text-gray-700 text-2xl font-bold"
+          aria-label="Close"
+        >
+          ×
+        </button>
+        <div className="flex flex-col items-center text-center">
+          <img src="/Skill Sage Logo.png" alt="SKILL SAGE" className="h-12 w-auto mb-4" />
+          <h2 className="text-2xl font-bold text-blue-700 mb-2">Forgot Password</h2>
+          <p className="text-gray-700 mb-4">Enter your email address to receive a password reset link.</p>
+          <form onSubmit={handleForgotSubmit} className="w-full space-y-4">
             <input
               type="email"
-              name="email"
-              value={formData.email}
-              onChange={handleChange}
-              className="w-full pl-10 pr-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-              placeholder="john@example.com"
+              value={forgotEmail}
+              onChange={e => setForgotEmail(e.target.value)}
+              className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+              placeholder="Enter your email"
               required
             />
-          </div>
-        </div>
-        <div>
-          <label className="block text-sm font-medium text-gray-700 mb-2">
-                Password <span className="text-red-500">*</span>
-          </label>
-          <div className="relative">
-            <Lock className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-5 h-5" />
-            <input
-              type={showPassword ? 'text' : 'password'}
-              name="password"
-              value={formData.password}
-              onChange={handleChange}
-              className="w-full pl-10 pr-12 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-              placeholder="Enter your password"
-              required
-              autoComplete="current-password"
-            />
+            {forgotError && <div className="text-red-600 text-sm bg-red-50 p-2 rounded-lg">{forgotError}</div>}
+            {forgotSuccess && <div className="text-green-600 text-sm bg-green-50 p-2 rounded-lg">A reset link has been sent to your email.</div>}
             <button
-              type="button"
-              onClick={() => setShowPassword((prev: boolean) => !prev)}
-              className="absolute right-3 top-1/2 transform -translate-y-1/2 text-gray-400 hover:text-gray-600"
+              type="submit"
+              className="w-full bg-blue-600 text-white py-3 rounded-lg font-medium hover:bg-blue-700 transition-colors"
+              disabled={forgotSuccess}
             >
-              {showPassword ? <EyeOff className="w-5 h-5" /> : <Eye className="w-5 h-5" />}
+              Send Reset Link
             </button>
-          </div>
-          <div className="flex items-center justify-between mt-2">
-            <label className="flex items-center text-sm text-gray-700 select-none">
-              <input
-                type="checkbox"
-                checked={rememberMe}
-                onChange={e => setRememberMe(e.target.checked)}
-                className="form-checkbox h-4 w-4 text-blue-600 rounded mr-2"
-              />
-              Remember Me
-            </label>
-            <button
-              type="button"
-              onClick={handleForgotPassword}
-              className="text-blue-600 hover:text-blue-700 text-sm font-medium"
-            >
-              Forgot Password?
-            </button>
-          </div>
-        </div>
-        {error && (
-          <div className="text-red-600 text-sm bg-red-50 p-3 rounded-lg">
-            {error}
-          </div>
-        )}
-        {isSupabaseConnected && (
-          <div className="text-green-600 text-sm bg-green-50 p-3 rounded-lg">
-            Connected to Supabase - Your login will be authenticated with the database
-          </div>
-        )}
-        <button
-          type="submit"
-          disabled={isLoading}
-              className="w-full bg-gradient-to-r from-blue-600 to-blue-700 text-white py-3 rounded-lg font-medium hover:from-blue-700 hover:to-blue-800 transition-all duration-200 disabled:opacity-50"
-        >
-          {isLoading ? 'Signing in...' : 'Sign In'}
-        </button>
-      </form>
-      <div className="mt-6 text-center">
-        <p className="text-gray-600">
-          Don't have an account?{' '}
-          <button
-                onClick={() => navigate('/signup')}
-            className="text-blue-600 hover:text-blue-700 font-medium"
-          >
-                Signup
-          </button>
-        </p>
-          </div>
+          </form>
         </div>
       </div>
     </div>
+  );
+
+  return (
+    <>
+      {forgotPasswordModal}
+      <div className="min-h-screen flex flex-col md:flex-row bg-gray-50">
+        {/* Left: Image (hidden on mobile) */}
+        <div className="hidden md:block md:w-1/2 h-screen">
+          <img
+            src="/man-wearing-glasses-reading-from-his-digital-tablet.jpg"
+            alt="Login Visual"
+            className="object-cover w-full h-full"
+          />
+        </div>
+        {/* Right: Login Form */}
+        <div className="flex flex-1 items-center justify-center p-4">
+          <div className="w-full max-w-md bg-white rounded-2xl shadow-2xl p-8">
+            <div className="flex flex-col items-center mb-8">
+              {/* Logo or App Name */}
+            <img 
+              src="/Skill Sage Logo.png" 
+              alt="SKILL SAGE" 
+                className="h-12 w-auto mb-4"
+                onError={e => { (e.target as HTMLImageElement).style.display = 'none'; }}
+            />
+          <h2 className="text-3xl font-bold text-gray-900 mb-2">Welcome Back</h2>
+        </div>
+        <form onSubmit={handleSubmit} className="space-y-6">
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-2">
+                  Email <span className="text-red-500">*</span>
+            </label>
+            <div className="relative">
+              <Mail className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-5 h-5" />
+              <input
+                type="email"
+                name="email"
+                value={formData.email}
+                onChange={handleChange}
+                className="w-full pl-10 pr-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                placeholder="john@example.com"
+                required
+              />
+            </div>
+          </div>
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-2">
+                  Password <span className="text-red-500">*</span>
+            </label>
+            <div className="relative">
+              <Lock className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-5 h-5" />
+              <input
+                type={showPassword ? 'text' : 'password'}
+                name="password"
+                value={formData.password}
+                onChange={handleChange}
+                className="w-full pl-10 pr-12 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                placeholder="Enter your password"
+                required
+                autoComplete="current-password"
+              />
+              <button
+                type="button"
+                onClick={() => setShowPassword((prev: boolean) => !prev)}
+                className="absolute right-3 top-1/2 transform -translate-y-1/2 text-gray-400 hover:text-gray-600"
+              >
+                {showPassword ? <EyeOff className="w-5 h-5" /> : <Eye className="w-5 h-5" />}
+              </button>
+            </div>
+            <div className="flex items-center justify-between mt-2">
+              <label className="flex items-center text-sm text-gray-700 select-none">
+                <input
+                  type="checkbox"
+                  checked={rememberMe}
+                  onChange={e => setRememberMe(e.target.checked)}
+                  className="form-checkbox h-4 w-4 text-blue-600 rounded mr-2"
+                />
+                Remember Me
+              </label>
+              <button
+                type="button"
+                onClick={handleForgotPassword}
+                className="text-blue-600 hover:text-blue-700 text-sm font-medium"
+              >
+                Forgot Password?
+              </button>
+            </div>
+          </div>
+          {error && (
+            <div className="text-red-600 text-sm bg-red-50 p-3 rounded-lg">
+              {error}
+            </div>
+          )}
+          {isSupabaseConnected && (
+            <div className="text-green-600 text-sm bg-green-50 p-3 rounded-lg">
+              Connected to Supabase - Your login will be authenticated with the database
+            </div>
+          )}
+          <button
+            type="submit"
+            disabled={isLoading}
+                className="w-full bg-gradient-to-r from-blue-600 to-blue-700 text-white py-3 rounded-lg font-medium hover:from-blue-700 hover:to-blue-800 transition-all duration-200 disabled:opacity-50"
+          >
+            {isLoading ? 'Signing in...' : 'Sign In'}
+          </button>
+        </form>
+        <div className="mt-6 text-center">
+          <p className="text-gray-600">
+            Don't have an account?{' '}
+            <button
+                  onClick={() => navigate('/signup')}
+              className="text-blue-600 hover:text-blue-700 font-medium"
+            >
+                  Signup
+            </button>
+          </p>
+            </div>
+          </div>
+        </div>
+      </div>
+    </>
   );
 }

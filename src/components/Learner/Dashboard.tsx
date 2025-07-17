@@ -182,7 +182,7 @@ export function LearnerDashboard({}: LearnerDashboardProps) {
           </button>
           <div className="hidden md:block">
             <img 
-              src="/BLACK-1-removebg-preview.png" 
+              src="/Skill Sage Logo.png" 
               alt="SKILL SAGE" 
               className="h-10 w-auto opacity-60"
             />

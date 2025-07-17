@@ -103,7 +103,7 @@ export function Certificates() {
                 <div className="text-center">
                   <div className="mb-4">
                     <img 
-                      src="/BLACK-1-removebg-preview.png" 
+                      src="/Skill Sage Logo.png" 
                       alt="SKILL SAGE" 
                       className="h-8 w-auto mx-auto mb-2"
                     />

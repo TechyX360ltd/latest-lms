@@ -16,7 +16,7 @@ export function WelcomeModal({ onClose }: WelcomeModalProps) {
           ×
         </button>
         <div className="flex flex-col items-center text-center">
-                  <img src="/BLACK-1-removebg-preview.png" alt="SKILL SAGE" className="h-16 w-auto mb-4" />
+                  <img src="/Skill Sage Logo.png" alt="SKILL SAGE" className="h-16 w-auto mb-4" />
         <h2 className="text-2xl font-bold text-blue-700 mb-2">Welcome to SKILL SAGE!</h2>
           <p className="text-gray-700 mb-4">
             We're excited to have you on board. Here's how to get the best out of your learning journey:

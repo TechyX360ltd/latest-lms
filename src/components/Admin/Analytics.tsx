@@ -110,12 +110,24 @@ export function Analytics() {
   const [selectedMetric, setSelectedMetric] = useState<'users' | 'revenue' | 'enrollments'>('users');
   const [isRefreshing, setIsRefreshing] = useState(false);
   const [loading, setLoading] = useState(true);
+  const [topCourses, setTopCourses] = useState<any[]>([]);
 
   useEffect(() => {
     if (!coursesLoading && !usersLoading && !paymentsLoading) {
       generateAnalyticsData();
     }
   }, [courses, users, payments, coursesLoading, usersLoading, paymentsLoading, selectedTimeframe]);
+
+  useEffect(() => {
+    // Fetch real top courses from Supabase view
+    const fetchTopCourses = async () => {
+      const { data, error } = await supabase.from('top_courses').select('*');
+      if (!error && data) {
+        setTopCourses(data);
+      }
+    };
+    fetchTopCourses();
+  }, []);
 
   const generateAnalyticsData = () => {
     setLoading(true);
@@ -602,26 +614,25 @@ export function Analytics() {
             <Star className="w-6 h-6 text-yellow-500" />
             Top Performing Courses
           </h2>
-          
           <div className="space-y-4">
-            {analyticsData.courseAnalytics.topCourses.map((course, index) => (
-              <div key={course.id} className="flex items-center gap-4 p-3 border border-gray-200 rounded-lg hover:shadow-md transition-shadow">
-                <div className="w-8 h-8 bg-gradient-to-r from-blue-500 to-indigo-500 rounded-full flex items-center justify-center text-white font-bold text-sm">
-                  {index + 1}
-                </div>
-                <div className="flex-1">
-                  <h3 className="font-medium text-gray-900 line-clamp-1">{course.title}</h3>
-                  <div className="flex items-center gap-4 mt-1 text-sm text-gray-600">
-                    <span>{course.enrollments} enrollments</span>
-                    <span>{formatCurrency(course.revenue)}</span>
-                    <span className="flex items-center gap-1">
-                      <Star className="w-3 h-3 text-yellow-400 fill-current" />
-                      {course.rating.toFixed(1)}
-                    </span>
+            {topCourses.length === 0 ? (
+              <div className="text-gray-400 text-center py-8">No data available.</div>
+            ) : (
+              topCourses.map((course, index) => (
+                <div key={course.id} className="flex items-center gap-4 p-3 border border-gray-200 rounded-lg hover:shadow-md transition-shadow">
+                  <div className="w-8 h-8 bg-gradient-to-r from-blue-500 to-indigo-500 rounded-full flex items-center justify-center text-white font-bold text-sm">
+                    {index + 1}
+                  </div>
+                  <div className="flex-1">
+                    <h3 className="font-medium text-gray-900 line-clamp-1">{course.title}</h3>
+                    <div className="flex items-center gap-4 mt-1 text-sm text-gray-600">
+                      <span>{course.enrollments} enrollments</span>
+                      <span>₦{course.revenue?.toLocaleString() || 0}</span>
+                    </div>
                   </div>
                 </div>
-              </div>
-            ))}
+              ))
+            )}
           </div>
         </div>
 

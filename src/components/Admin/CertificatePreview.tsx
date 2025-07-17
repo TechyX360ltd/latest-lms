@@ -440,7 +440,7 @@ export function CertificatePreview({ onClose }: CertificatePreviewProps) {
                   {/* Header */}
                   <div className="mb-8">
                     <img 
-                      src="/BLACK-1-removebg-preview.png" 
+                      src="/Skill Sage Logo.png" 
                       alt="SKILL SAGE" 
                       className="h-16 w-auto mx-auto mb-6"
                     />

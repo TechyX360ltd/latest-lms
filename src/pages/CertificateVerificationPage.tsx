@@ -53,7 +53,7 @@ export function CertificateVerificationPage() {
     >
       {/* Logo */}
       <img
-        src="/BLACK-1-removebg-preview.png"
+        src="/Skill Sage Logo.png"
                     alt="SKILL SAGE Logo"
         className="h-16 w-auto mb-6 drop-shadow-lg"
         style={{ filter: 'drop-shadow(0 2px 8px #2563eb33)' }}
