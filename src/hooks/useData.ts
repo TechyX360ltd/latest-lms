@@ -980,7 +980,24 @@ export function useUsers() {
     setUsers(allUsers);
   };
 
-  return { users, setUsers, addUser, refreshUsers, loading };
+  const deleteUser = async (userId: string) => {
+    try {
+      // Try to delete from Supabase
+      const { error } = await supabase.from('users').delete().eq('id', userId);
+      if (error) throw error;
+      await refreshUsers();
+      return;
+    } catch (error) {
+      console.error('Error deleting user from Supabase, falling back to localStorage:', error);
+    }
+    // Fallback to localStorage
+    const allUsers = await getAllUsersFromStorage();
+    const updatedUsers = allUsers.filter((u: any) => u.id !== userId);
+    localStorage.setItem('allUsers', JSON.stringify(updatedUsers));
+    await refreshUsers();
+  };
+
+  return { users, setUsers, addUser, refreshUsers, loading, deleteUser };
 }
 
 export function usePayments() {

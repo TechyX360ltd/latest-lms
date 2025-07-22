@@ -21,4 +21,6 @@ CREATE OR REPLACE VIEW location_usage_analytics AS
 SELECT country, COUNT(*) AS count
 FROM device_logs
 GROUP BY country
-ORDER BY count DESC; 
+ORDER BY count DESC;
+
+ALTER TABLE device_logs ADD COLUMN IF NOT EXISTS country_code text; 

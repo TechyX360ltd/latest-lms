@@ -26,7 +26,7 @@ import { PaymentManagement } from './components/Admin/PaymentManagement';
 import { SupabaseConnectionStatus } from './components/SupabaseConnectionStatus';
 import InstructorProfile from './components/Instructor/InstructorProfile';
 import { InstructorDashboard } from './components/Instructor/InstructorDashboard';
-import { ToastProvider } from './components/Auth/ToastContext';
+import { ToastProvider, useToast } from './components/Auth/ToastContext';
 import { CategoryManagement } from './components/Admin/CategoryManagement';
 import { AdminProfile } from './components/Admin/AdminProfile';
 import { BrowserRouter as Router, Routes, Route, Navigate, Outlet, useParams } from 'react-router-dom';
@@ -201,6 +201,19 @@ function AppContent() {
   const [showPassword, setShowPassword] = useState(false);
   const handleToggleForm = () => {};
   const { user, isLoading } = useAuth();
+  const { showToast } = useToast();
+
+  // Listen for inactivity logout event and show toast
+  React.useEffect(() => {
+    const handler = (e: Event) => {
+      const customEvent = e as CustomEvent;
+      if (customEvent.detail && customEvent.detail.message) {
+        showToast(customEvent.detail.message, 'confirmation', 6000);
+      }
+    };
+    window.addEventListener('inactivity-logout', handler);
+    return () => window.removeEventListener('inactivity-logout', handler);
+  }, [showToast]);
 
   if (isLoading) {
     return (

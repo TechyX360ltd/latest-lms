@@ -1,6 +1,9 @@
 import React, { createContext, useContext, useReducer, useEffect, useState } from 'react';
 import { User, AuthState } from '../types';
 import { supabase } from '../lib/supabase';
+import { getDeviceType, getUserLocation } from '../lib/deviceUtils';
+import { sendEmail } from '../lib/email';
+import { fillTemplate } from '../lib/template'; // adjust path as needed
 
 interface AuthAction {
   type: 'LOGIN' | 'LOGOUT' | 'SET_LOADING' | 'SET_USER' | 'ADD_USER' | 'UPDATE_ENROLLMENT' | 'COMPLETE_COURSE' | 'UPDATE_PROFILE';
@@ -160,6 +163,38 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [state, dispatch] = useReducer(authReducer, initialState);
   const [isSupabaseConnected, setIsSupabaseConnected] = useState(false);
 
+  // Inactivity logout timer (6 hours = 21600000 ms)
+  useEffect(() => {
+    let timer: NodeJS.Timeout | null = null;
+    const INACTIVITY_LIMIT = 21600000; // 6 hours in ms
+
+    const resetTimer = () => {
+      if (timer) clearTimeout(timer);
+      if (state.isAuthenticated) {
+        timer = setTimeout(() => {
+          // Only logout if still authenticated
+          if (state.isAuthenticated) {
+            // Dispatch a custom event for toast
+            window.dispatchEvent(new CustomEvent('inactivity-logout', { detail: { message: 'You have been logged out due to inactivity.' } }));
+            logout();
+          }
+        }, INACTIVITY_LIMIT);
+      }
+    };
+
+    const events: (keyof WindowEventMap)[] = ['mousemove', 'keydown', 'mousedown', 'touchstart'];
+    events.forEach(event => window.addEventListener(event, resetTimer));
+
+    if (state.isAuthenticated) {
+      resetTimer();
+    }
+
+    return () => {
+      if (timer) clearTimeout(timer);
+      events.forEach(event => window.removeEventListener(event, resetTimer));
+    };
+  }, [state.isAuthenticated]);
+
   useEffect(() => {
     // Check Supabase connection
     const checkSupabaseConnection = async () => {
@@ -216,10 +251,10 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
               referred_by: userData.referred_by,
               coins: userData.coins || 0,
               enrolledCourses: userData.user_courses
-                ? userData.user_courses.filter((e: any) => e.status === 'enrolled').map((e: any) => e.course_id)
+                ? userData.user_courses.filter((e: any) => (e as any).status === 'enrolled').map((e: any) => (e as any).course_id)
                 : [],
               completedCourses: userData.user_courses
-                ? userData.user_courses.filter((e: any) => e.status === 'completed').map((e: any) => e.course_id)
+                ? userData.user_courses.filter((e: any) => (e as any).status === 'completed').map((e: any) => (e as any).course_id)
                 : [],
               createdAt: userData.created_at,
               // Add verification fields
@@ -267,7 +302,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     checkAuthState();
 
     // Subscribe to Supabase auth state changes for session restoration
-    const { data: authListener } = supabase.auth.onAuthStateChange((_event, session) => {
+    const { data: authListener } = supabase.auth.onAuthStateChange((_event: string, session: any) => {
       if (session && session.user) {
         // Fetch user data and update context
         supabase
@@ -275,7 +310,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
           .select('*, user_courses(user_id, course_id, status)')
           .eq('id', session.user.id)
           .single()
-          .then(({ data: userData, error }) => {
+          .then(({ data: userData, error }: { data: any, error: any }) => {
             if (!error && userData) {
               const formattedUser = {
                 id: userData.id,
@@ -341,6 +376,28 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
             throw userError;
           }
           if (userData) {
+            // Log device and location
+            try {
+              const deviceType = getDeviceType();
+              const location = await getUserLocation();
+              const logPayload = {
+                user_id: userData.id,
+                device_type: deviceType,
+                city: location.city,
+                country: location.country_name,
+                country_code: location.country_code, // Add country_code
+                ip_address: location.ip
+              };
+              console.log('Attempting to log device/location:', logPayload);
+              const { error: logError } = await supabase.from('device_logs').insert([logPayload]);
+              if (logError) {
+                console.warn('Device/location logging failed:', logError);
+              } else {
+                console.log('Device/location logging succeeded');
+              }
+            } catch (logErr) {
+              console.warn('Device/location logging threw error:', logErr);
+            }
             // Debug: log raw userData from Supabase
             console.log('Raw userData from Supabase:', userData);
             // Format user data to match our app's structure
@@ -445,8 +502,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
           coins: 0,
           current_streak: 0,
           longest_streak: 0,
-          // referral_code: crypto.randomUUID(), // Removed so DB default is used
-          referred_by: userData.referralCode || null, // Set the referral code if provided
+          referred_by: userData.referralCode || null,
           verification_status: 'unverified',
           phone: userData.phone || '',
           bio: userData.bio || '',
@@ -465,9 +521,61 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
           .insert(userPayload);
         if (userError) {
           console.error('User profile insert error:', userError);
-          alert(JSON.stringify(userError, null, 2)); // Show full error details
+          alert(JSON.stringify(userError, null, 2));
           throw userError;
         }
+
+        // --- Custom Confirmation Email Trigger ---
+        try {
+          const learnerName = userData.first_name || 'Learner';
+          const { data: templateData } = await supabase
+            .from('email_templates')
+            .select('subject_template, html_template')
+            .eq('name', 'confirmation')
+            .single();
+          if (templateData) {
+            const subject = fillTemplate(templateData.subject_template, { name: learnerName });
+            // html will have {{confirmation_link}} placeholder
+            const html = fillTemplate(templateData.html_template, { name: learnerName });
+            await fetch('https://rpexcrwcgdmlfxihdmny.functions.supabase.co/send-email', {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({
+                to: userData.email,
+                subject,
+                html,
+                type: 'confirmation',
+                user_id: authData.user.id
+              })
+            });
+          }
+        } catch (emailErr) {
+          console.error('Failed to send confirmation email:', emailErr);
+        }
+        // --- End Custom Confirmation Email Trigger ---
+
+        // --- Welcome Email Trigger ---
+        try {
+          const learnerName = userData.first_name || 'Learner';
+          const { data: templateData } = await supabase
+            .from('email_templates')
+            .select('subject_template, html_template')
+            .eq('name', 'welcome')
+            .single();
+          if (templateData) {
+            const subject = fillTemplate(templateData.subject_template, { name: learnerName });
+            const html = fillTemplate(templateData.html_template, { name: learnerName });
+            await sendEmail({
+              to: userData.email,
+              subject,
+              html
+            });
+          }
+        } catch (emailErr) {
+          console.error('Failed to send welcome email:', emailErr);
+        }
+        // --- End Welcome Email Trigger ---
+
         dispatch({ type: 'SET_LOADING', payload: false });
         return;
       }
@@ -495,10 +603,10 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       console.error('Full registration error:', error); // Log the full error object for debugging
       let msg = 'Registration failed. Please try again.';
       if (
-        error?.code === '23505' ||
-        error?.message?.toLowerCase().includes('duplicate key value') ||
-        error?.message?.toLowerCase().includes('already registered') ||
-        error?.message?.toLowerCase().includes('duplicate')
+        (error as any)?.code === '23505' ||
+        (error as any)?.message?.toLowerCase().includes('duplicate key value') ||
+        (error as any)?.message?.toLowerCase().includes('already registered') ||
+        (error as any)?.message?.toLowerCase().includes('duplicate')
       ) {
         msg = 'This email is already registered. Please log in or use a different email.';
       }
@@ -619,8 +727,52 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
             const { error: updateError } = await supabase.rpc('increment_enrollment_count', {
               course_id: courseId
             });
-            
             if (updateError) console.error('Error updating enrollment count:', updateError);
+          }
+
+          // Fetch course details and send enrollment email using DB template
+          try {
+            for (const courseId of coursesToAdd) {
+              // Fetch course title
+              const { data: courseData } = await supabase
+                .from('courses')
+                .select('title')
+                .eq('id', courseId)
+                .single();
+              const courseTitle = courseData?.title || 'a course';
+              const learnerName = state.user.first_name || 'Learner';
+
+              // Fetch email template from DB
+              const { data: templateData } = await supabase
+                .from('email_templates')
+                .select('subject_template, html_template')
+                .eq('name', 'course_enroll')
+                .single();
+
+              if (!templateData) {
+                console.error('No email template found for course_enroll');
+                continue;
+              }
+
+              // Fill in the template
+              const subject = fillTemplate(templateData.subject_template, {
+                course: courseTitle,
+                name: learnerName
+              });
+              const html = fillTemplate(templateData.html_template, {
+                course: courseTitle,
+                name: learnerName
+              });
+
+              // Send the email
+              await sendEmail({
+                to: state.user.email,
+                subject,
+                html
+              });
+            }
+          } catch (emailErr) {
+            console.error('Failed to send enrollment email:', emailErr);
           }
         }
         
@@ -736,7 +888,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       // Update user in localStorage
       const allUsers = await getAllUsers();
       const updatedUsers = allUsers.map((u: any) => 
-        u.id === state.user?.id ? { 
+        state.user && u.id === state.user.id ? { 
           ...u, 
           completedCourses: [...(u.completedCourses || []), courseId],
           enrolledCourses: u.enrolledCourses.filter((id: string) => id !== courseId)

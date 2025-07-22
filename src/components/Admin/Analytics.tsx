@@ -27,6 +27,8 @@ import {
 } from 'lucide-react';
 import { useCourses, useUsers, usePayments, useNotifications } from '../../hooks/useData';
 import { supabase } from '../../lib/supabase';
+import ReactCountryFlag from 'react-country-flag';
+import * as XLSX from 'xlsx';
 
 interface AnalyticsData {
   overview: {
@@ -99,6 +101,36 @@ interface AnalyticsData {
   };
 }
 
+function useTimeSeriesData() {
+  const [labels, setLabels] = useState<string[]>([]);
+  const [users, setUsers] = useState<number[]>([]);
+  const [revenue, setRevenue] = useState<number[]>([]);
+  const [enrollments, setEnrollments] = useState<number[]>([]);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    async function fetchData() {
+      setLoading(true);
+      const { data: usersData } = await supabase.from('users_per_day').select('*');
+      const { data: revenueData } = await supabase.from('revenue_per_day').select('*');
+      const { data: enrollmentsData } = await supabase.from('enrollments_per_day').select('*');
+      const allDates = [
+        ...(usersData?.map(u => u.date) || []),
+        ...(revenueData?.map(r => r.date) || []),
+        ...(enrollmentsData?.map(e => e.date) || [])
+      ];
+      const uniqueDates = Array.from(new Set(allDates)).sort();
+      setLabels(uniqueDates);
+      setUsers(uniqueDates.map(date => usersData?.find(u => u.date === date)?.users || 0));
+      setRevenue(uniqueDates.map(date => revenueData?.find(r => r.date === date)?.revenue || 0));
+      setEnrollments(uniqueDates.map(date => enrollmentsData?.find(e => e.date === date)?.enrollments || 0));
+      setLoading(false);
+    }
+    fetchData();
+  }, []);
+  return { labels, users, revenue, enrollments, loading };
+}
+
 export function Analytics() {
   const { courses, loading: coursesLoading } = useCourses();
   const { users, loading: usersLoading } = useUsers();
@@ -111,6 +143,14 @@ export function Analytics() {
   const [isRefreshing, setIsRefreshing] = useState(false);
   const [loading, setLoading] = useState(true);
   const [topCourses, setTopCourses] = useState<any[]>([]);
+  const [locationUsage, setLocationUsage] = useState<any[]>([]);
+  const { labels, users: usersTS, revenue: revenueTS, enrollments: enrollmentsTS, loading: timeSeriesLoading } = useTimeSeriesData();
+  const timeSeriesData = {
+    labels,
+    users: usersTS,
+    revenue: revenueTS,
+    enrollments: enrollmentsTS
+  };
 
   useEffect(() => {
     if (!coursesLoading && !usersLoading && !paymentsLoading) {
@@ -127,6 +167,14 @@ export function Analytics() {
       }
     };
     fetchTopCourses();
+  }, []);
+
+  useEffect(() => {
+    const fetchLocationUsage = async () => {
+      const { data, error } = await supabase.from('location_usage_analytics').select('*');
+      if (!error && data) setLocationUsage(data);
+    };
+    fetchLocationUsage();
   }, []);
 
   const generateAnalyticsData = () => {
@@ -159,8 +207,8 @@ export function Analytics() {
         .map(course => ({
           id: course.id,
           title: course.title,
-          enrollments: course.enrolledCount,
-          revenue: course.enrolledCount * course.price,
+          enrollments: course.enrolled_count,
+          revenue: course.enrolled_count * course.price,
           rating: 4.5 + Math.random() * 0.5, // 4.5-5.0
           completionRate: Math.floor(Math.random() * 40 + 50) // 50-90%
         }))
@@ -180,8 +228,8 @@ export function Analytics() {
           });
         }
         const data = categoryMap.get(category);
-        data.enrollments += course.enrolledCount;
-        data.revenue += course.enrolledCount * course.price;
+        data.enrollments += course.enrolled_count;
+        data.revenue += course.enrolled_count * course.price;
         data.courses += 1;
       });
       const categoryPerformance = Array.from(categoryMap.values());
@@ -210,9 +258,6 @@ export function Analytics() {
         { method: 'Bank Transfer', percentage: 25, amount: totalRevenue * 0.25 },
         { method: 'Digital Wallet', percentage: 10, amount: totalRevenue * 0.10 }
       ];
-
-      // Time series data for charts
-      const timeSeriesData = generateTimeSeriesData(timeframeDays, totalUsers, totalRevenue, totalEnrollments);
 
       const analytics: AnalyticsData = {
         overview: {
@@ -291,61 +336,6 @@ export function Analytics() {
     return months;
   };
 
-  const generateTimeSeriesData = (days: number, totalUsers: number, totalRevenue: number, totalEnrollments: number) => {
-    const labels = [];
-    const users = [];
-    const revenue = [];
-    const enrollments = [];
-    
-    const pointsToShow = Math.min(days, 30); // Max 30 data points
-    const interval = Math.max(1, Math.floor(days / pointsToShow));
-    
-    for (let i = pointsToShow - 1; i >= 0; i--) {
-      const date = new Date();
-      date.setDate(date.getDate() - (i * interval));
-      labels.push(date.toLocaleDateString('en-US', { month: 'short', day: 'numeric' }));
-      
-      // Generate cumulative data with some variance
-      const userProgress = (pointsToShow - i) / pointsToShow;
-      users.push(Math.floor(totalUsers * userProgress * (0.8 + Math.random() * 0.4)));
-      revenue.push(Math.floor(totalRevenue * userProgress * (0.7 + Math.random() * 0.6)));
-      enrollments.push(Math.floor(totalEnrollments * userProgress * (0.6 + Math.random() * 0.8)));
-    }
-    
-    return { labels, users, revenue, enrollments };
-  };
-
-  const handleRefresh = async () => {
-    setIsRefreshing(true);
-    await new Promise(resolve => setTimeout(resolve, 1000));
-    generateAnalyticsData();
-    setIsRefreshing(false);
-  };
-
-  const exportData = () => {
-    if (!analyticsData) return;
-    
-    const csvData = [
-      ['Metric', 'Value'],
-      ['Total Users', analyticsData.overview.totalUsers],
-      ['Total Courses', analyticsData.overview.totalCourses],
-      ['Total Revenue', `₦${analyticsData.overview.totalRevenue.toLocaleString()}`],
-      ['Total Enrollments', analyticsData.overview.totalEnrollments],
-      ['Active Users', analyticsData.overview.activeUsers],
-      ['Completion Rate', `${analyticsData.overview.completionRate}%`],
-      ['Average Rating', analyticsData.overview.averageRating],
-      ['Certificates Issued', analyticsData.overview.certificatesIssued]
-    ].map(row => row.join(',')).join('\n');
-
-    const blob = new Blob([csvData], { type: 'text/csv' });
-    const url = window.URL.createObjectURL(blob);
-    const a = document.createElement('a');
-    a.href = url;
-    a.download = `analytics-report-${new Date().toISOString().split('T')[0]}.csv`;
-    a.click();
-    window.URL.revokeObjectURL(url);
-  };
-
   const formatCurrency = (amount: number) => {
     return `₦${amount.toLocaleString()}`;
   };
@@ -364,6 +354,66 @@ export function Analytics() {
 
   const getTrendColor = (value: number) => {
     return value >= 0 ? 'text-green-600' : 'text-red-600';
+  };
+
+  const handleRefresh = () => {
+    window.location.reload();
+  };
+
+  const exportData = () => {
+    if (!analyticsData) {
+      alert('No data to export.');
+      return;
+    }
+    // Prepare data for export
+    const overviewSheet = [
+      ['Metric', 'Value'],
+      ['Total Users', analyticsData.overview.totalUsers],
+      ['Total Courses', analyticsData.overview.totalCourses],
+      ['Total Revenue', analyticsData.overview.totalRevenue],
+      ['Total Enrollments', analyticsData.overview.totalEnrollments],
+      ['Active Users', analyticsData.overview.activeUsers],
+      ['Completion Rate', analyticsData.overview.completionRate],
+      ['Average Rating', analyticsData.overview.averageRating],
+      ['Certificates Issued', analyticsData.overview.certificatesIssued],
+    ];
+    const timeSeriesSheet = [
+      ['Date', 'Users', 'Revenue', 'Enrollments'],
+      ...(analyticsData.timeSeriesData.labels.map((label, i) => [
+        label,
+        analyticsData.timeSeriesData.users[i],
+        analyticsData.timeSeriesData.revenue[i],
+        analyticsData.timeSeriesData.enrollments[i],
+      ])),
+    ];
+    // Device Usage Sheet
+    const deviceUsageSheet = [
+      ['Device Type', 'Percentage'],
+      ['Desktop', analyticsData.userAnalytics.deviceStats.desktop],
+      ['Mobile', analyticsData.userAnalytics.deviceStats.mobile],
+      ['Tablet', analyticsData.userAnalytics.deviceStats.tablet],
+    ];
+    // Top Courses Sheet
+    const topCoursesSheet = [
+      ['Title', 'Enrollments', 'Revenue', 'Rating', 'Completion Rate'],
+      ...((analyticsData.courseAnalytics.topCourses || []).map(course => [
+        course.title,
+        course.enrollments,
+        course.revenue,
+        course.rating,
+        course.completionRate
+      ])),
+    ];
+    const wb = XLSX.utils.book_new();
+    const wsOverview = XLSX.utils.aoa_to_sheet(overviewSheet);
+    const wsTimeSeries = XLSX.utils.aoa_to_sheet(timeSeriesSheet);
+    const wsDeviceUsage = XLSX.utils.aoa_to_sheet(deviceUsageSheet);
+    const wsTopCourses = XLSX.utils.aoa_to_sheet(topCoursesSheet);
+    XLSX.utils.book_append_sheet(wb, wsOverview, 'Overview');
+    XLSX.utils.book_append_sheet(wb, wsTimeSeries, 'Trends Over Time');
+    XLSX.utils.book_append_sheet(wb, wsDeviceUsage, 'Device Usage');
+    XLSX.utils.book_append_sheet(wb, wsTopCourses, 'Top Courses');
+    XLSX.writeFile(wb, `analytics-report-${new Date().toISOString().split('T')[0]}.xlsx`);
   };
 
   if (loading || !analyticsData) {
@@ -526,27 +576,53 @@ export function Analytics() {
           
           {/* Simple Line Chart Visualization */}
           <div className="h-64 flex items-end justify-between gap-2">
-            {analyticsData.timeSeriesData.labels.map((label, index) => {
-              const data = analyticsData.timeSeriesData[selectedMetric];
-              const maxValue = Math.max(...data);
-              const height = (data[index] / maxValue) * 100;
-              
-              return (
-                <div key={index} className="flex-1 flex flex-col items-center">
-                  <div 
-                    className="w-full bg-blue-500 rounded-t transition-all duration-300 hover:bg-blue-600 relative group"
-                    style={{ height: `${height}%` }}
-                  >
-                    <div className="absolute -top-8 left-1/2 transform -translate-x-1/2 bg-gray-800 text-white text-xs px-2 py-1 rounded opacity-0 group-hover:opacity-100 transition-opacity">
-                      {selectedMetric === 'revenue' ? formatCurrency(data[index]) : data[index].toLocaleString()}
+            {(() => {
+              const rawData = timeSeriesData[selectedMetric];
+              const labels = timeSeriesData.labels;
+              // Debug log
+              console.log('Chart Data:', { labels, data: rawData, selectedMetric });
+              // Fallback: ensure all values are numbers and arrays are aligned
+              const data = Array.isArray(rawData) ? rawData.map(v => Number(v) || 0) : [];
+              if (!data || data.length === 0 || !labels || labels.length === 0) {
+                return <div className="text-gray-400 text-center py-8 w-full">No data available for this period.</div>;
+              }
+              if (data.length !== labels.length) {
+                return <div className="text-red-500 text-center py-8 w-full">Data/label length mismatch. Please check your backend data.</div>;
+              }
+              const allZero = data.every(v => v === 0);
+              if (allZero) {
+                return <div className="text-gray-400 text-center py-8 w-full">No data available for this period.</div>;
+              }
+              const maxValue = Math.max(...data, 1); // Avoid division by zero
+              const maxBarHeight = 200; // px
+              const minBarHeight = 8; // px
+              const bars = labels.map((label, index) => {
+                let height = 0;
+                if (maxValue > 0) {
+                  height = (data[index] / maxValue) * maxBarHeight;
+                  if (data[index] > 0 && height < minBarHeight) height = minBarHeight;
+                }
+                return (
+                  <div key={index} className="flex-1 flex flex-col items-center">
+                    <div 
+                      className="w-8 bg-blue-500 border border-red-500 rounded-t transition-all duration-300 hover:bg-blue-600 relative group"
+                      style={{ height: `${height}px` }}
+                    >
+                      <div className="absolute -top-8 left-1/2 transform -translate-x-1/2 bg-gray-800 text-white text-xs px-2 py-1 rounded opacity-0 group-hover:opacity-100 transition-opacity">
+                        {selectedMetric === 'revenue' ? formatCurrency(data[index]) : data[index].toLocaleString()}
+                      </div>
                     </div>
+                    <span className="text-xs text-gray-500 mt-2 transform -rotate-45 origin-left">
+                      {label}
+                    </span>
                   </div>
-                  <span className="text-xs text-gray-500 mt-2 transform -rotate-45 origin-left">
-                    {label}
-                  </span>
-                </div>
-              );
-            })}
+                );
+              });
+              if (!bars || bars.length === 0) {
+                return <div className="text-gray-400 text-center py-8 w-full">No data bars to display.</div>;
+              }
+              return bars;
+            })()}
           </div>
         </div>
 
@@ -636,49 +712,51 @@ export function Analytics() {
           </div>
         </div>
 
-        {/* Category Performance */}
+        {/* Users Logging by Location */}
         <div className="bg-white rounded-xl shadow-sm p-6 border border-gray-100">
           <h2 className="text-xl font-bold text-gray-900 mb-6 flex items-center gap-2">
-            <PieChart className="w-6 h-6 text-indigo-600" />
-            Category Performance
+            <Globe className="w-6 h-6 text-blue-600" />
+            Users Logging by Location
           </h2>
-          
           <div className="space-y-4">
-            {analyticsData.courseAnalytics.categoryPerformance.map((category, index) => {
-              const colors = ['bg-blue-500', 'bg-green-500', 'bg-purple-500', 'bg-orange-500', 'bg-red-500'];
-              const color = colors[index % colors.length];
-              
-              return (
-                <div key={category.category} className="space-y-2">
-                  <div className="flex items-center justify-between">
-                    <span className="font-medium text-gray-900">{category.category}</span>
-                    <span className="text-sm text-gray-600">{category.enrollments} enrollments</span>
-                  </div>
-                  <div className="w-full bg-gray-200 rounded-full h-2">
-                    <div 
-                      className={`${color} h-2 rounded-full transition-all duration-300`}
-                      style={{ 
-                        width: `${(category.enrollments / Math.max(...analyticsData.courseAnalytics.categoryPerformance.map(c => c.enrollments))) * 100}%` 
-                      }}
-                    ></div>
-                  </div>
-                  <div className="flex justify-between text-sm text-gray-600">
-                    <span>{category.courses} courses</span>
-                    <span>{formatCurrency(category.revenue)}</span>
+            {locationUsage.length === 0 ? (
+              <div className="text-gray-400 text-center py-8">No location data available.</div>
+            ) : (
+              locationUsage.map((loc, idx) => (
+                <div key={loc.country || idx} className="flex items-center gap-4 p-3 border border-gray-200 rounded-lg hover:shadow-md transition bg-blue-50">
+                  <span className="text-3xl">
+                    <ReactCountryFlag
+                      countryCode={loc.country_code}
+                      svg
+                      style={{ width: '2em', height: '2em', borderRadius: '0.25em', boxShadow: '0 1px 4px #0001', marginRight: '0.5em' }}
+                      title={loc.country}
+                    />
+                  </span>
+                  <div className="flex-1">
+                    <div className="font-semibold text-lg text-gray-900">{loc.country}</div>
+                    <div className="flex items-center gap-4 text-sm text-gray-600 mt-1">
+                      <span className="font-bold text-blue-700">
+                        {loc.count} logins
+                      </span>
+                      {loc.last_login && (
+                        <span className="ml-2 text-gray-500">Last: {new Date(loc.last_login).toLocaleString()}</span>
+                      )}
+                      {loc.last_ip && (
+                        <span className="ml-2 text-gray-400">IP: {loc.last_ip}</span>
+                      )}
+                    </div>
                   </div>
                 </div>
-              );
-            })}
+              ))
+            )}
           </div>
         </div>
-
-        {/* Device & Platform Stats */}
+        {/* Device Usage */}
         <div className="bg-white rounded-xl shadow-sm p-6 border border-gray-100">
           <h2 className="text-xl font-bold text-gray-900 mb-6 flex items-center gap-2">
             <Globe className="w-6 h-6 text-blue-600" />
             Device Usage
           </h2>
-          
           <div className="space-y-6">
             <div className="text-center">
               <div className="relative w-32 h-32 mx-auto mb-4">
@@ -705,7 +783,6 @@ export function Analytics() {
                 </div>
               </div>
             </div>
-
             <div className="space-y-3">
               <div className="flex items-center justify-between p-3 bg-blue-50 rounded-lg">
                 <div className="flex items-center gap-3">
@@ -714,7 +791,6 @@ export function Analytics() {
                 </div>
                 <span className="font-bold text-blue-600">{analyticsData.userAnalytics.deviceStats.desktop}%</span>
               </div>
-
               <div className="flex items-center justify-between p-3 bg-green-50 rounded-lg">
                 <div className="flex items-center gap-3">
                   <Smartphone className="w-5 h-5 text-green-600" />
@@ -722,7 +798,6 @@ export function Analytics() {
                 </div>
                 <span className="font-bold text-green-600">{analyticsData.userAnalytics.deviceStats.mobile}%</span>
               </div>
-
               <div className="flex items-center justify-between p-3 bg-purple-50 rounded-lg">
                 <div className="flex items-center gap-3">
                   <Tablet className="w-5 h-5 text-purple-600" />
@@ -837,6 +912,64 @@ export function Analytics() {
             </div>
             <p className="text-3xl font-bold text-yellow-300">{formatPercentage(analyticsData.overview.completionRate)}</p>
             <p className="text-sm opacity-80">Completion Rate</p>
+          </div>
+        </div>
+      </div>
+
+      {/* Device Usage */}
+      <div className="bg-white rounded-xl shadow-sm p-6 border border-gray-100">
+        <h2 className="text-xl font-bold text-gray-900 mb-6 flex items-center gap-2">
+          <Globe className="w-6 h-6 text-blue-600" />
+          Device Usage
+        </h2>
+        <div className="space-y-6">
+          <div className="text-center">
+            <div className="relative w-32 h-32 mx-auto mb-4">
+              <svg className="w-32 h-32 transform -rotate-90" viewBox="0 0 36 36">
+                <path
+                  d="M18 2.0845 a 15.9155 15.9155 0 0 1 0 31.831 a 15.9155 15.9155 0 0 1 0 -31.831"
+                  fill="none"
+                  stroke="#e5e7eb"
+                  strokeWidth="3"
+                />
+                <path
+                  d="M18 2.0845 a 15.9155 15.9155 0 0 1 0 31.831 a 15.9155 15.9155 0 0 1 0 -31.831"
+                  fill="none"
+                  stroke="#3b82f6"
+                  strokeWidth="3"
+                  strokeDasharray={`${analyticsData.userAnalytics.deviceStats.desktop}, 100`}
+                />
+              </svg>
+              <div className="absolute inset-0 flex items-center justify-center">
+                <div className="text-center">
+                  <p className="text-2xl font-bold text-gray-900">{analyticsData.userAnalytics.deviceStats.desktop}%</p>
+                  <p className="text-sm text-gray-600">Desktop</p>
+                </div>
+              </div>
+            </div>
+          </div>
+          <div className="space-y-3">
+            <div className="flex items-center justify-between p-3 bg-blue-50 rounded-lg">
+              <div className="flex items-center gap-3">
+                <Monitor className="w-5 h-5 text-blue-600" />
+                <span className="font-medium text-gray-900">Desktop</span>
+              </div>
+              <span className="font-bold text-blue-600">{analyticsData.userAnalytics.deviceStats.desktop}%</span>
+            </div>
+            <div className="flex items-center justify-between p-3 bg-green-50 rounded-lg">
+              <div className="flex items-center gap-3">
+                <Smartphone className="w-5 h-5 text-green-600" />
+                <span className="font-medium text-gray-900">Mobile</span>
+              </div>
+              <span className="font-bold text-green-600">{analyticsData.userAnalytics.deviceStats.mobile}%</span>
+            </div>
+            <div className="flex items-center justify-between p-3 bg-purple-50 rounded-lg">
+              <div className="flex items-center gap-3">
+                <Tablet className="w-5 h-5 text-purple-600" />
+                <span className="font-medium text-gray-900">Tablet</span>
+              </div>
+              <span className="font-bold text-purple-600">{analyticsData.userAnalytics.deviceStats.tablet}%</span>
+            </div>
           </div>
         </div>
       </div>

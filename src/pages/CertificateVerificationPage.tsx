@@ -59,7 +59,7 @@ export function CertificateVerificationPage() {
         style={{ filter: 'drop-shadow(0 2px 8px #2563eb33)' }}
       />
       <div className="bg-white rounded-3xl shadow-2xl max-w-xl w-full p-8 md:p-12 text-center border border-blue-100">
-        <Breadcrumbs />
+        {/* <Breadcrumbs /> Removed as per request */}
         <h1 className="text-3xl md:text-4xl font-extrabold text-blue-700 mb-2 tracking-tight">
           Certificate Verification
         </h1>

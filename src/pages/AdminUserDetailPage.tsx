@@ -6,6 +6,7 @@ import { AddUser } from '../components/Admin/AddUser';
 import { GamificationService } from '../lib/gamification';
 import { supabase } from '../lib/supabase';
 import { Mail, User, Phone, Briefcase, GraduationCap, MapPin, Award, Star, TrendingUp, Coins, Flame, ShoppingBag, CreditCard, CheckCircle, XCircle, Loader2, X, Download } from 'lucide-react';
+import { Breadcrumbs } from '../components/common/Breadcrumbs';
 
 const TABS = {
   learner: [
@@ -148,6 +149,9 @@ export default function AdminUserDetailPage() {
 
   return (
     <div className="w-full h-full flex flex-col items-stretch justify-start p-0">
+      <div className="w-full px-0 md:px-6 pt-4">
+        <Breadcrumbs />
+      </div>
       <div className="w-full bg-white rounded-2xl shadow-xl p-0 md:p-6 relative mt-0">
         {/* Profile Header */}
         <div className="flex flex-col md:flex-row items-center gap-6 md:gap-8 mb-6 bg-white rounded-xl p-6 shadow-sm border">

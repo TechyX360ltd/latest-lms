@@ -57,10 +57,10 @@ export default function AdminDashboard() {
         console.log('Users (for coins):', users);
         const coinsSum = users ? users.reduce((sum, u) => sum + (u.coins || 0), 0) : 0;
         // 7. Instructors
-        const { count: instructorCount } = await supabase.from('users').eq('role', 'instructor').select('*', { count: 'exact', head: true });
+        const { count: instructorCount } = await supabase.from('users').select('*', { count: 'exact' }).eq('role', 'instructor');
         console.log('Instructors:', instructorCount);
         // 8. Referrals
-        const { count: referralCount } = await supabase.from('users').not('referred_by', 'is', null).select('*', { count: 'exact', head: true });
+        const { count: referralCount } = await supabase.from('users').select('*', { count: 'exact' }).not('referred_by', 'is', null);
         console.log('Referrals:', referralCount);
         // 9. Avg. Rating
         const { data: ratingsData } = await supabase.from('course_ratings').select('rating');
@@ -105,6 +105,7 @@ export default function AdminDashboard() {
         console.log('Ratings Pie Data:', ratingsPie);
         setRatings(ratingsPie || []);
       } catch (err) {
+        console.error('Dashboard fetch error:', err);
         setError('Failed to load dashboard data.');
       } finally {
         setLoading(false);
