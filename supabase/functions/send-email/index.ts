@@ -1,46 +1,51 @@
-import { serve } from 'https://deno.land/std@0.177.0/http/server.ts'
-import { SmtpClient } from "https://deno.land/x/smtp@v0.7.0/mod.ts";
+import { serve } from "https://deno.land/std/http/server.ts";
+
+function corsResponse(body: string, status = 200) {
+  return new Response(body, {
+    status,
+    headers: {
+      "Access-Control-Allow-Origin": "*",
+      "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
+      "Access-Control-Allow-Methods": "POST, OPTIONS",
+      "Content-Type": "application/json"
+    }
+  });
+}
 
 serve(async (req) => {
+  if (req.method === "OPTIONS") {
+    return corsResponse("", 204);
+  }
+
   try {
     const { to, subject, html } = await req.json();
+    const postmarkToken = Deno.env.get('POSTMARK_TOKEN');
+    const fromEmail = Deno.env.get('SMTP_FROM');
 
-    // Validate input
-    if (!to || !subject || !html) {
-      return new Response(JSON.stringify({ error: 'Missing required fields' }), { status: 400 });
-    }
-
-    // SMTP config from environment variables
-    const smtpHost = Deno.env.get('SMTP_HOST');
-    const smtpPort = Number(Deno.env.get('SMTP_PORT') || 587);
-    const smtpUser = Deno.env.get('SMTP_USER');
-    const smtpPass = Deno.env.get('SMTP_PASS');
-    const fromEmail = Deno.env.get('SMTP_FROM') || smtpUser;
-
-    if (!smtpHost || !smtpUser || !smtpPass) {
-      return new Response(JSON.stringify({ error: 'Missing SMTP config' }), { status: 500 });
-    }
-
-    const client = new SmtpClient();
-    await client.connectTLS({
-      hostname: smtpHost,
-      port: smtpPort,
-      username: smtpUser,
-      password: smtpPass,
+    const response = await fetch('https://api.postmarkapp.com/email', {
+      method: 'POST',
+      headers: {
+        'Accept': 'application/json',
+        'Content-Type': 'application/json',
+        'X-Postmark-Server-Token': postmarkToken,
+      },
+      body: JSON.stringify({
+        From: fromEmail,
+        To: to,
+        Subject: subject,
+        HtmlBody: html,
+        MessageStream: 'outbound'
+      }),
     });
 
-    await client.send({
-      from: fromEmail,
-      to,
-      subject,
-      content: html,
-      html,
-    });
+    const data = await response.json();
 
-    await client.close();
-
-    return new Response(JSON.stringify({ success: true }), { status: 200 });
+    if (response.ok) {
+      return corsResponse(JSON.stringify({ success: true }), 200);
+    } else {
+      return corsResponse(JSON.stringify({ error: data.Message || data }), 500);
+    }
   } catch (e) {
-    return new Response(JSON.stringify({ error: e.message || e.toString() }), { status: 500 });
+    return corsResponse(JSON.stringify({ error: e.message || e.toString() }), 500);
   }
 });

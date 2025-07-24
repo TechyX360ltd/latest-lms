@@ -1,7 +1,11 @@
-import React, { useRef } from 'react';
+import React, { useRef, useEffect, useState } from 'react';
 import CertificatePreview from './CertificatePreview';
 // @ts-ignore
+import html2canvas from 'html2canvas';
+// @ts-ignore
+declare module 'html2pdf.js';
 import html2pdf from 'html2pdf.js';
+import { supabase } from '../../lib/supabase';
 
 interface CertificateCompletionModalProps {
   open: boolean;
@@ -14,20 +18,70 @@ interface CertificateCompletionModalProps {
 
 export const CertificateCompletionModal: React.FC<CertificateCompletionModalProps> = ({ open, onClose, user, course, template, certificateId }) => {
   const previewRef = useRef<HTMLDivElement>(null);
+  const [uploading, setUploading] = useState(false);
+  const [uploadedUrl, setUploadedUrl] = useState<string | null>(null);
+  const [error, setError] = useState<string | null>(null);
+
+  // Export, upload, and insert certificate when modal opens
+  useEffect(() => {
+    const generateAndUpload = async () => {
+      if (!open || !user?.id || !course?.id || uploadedUrl) return;
+      setUploading(true);
+      setError(null);
+      try {
+        // 1. Export as PDF
+        const element = previewRef.current;
+        const opt = {
+          margin: 0,
+          filename: `cert-${user.id}-${course.id}.pdf`,
+          html2canvas: { scale: 3 },
+          jsPDF: { unit: 'px', format: [1123, 794], orientation: 'landscape' },
+        };
+        const pdfBlob: Blob = await new Promise((resolve, reject) => {
+          html2pdf().set(opt).from(element).outputPdf('blob').then(resolve).catch(reject);
+        });
+        // 2. Upload to Supabase Storage
+        const fileName = `cert-${user.id}-${course.id}-${Date.now()}.pdf`;
+        const { data: uploadData, error: uploadError } = await supabase.storage
+          .from('certificates')
+          .upload(fileName, pdfBlob, { contentType: 'application/pdf' });
+        if (uploadError) throw uploadError;
+        // 3. Get public URL
+        const { publicUrl } = supabase.storage.from('certificates').getPublicUrl(fileName);
+        setUploadedUrl(publicUrl);
+        // 4. Insert certificate row
+        const { error: insertError } = await supabase.from('certificates').insert({
+          user_id: user.id,
+          course_id: course.id,
+          url: publicUrl,
+          template_id: template?.id || null,
+          issue_date: new Date().toISOString(),
+        });
+        if (insertError) throw insertError;
+      } catch (e: any) {
+        setError(e.message || 'Failed to generate/upload certificate');
+      }
+      setUploading(false);
+    };
+    generateAndUpload();
+    // eslint-disable-next-line
+  }, [open, user?.id, course?.id, template, uploadedUrl]);
 
   if (!open) return null;
 
-  const handleDownloadPDF = () => {
+  const handleDownloadPDF = async () => {
+    if (uploadedUrl) {
+      window.open(uploadedUrl, '_blank');
+      return;
+    }
     if (previewRef.current) {
-      html2pdf()
-        .set({
-          margin: 0,
-          filename: `${course?.title || 'certificate'}-${user?.first_name || ''}.pdf`,
-          html2canvas: { scale: 3 }, // or 4 for ultra-sharp
-          jsPDF: { unit: 'px', format: [3508, 2480], orientation: 'landscape' },
-        })
-        .from(previewRef.current)
-        .save();
+      const element = previewRef.current;
+      html2pdf().set({
+        margin: 0,
+        filename: `${course?.title || 'certificate'}-${user?.first_name || ''}.pdf`,
+        html2canvas: { scale: 3 },
+        jsPDF: { unit: 'px', format: [1123, 794], orientation: 'landscape' },
+      }).from(element).save();
     }
   };
 
@@ -40,10 +94,14 @@ export const CertificateCompletionModal: React.FC<CertificateCompletionModalProp
         <div className="w-full flex justify-center items-center aspect-[1123/794] rounded-xl overflow-hidden bg-gray-100 mb-6" style={{ maxWidth: 600, maxHeight: 425 }}>
           <CertificatePreview ref={previewRef} template={template} user={user} course={course} />
         </div>
+        {/* Uploading/Success/Error State */}
+        {uploading && <div className="text-blue-600 mb-2">Uploading certificate...</div>}
+        {error && <div className="text-red-600 mb-2">{error}</div>}
+        {uploadedUrl && <div className="text-green-600 mb-2">Certificate saved! <a href={uploadedUrl} target="_blank" rel="noopener noreferrer" className="underline">View</a></div>}
         {/* Download and Share Buttons */}
         <div className="flex flex-col gap-3 w-full">
-          <button className="w-full px-4 py-2 bg-blue-600 text-white rounded-lg font-semibold hover:bg-blue-700 transition" onClick={handleDownloadPDF}>
-            Download as PDF
+          <button className="w-full px-4 py-2 bg-blue-600 text-white rounded-lg font-semibold hover:bg-blue-700 transition" onClick={handleDownloadPDF} disabled={uploading}>
+            Download as Image
           </button>
           <div className="flex justify-center gap-4 mt-2">
             <button className="text-blue-700 hover:text-blue-900" title="Share on LinkedIn">

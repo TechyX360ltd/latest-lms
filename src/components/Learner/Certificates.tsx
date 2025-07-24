@@ -1,5 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { Award, Download, Calendar, BookOpen, Search } from 'lucide-react';
+import { supabase } from '../../lib/supabase';
+import { useAuth } from '../../context/AuthContext';
 
 interface Certificate {
   id: string;
@@ -12,22 +14,49 @@ interface Certificate {
 }
 
 export function Certificates() {
+  const { user } = useAuth();
   const [certificates, setCertificates] = useState<Certificate[]>([]);
   const [searchTerm, setSearchTerm] = useState('');
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    // Load certificates from localStorage
-    const loadCertificates = () => {
-      const storedCertificates = localStorage.getItem('userCertificates');
-      if (storedCertificates) {
-        setCertificates(JSON.parse(storedCertificates));
+    const fetchCertificates = async () => {
+      setLoading(true);
+      if (!user?.id) {
+        setCertificates([]);
+        setLoading(false);
+        return;
       }
+      const { data, error } = await supabase
+        .from('certificates')
+        .select('id, course_id, user_id, issue_date, url, course:course_id(title, instructor), user:user_id(first_name, last_name)')
+        .eq('user_id', user.id);
+      if (error) {
+        // fallback to localStorage if Supabase fails
+        const storedCertificates = localStorage.getItem('userCertificates');
+        if (storedCertificates) {
+          setCertificates(JSON.parse(storedCertificates));
+        } else {
+          setCertificates([]);
+        }
+        setLoading(false);
+        return;
+      }
+      setCertificates(
+        (data || []).map((cert: any) => ({
+          id: cert.id,
+          courseId: cert.course_id,
+          courseName: cert.course?.title || '',
+          userName: cert.user ? `${cert.user.first_name} ${cert.user.last_name}` : '',
+          instructor: cert.course?.instructor || '',
+          completionDate: cert.issue_date,
+          certificateUrl: cert.url,
+        }))
+      );
       setLoading(false);
     };
-
-    setTimeout(loadCertificates, 500);
-  }, []);
+    fetchCertificates();
+  }, [user?.id]);
 
   const filteredCertificates = certificates.filter(cert =>
     cert.courseName.toLowerCase().includes(searchTerm.toLowerCase()) ||
@@ -37,7 +66,7 @@ export function Certificates() {
   const handleDownloadPDF = (certificate: Certificate) => {
     // Simulate PDF download
     const link = document.createElement('a');
-    link.href = '#';
+    link.href = certificate.certificateUrl || '#';
     link.download = `${certificate.courseName}-Certificate.pdf`;
     link.click();
     alert(`${certificate.courseName} certificate downloaded as PDF!`);
@@ -46,7 +75,7 @@ export function Certificates() {
   const handleDownloadPNG = (certificate: Certificate) => {
     // Simulate PNG download
     const link = document.createElement('a');
-    link.href = '#';
+    link.href = certificate.certificateUrl || '#';
     link.download = `${certificate.courseName}-Certificate.png`;
     link.click();
     alert(`${certificate.courseName} certificate downloaded as PNG!`);

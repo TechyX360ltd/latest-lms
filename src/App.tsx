@@ -56,7 +56,7 @@ import InstructorNotifications from './components/Instructor/InstructorNotificat
 import MyReviews from './components/Instructor/MyReviews';
 import InstructorGamificationDashboard from './components/Instructor/InstructorGamificationDashboard';
 import InstructorManagement from './components/Admin/InstructorManagement';
-import AIChatWidget from './components/AIChatWidget';
+import AIChatDrawer from './components/AIChatDrawer';
 import AdminLiveSupport from './components/Admin/AdminLiveSupport';
 import CertificateManagementPage from './pages/CertificateManagementPage';
 import InstructorLayout from './components/Instructor/InstructorLayout';
@@ -389,13 +389,13 @@ function AppContent() {
 
 function App() {
   return (
+    <ToastProvider>
     <AuthProvider>
       <Toaster position="top-right" />
-      <ToastProvider>
-        <AIChatWidget />
-        <AppContent />
-      </ToastProvider>
+      {/* <AIChatDrawer /> */}
+      <AppContent />
     </AuthProvider>
+    </ToastProvider>
   );
 }
 

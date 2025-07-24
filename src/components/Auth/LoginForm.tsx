@@ -253,11 +253,6 @@ export function LoginForm({
               {error}
             </div>
           )}
-          {isSupabaseConnected && (
-            <div className="text-green-600 text-sm bg-green-50 p-3 rounded-lg">
-              Connected to Supabase - Your login will be authenticated with the database
-            </div>
-          )}
           <button
             type="submit"
             disabled={isLoading}

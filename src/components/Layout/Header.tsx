@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { LogOut, User, Bell, Search, X, GraduationCap, CheckCircle, BookOpen, FileText, CreditCard, Star, Tag, MessageSquare, Award } from 'lucide-react';
 import { FaCoins } from 'react-icons/fa';
 import { useAuth } from '../../context/AuthContext';
@@ -26,6 +26,8 @@ export function Header() {
   const [showLogoutModal, setShowLogoutModal] = useState(false);
   const [showNotificationDropdown, setShowNotificationDropdown] = useState(false);
   const [showSearch, setShowSearch] = useState(false);
+  const [showProfileDropdown, setShowProfileDropdown] = useState(false);
+  const profileDropdownRef = useRef<HTMLDivElement>(null);
 
   // Enhanced global search state
   const [searchTerm, setSearchTerm] = useState('');
@@ -37,6 +39,7 @@ export function Header() {
   const { categories } = useCategories();
   const { payments } = usePayments();
   const navigate = useNavigate();
+  const modalRef = useRef<HTMLDivElement>(null);
 
   // Enhanced search function
   const performGlobalSearch = async (term: string) => {
@@ -284,6 +287,25 @@ export function Header() {
     };
   }, [searchActive]);
 
+  // Close profile dropdown on outside click
+  useEffect(() => {
+    if (!showProfileDropdown) return;
+    function handleClickOutside(event: MouseEvent) {
+      if (profileDropdownRef.current && !profileDropdownRef.current.contains(event.target as Node)) {
+        setShowProfileDropdown(false);
+      }
+    }
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => document.removeEventListener('mousedown', handleClickOutside);
+  }, [showProfileDropdown]);
+
+  // Helper to get profile route
+  const getProfileRoute = () => {
+    if (user?.role === 'admin' || user?.role === 'super_admin') return '/admin/profile';
+    if (user?.role === 'instructor') return '/instructor/profile';
+    return '/dashboard/profile';
+  };
+
   // Calculate unread notifications for current user
   const unreadCount = notifications.filter(notification =>
         notification.recipients.some(recipient => 
@@ -351,6 +373,18 @@ export function Header() {
     }
   }, [showNotificationDropdown]);
 
+  // Add/Update this useEffect to close notification modal on outside click (mobile)
+  useEffect(() => {
+    if (!showNotificationDropdown) return;
+    function handleClickOutside(event: MouseEvent) {
+      if (modalRef.current && !modalRef.current.contains(event.target as Node)) {
+        setShowNotificationDropdown(false);
+      }
+    }
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => document.removeEventListener('mousedown', handleClickOutside);
+  }, [showNotificationDropdown]);
+
   const handleSearchResultClick = (result: SearchResult) => {
     setSearchActive(false);
     setSearchTerm('');
@@ -373,17 +407,16 @@ export function Header() {
         <div className="flex items-center justify-between">
           {/* Left side - Logo and Search */}
           <div className="flex items-center gap-4">
-            {/* Logo - Hidden on mobile when sidebar is present */}
-            <div className="hidden lg:flex items-center gap-3">
+            {/* Logo - Visible on all screen sizes */}
+            <div className="flex items-center gap-3">
               <img 
                 src="/Skill Sage Logo.png" 
                 alt="SKILL SAGE" 
                 className="h-10 w-auto"
               />
             </div>
-            
-            {/* Enhanced Search - Responsive */}
-            <div className="relative block ml-12 md:ml-0">
+            {/* Search bar only on md+ */}
+            <div className="relative ml-12 md:ml-0 hidden md:block">
               <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-4 h-4" />
               <input
                 type="text"
@@ -441,26 +474,18 @@ export function Header() {
                 </div>
               )}
             </div>
-
-            {/* Mobile Search Toggle */}
-            <button
-              onClick={() => setShowSearch(!showSearch)}
-              className="md:hidden p-2 text-gray-400 hover:text-gray-600 rounded-lg hover:bg-gray-100 transition-colors"
-            >
-              <Search className="w-5 h-5" />
-            </button>
           </div>
-          
-          {/* Right side - Notifications and User */}
-          <div className="flex items-center gap-2 lg:gap-4">
-            {/* Coin Balance for Learners and Instructors */}
-            {(user?.role === 'learner' || user?.role === 'instructor') && (
-              <div className="flex items-center gap-1 px-2 py-1 bg-yellow-50 rounded-lg border border-yellow-200 mr-2">
-                <FaCoins className="w-4 h-4 text-yellow-600" />
-                <span className="font-bold text-yellow-700 text-sm">{stats?.coins ?? 0}</span>
-              </div>
-            )}
-            {/* Enhanced Notification Bell for All Users */}
+          {/* Right side - Mobile: Only coins, bell, avatar, logout. Desktop: original layout */}
+          <div className="flex items-center gap-2 lg:gap-4 md:flex-row md:justify-end w-auto md:w-auto">
+            {/* Mobile only: show these icons, hide others */}
+            <div className="flex items-center gap-2 md:hidden ml-auto">
+              {(user?.role === 'learner' || user?.role === 'instructor') && (
+                <div className="flex items-center gap-1 px-2 py-1 bg-yellow-50 rounded-lg border border-yellow-200">
+                  <FaCoins className="w-4 h-4 text-yellow-600" />
+                  <span className="font-bold text-yellow-700 text-sm">{stats?.coins ?? 0}</span>
+                </div>
+              )}
+              {/* Notification Bell */}
               <div className="relative notification-dropdown">
                 <button 
                   onClick={handleNotificationClick}
@@ -473,7 +498,138 @@ export function Header() {
                     </div>
                   )}
                 </button>
-
+                {/* Mobile Notification Modal */}
+                {showNotificationDropdown && (
+                  <div className="fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-40 px-2">
+                    <div ref={modalRef} className="bg-white rounded-xl shadow-xl border border-gray-200 w-full max-w-sm mx-auto max-h-[80vh] overflow-y-auto relative animate-fade-in">
+                      <button
+                        onClick={() => setShowNotificationDropdown(false)}
+                        className="absolute top-3 right-3 text-gray-400 hover:text-gray-600 text-2xl font-bold"
+                        aria-label="Close"
+                      >
+                        ×
+                      </button>
+                      <div className="p-4 border-b border-gray-200 bg-gray-50 flex items-center justify-between">
+                        <h3 className="font-semibold text-gray-900">Notifications</h3>
+                        {unreadCount > 0 && (
+                          <span className="bg-red-100 text-red-800 text-xs font-medium px-2 py-1 rounded-full">
+                            {unreadCount} new
+                          </span>
+                        )}
+                      </div>
+                      <div className="max-h-80 overflow-y-auto">
+                        {recentNotifications.length > 0 ? (
+                          <div className="divide-y divide-gray-100">
+                            {recentNotifications.map((notification) => {
+                              const isRead = isNotificationRead(notification);
+                              return (
+                                <div 
+                                  key={notification.id} 
+                                  className={`p-4 hover:bg-gray-50 transition-colors cursor-pointer ${!isRead ? 'bg-blue-50 border-l-4 border-l-blue-500' : ''}`}
+                                  onClick={() => setShowNotificationDropdown(false)}
+                                >
+                                  <div className="flex items-start gap-3">
+                                    <span className="text-lg flex-shrink-0 mt-0.5">
+                                      {getNotificationIcon(notification.type)}
+                                    </span>
+                                    <div className="flex-1 min-w-0">
+                                      <h4 className={`text-sm font-medium ${!isRead ? 'text-blue-900' : 'text-gray-900'} line-clamp-1`}>
+                                        {notification.title}
+                                      </h4>
+                                      <p className="text-xs text-gray-600 line-clamp-2 mt-1">
+                                        {notification.message}
+                                      </p>
+                                      <div className="flex items-center gap-2 mt-2">
+                                        <span className="text-xs text-gray-500">
+                                          {new Date(notification.created_at).toLocaleDateString()}
+                                        </span>
+                                        {!isRead && (
+                                          <div className="w-2 h-2 bg-blue-500 rounded-full"></div>
+                                        )}
+                                      </div>
+                                    </div>
+                                  </div>
+                                </div>
+                              );
+                            })}
+                          </div>
+                        ) : (
+                          <div className="p-8 text-center flex flex-col items-center justify-center">
+                            <Bell className="w-12 h-12 text-gray-300 mx-auto mb-3" />
+                            <p className="text-gray-500 text-base font-medium mb-2">No notifications yet</p>
+                            <p className="text-gray-400 text-sm">You’ll see important updates, messages, and alerts here as soon as they arrive.</p>
+                          </div>
+                        )}
+                      </div>
+                    </div>
+                  </div>
+                )}
+              </div>
+              {/* Profile Avatar with improved initials fallback */}
+              <div className="relative">
+                <button
+                  className="w-10 h-10 bg-gradient-to-r from-blue-500 to-indigo-600 rounded-full flex items-center justify-center overflow-hidden relative focus:outline-none"
+                  onClick={() => setShowProfileDropdown((v) => !v)}
+                  aria-label="Open profile menu"
+                >
+                  {user?.avatar ? (
+                    <img src={user.avatar} alt="Profile" className="w-full h-full object-cover rounded-full" />
+                  ) : (
+                    <span className="text-white font-bold text-lg">
+                      {((user?.first_name?.[0] || user?.email?.[0] || '').toUpperCase())}
+                      {(user?.last_name?.[0] || '').toUpperCase()}
+                    </span>
+                  )}
+                </button>
+                {/* Mobile Profile Dropdown/Modal */}
+                {showProfileDropdown && (
+                  <div ref={profileDropdownRef} className="absolute right-0 mt-2 w-40 bg-white rounded-xl shadow-xl border border-gray-200 z-50 animate-fade-in">
+                    <button
+                      className="w-full text-left px-4 py-3 hover:bg-gray-50 flex items-center gap-3 border-b border-gray-100 last:border-b-0 text-gray-700 font-medium"
+                      onClick={() => {
+                        setShowProfileDropdown(false);
+                        navigate(getProfileRoute());
+                      }}
+                    >
+                      <User className="w-4 h-4 text-blue-500" />
+                      My Profile
+                    </button>
+                    <button
+                      className="w-full text-left px-4 py-3 hover:bg-gray-50 flex items-center gap-3 text-gray-700 font-medium"
+                      onClick={() => {
+                        setShowProfileDropdown(false);
+                        handleLogoutClick();
+                      }}
+                    >
+                      <LogOut className="w-4 h-4 text-red-500" />
+                      Logout
+                    </button>
+                  </div>
+                )}
+              </div>
+            </div>
+            {/* Desktop: original right side layout */}
+            <div className="hidden md:flex items-center gap-2 lg:gap-4">
+              {/* Coin Balance for Learners and Instructors */}
+              {(user?.role === 'learner' || user?.role === 'instructor') && (
+                <div className="flex items-center gap-1 px-2 py-1 bg-yellow-50 rounded-lg border border-yellow-200 mr-2">
+                  <FaCoins className="w-4 h-4 text-yellow-600" />
+                  <span className="font-bold text-yellow-700 text-sm">{stats?.coins ?? 0}</span>
+                </div>
+              )}
+              {/* Enhanced Notification Bell for All Users */}
+              <div className="relative notification-dropdown">
+                <button 
+                  onClick={handleNotificationClick}
+                  className="p-2 text-gray-400 hover:text-gray-600 rounded-lg hover:bg-gray-100 transition-colors relative"
+                >
+                  <Bell className="w-5 h-5" />
+                  {unreadCount > 0 && (
+                    <div className="absolute -top-1 -right-1 w-5 h-5 bg-red-500 text-white rounded-full flex items-center justify-center text-xs font-bold animate-pulse">
+                      {unreadCount > 9 ? '9+' : unreadCount}
+                    </div>
+                  )}
+                </button>
                 {/* Notification Dropdown - Responsive */}
                 {showNotificationDropdown && (
                   <div className="absolute right-0 top-full mt-2 w-80 max-w-[calc(100vw-2rem)] bg-white rounded-xl shadow-xl border border-gray-200 z-50 max-h-96 overflow-hidden">
@@ -550,63 +706,42 @@ export function Header() {
                   </div>
                 )}
               </div>
-            
-            {/* User Profile - Responsive */}
-            <div className="flex items-center gap-2 lg:gap-3">
-              <div className="flex items-center gap-2">
-                <div className="w-10 h-10 bg-gradient-to-r from-blue-500 to-indigo-600 rounded-full flex items-center justify-center overflow-hidden relative">
-                  {user?.avatar ? (
-                    <img src={user.avatar} alt="Profile" className="w-full h-full object-cover rounded-full" />
-                  ) : (
-                    <span className="text-white font-bold text-lg">
-                      {(user?.first_name?.[0] || '').toUpperCase()}{(user?.last_name?.[0] || '').toUpperCase()}
-                    </span>
-                  )}
-                  {/* Facebook-style verification badge overlay (on top of the avatar) */}
-                  {user?.role === 'instructor' && user?.verification_status === 'verified' && (
-                    <span className="absolute -top-2 -right-2 z-20 bg-blue-600 rounded-full flex items-center justify-center shadow-lg" style={{ width: '18px', height: '18px' }}>
-                      <svg viewBox="0 0 16 16" fill="none" className="w-3.5 h-3.5">
-                        <circle cx="8" cy="8" r="8" fill="#2563eb" />
-                        <path d="M5.5 8.5l2 2 3-3" stroke="white" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/>
-                      </svg>
-                    </span>
-                  )}
+              {/* User Profile - Responsive */}
+              <div className="flex items-center gap-2 lg:gap-3">
+                <div className="flex items-center gap-2">
+                  <div className="w-10 h-10 bg-gradient-to-r from-blue-500 to-indigo-600 rounded-full flex items-center justify-center overflow-hidden relative">
+                    {user?.avatar ? (
+                      <img src={user.avatar} alt="Profile" className="w-full h-full object-cover rounded-full" />
+                    ) : (
+                      <span className="text-white font-bold text-lg">
+                        {(user?.first_name?.[0] || '').toUpperCase()}{(user?.last_name?.[0] || '').toUpperCase()}
+                      </span>
+                    )}
+                  </div>
+                  <div className="text-left">
+                    {user && (
+                      <div className="font-bold text-gray-900 leading-tight text-sm">
+                        {([user.first_name, user.last_name].filter(Boolean).join(' ') || [user.firstName, user.lastName].filter(Boolean).join(' ') || user.email || 'User')}
+                      </div>
+                    )}
+                    <div className="text-xs text-gray-500 capitalize">{user?.role}</div>
+                  </div>
                 </div>
-                <div className="text-left">
-                  {user && (
-                    <div className="font-bold text-gray-900 leading-tight text-sm">
-                      {([user.first_name, user.last_name].filter(Boolean).join(' ') || [user.firstName, user.lastName].filter(Boolean).join(' ') || user.email || 'User')}
-                    </div>
-                  )}
-                  <div className="text-xs text-gray-500 capitalize">{user?.role}</div>
-                </div>
+                {/* Logout Icon */}
+                <button
+                  onClick={handleLogoutClick}
+                  className="p-2 text-red-400 hover:text-red-600 rounded-lg hover:bg-red-50 transition-colors"
+                  title="Logout"
+                >
+                  <LogOut className="w-5 h-5" />
+                </button>
               </div>
-              
-              <button
-                onClick={handleLogoutClick}
-                className="p-2 text-red-400 hover:text-red-600 rounded-lg hover:bg-red-50 transition-colors"
-                title="Logout"
-              >
-                <LogOut className="w-5 h-5" />
-              </button>
             </div>
           </div>
         </div>
 
         {/* Mobile Search Bar */}
-        {showSearch && (
-          <div className="md:hidden mt-4 pt-4 border-t border-gray-200">
-            <div className="relative">
-              <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-4 h-4" />
-              <input
-                type="text"
-                placeholder={getSearchPlaceholder()}
-                className="w-full pl-10 pr-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                autoFocus
-              />
-            </div>
-          </div>
-        )}
+        {/* Removed for now: only show search icon on mobile */}
       </header>
 
       {/* Logout Confirmation Modal */}

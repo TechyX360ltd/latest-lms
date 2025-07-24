@@ -976,26 +976,41 @@ export function useUsers() {
   };
 
   const refreshUsers = async () => {
-    const allUsers = await getAllUsersFromStorage();
-    setUsers(allUsers);
+    try {
+      const { data: usersData, error } = await supabase.from('users').select('id, first_name, last_name, email, phone, role, created_at, updated_at, is_approved, payout_email, expertise');
+      if (error) throw error;
+      const formattedUsers = (usersData || []).map((u: any) => ({
+        ...u,
+        firstName: u.first_name || '',
+        lastName: u.last_name || '',
+        fullName: `${u.first_name || ''} ${u.last_name || ''}`.trim(),
+        isApproved: u.is_approved,
+        payoutEmail: u.payout_email,
+        createdAt: u.created_at,
+      }));
+      setUsers(formattedUsers);
+    } catch (error) {
+      console.error('Error refreshing users from Supabase:', error);
+      setUsers([]);
+    }
   };
 
-  const deleteUser = async (userId: string) => {
-    try {
-      // Try to delete from Supabase
-      const { error } = await supabase.from('users').delete().eq('id', userId);
-      if (error) throw error;
-      await refreshUsers();
-      return;
-    } catch (error) {
-      console.error('Error deleting user from Supabase, falling back to localStorage:', error);
-    }
-    // Fallback to localStorage
-    const allUsers = await getAllUsersFromStorage();
-    const updatedUsers = allUsers.filter((u: any) => u.id !== userId);
-    localStorage.setItem('allUsers', JSON.stringify(updatedUsers));
+  const deleteUser = async (userId: string, adminPassword: string) => {
+  try {
+    const response = await fetch('https://rpexcrwcgdmlfxihdmny.functions.supabase.co/admin-delete-user2', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ user_id: userId, admin_password: adminPassword })
+    });
+    const result = await response.json();
+    if (!response.ok) throw new Error(result.error || 'Failed to delete user');
     await refreshUsers();
-  };
+    return { success: true };
+  } catch (error) {
+    console.error('Error deleting user:', error);
+    return { success: false, error: error.message };
+  }
+};
 
   return { users, setUsers, addUser, refreshUsers, loading, deleteUser };
 }

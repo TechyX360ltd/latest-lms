@@ -503,7 +503,10 @@ export function CourseViewer() {
       {/* Certificate Completion Modal */}
       <CertificateCompletionModal
         open={showCertificateModal}
-        onClose={() => setShowCertificateModal(false)}
+        onClose={() => {
+          setShowCertificateModal(false);
+          navigate('/dashboard/courses');
+        }}
         user={user}
         course={course}
         template={certificateTemplate}
@@ -576,49 +579,20 @@ export function CourseViewer() {
             ))}
           </aside>
           {/* Main Content */}
-          <main className="flex-1 w-full p-2 md:p-6 ml-0 md:ml-0">
+          <main className="flex-1 w-full p-2 md:p-6 ml-0 md:ml-0 pb-24 md:pb-6">
             <h1 className="text-2xl font-bold mb-1">{course?.title}</h1>
-            {currentLesson?.title && (
-              <div className="text-lg font-semibold text-blue-700 mb-4 border-b pb-2">
-                {currentLesson.title}
-              </div>
-            )}
             
-            {/* Lesson navigation */}
-            <div className="flex items-center justify-between mb-6">
-              <button
-                onClick={handlePrev}
-                disabled={moduleIdx === 0 && lessonIdx === 0}
-                className="flex items-center px-4 py-2 bg-gray-100 text-gray-700 rounded-lg hover:bg-gray-200 disabled:opacity-50 disabled:cursor-not-allowed"
-              >
-                <ChevronLeft className="w-4 h-4 mr-1" />
-                Previous
-              </button>
-              <div className="text-center flex-1">
+            {/* Lesson info (Lesson X of Y in ...) and lesson title - move to top */}
+            {currentLesson?.title && (
+              <div className="mb-4">
                 <div className="text-sm text-gray-600">
                   Lesson {lessonIdx + 1} of {lessons.length} in {currentModule.title}
                 </div>
-                <div className="text-lg font-semibold">
-                  {currentLesson?.title || 'No lesson selected'}
+                <div className="text-lg font-semibold text-blue-700">
+                  {currentLesson.title}
                 </div>
               </div>
-              {(isLastLesson && isLastModule) ? (
-                <button
-                  onClick={handleCourseSubmit}
-                  className="flex items-center px-6 py-2 bg-blue-600 text-white rounded-lg font-semibold shadow hover:bg-blue-700 transition ml-auto"
-                >
-                  Complete Course <ChevronRight className="w-4 h-4 ml-2" />
-                </button>
-              ) : (
-                <button
-                  onClick={handleNext}
-                  className="flex items-center px-6 py-2 bg-blue-600 text-white rounded-lg font-semibold shadow hover:bg-blue-700 transition ml-auto"
-                  disabled={lessons.length === 0}
-                >
-                  Next <ChevronRight className="w-4 h-4 ml-2" />
-                </button>
-              )}
-            </div>
+            )}
 
             {/* Content tabs */}
             <div className="mb-6">
@@ -689,10 +663,8 @@ export function CourseViewer() {
                       Post Discussion
                     </button>
                   </div>
-                  
                   {discussionLoading && <div className="text-gray-600">Loading discussions...</div>}
                   {discussionError && <div className="text-red-600 text-sm">{discussionError}</div>}
-                  
                   <div className="space-y-4">
                     {discussions.map((discussion) => (
                       <div key={discussion.id} className="border border-gray-200 rounded-lg p-4">
@@ -708,7 +680,6 @@ export function CourseViewer() {
                           </div>
                         </div>
                         <div className="text-gray-800 mb-3">{discussion.content}</div>
-                        
                         {/* Reply button */}
                         <button
                           onClick={() => setReplyingTo(replyingTo === discussion.id ? null : discussion.id)}
@@ -716,7 +687,6 @@ export function CourseViewer() {
                         >
                           Reply
                         </button>
-                        
                         {/* Reply input */}
                         {replyingTo === discussion.id && (
                           <div className="mt-3">
@@ -739,6 +709,37 @@ export function CourseViewer() {
                   </div>
                 </div>
               )}
+            </div>
+
+            {/* Lesson navigation - only buttons at bottom */}
+            <div className="mt-8">
+              {/* Sticky on mobile, static on md+ */}
+              <div className="fixed bottom-0 left-0 right-0 z-30 bg-white border-t border-gray-200 p-3 flex items-center justify-between md:static md:bg-transparent md:border-0 md:p-0">
+                <button
+                  onClick={handlePrev}
+                  disabled={moduleIdx === 0 && lessonIdx === 0}
+                  className="flex items-center px-4 py-2 bg-gray-100 text-gray-700 rounded-lg hover:bg-gray-200 disabled:opacity-50 disabled:cursor-not-allowed"
+                >
+                  <ChevronLeft className="w-4 h-4 mr-1" />
+                  Previous
+                </button>
+                {(isLastLesson && isLastModule) ? (
+                  <button
+                    onClick={handleCourseSubmit}
+                    className="flex items-center px-6 py-2 bg-blue-600 text-white rounded-lg font-semibold shadow hover:bg-blue-700 transition ml-auto"
+                  >
+                    Complete Course <ChevronRight className="w-4 h-4 ml-2" />
+                  </button>
+                ) : (
+                  <button
+                    onClick={handleNext}
+                    className="flex items-center px-6 py-2 bg-blue-600 text-white rounded-lg font-semibold shadow hover:bg-blue-700 transition ml-auto"
+                    disabled={lessons.length === 0}
+                  >
+                    Next <ChevronRight className="w-4 h-4 ml-2" />
+                  </button>
+                )}
+              </div>
             </div>
           </main>
         </div>

@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useRef, useEffect } from 'react';
 import { 
   Home, 
   BookOpen, 
@@ -21,10 +21,16 @@ import {
   Trophy,
   Link as LinkIcon,
   Gift,
-  Briefcase
+  Briefcase,
+  Search
 } from 'lucide-react';
 import { useAuth } from '../../context/AuthContext';
 import { useNavigate, useLocation, Link } from 'react-router-dom';
+import { useUsers } from '../../hooks/useData';
+import { useAllCourses } from '../../hooks/useData';
+import { useNotifications } from '../../hooks/useData';
+import { useGamification } from '../../hooks/useGamification';
+import { useToast } from '../../components/Auth/ToastContext';
 
 interface SidebarMenuItem {
   id: string;
@@ -38,8 +44,19 @@ interface SidebarProps {}
 export function Sidebar({}: SidebarProps) {
   const { user } = useAuth();
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
+  const [showSearchModal, setShowSearchModal] = useState(false);
+  const [searchTerm, setSearchTerm] = useState('');
+  const modalRef = useRef<HTMLDivElement>(null);
   const navigate = useNavigate();
   const location = useLocation();
+  const searchIconRef = useRef<HTMLButtonElement>(null);
+
+  // Global search hooks
+  const { users } = useUsers();
+  const { courses: allCourses } = useAllCourses();
+  const { notifications } = useNotifications();
+  const { badges } = useGamification();
+  // For gifts, you may need to add a useGifts hook or fetch from supabase if not already available
 
   const learnerMenuItems: SidebarMenuItem[] = [
     { id: 'dashboard', label: 'Dashboard', icon: Home, path: '/dashboard' },
@@ -96,6 +113,23 @@ export function Sidebar({}: SidebarProps) {
         ? instructorMenuItems
         : learnerMenuItems;
 
+  // Global search results
+  const globalResults = [
+    ...users.filter(u =>
+      (u.fullName || u.name || u.email || '').toLowerCase().includes(searchTerm.toLowerCase())
+    ).map(u => ({ type: 'User', label: u.fullName || u.name || u.email, id: u.id, data: u })),
+    ...allCourses.filter(c =>
+      (c.title || '').toLowerCase().includes(searchTerm.toLowerCase())
+    ).map(c => ({ type: 'Course', label: c.title, id: c.id, data: c })),
+    ...notifications.filter(n =>
+      (n.title || n.message || '').toLowerCase().includes(searchTerm.toLowerCase())
+    ).map(n => ({ type: 'Notification', label: n.title, id: n.id, data: n })),
+    ...badges.filter(b =>
+      (b.name || b.description || '').toLowerCase().includes(searchTerm.toLowerCase())
+    ).map(b => ({ type: 'Badge', label: b.name, id: b.id, data: b })),
+    // Add gifts if available
+  ];
+
   const handleMenuItemClick = (path: string) => {
     navigate(path);
     setIsMobileMenuOpen(false);
@@ -104,6 +138,25 @@ export function Sidebar({}: SidebarProps) {
   const isActive = (path: string) => {
     return location.pathname === path;
   };
+
+  const { showToast } = useToast();
+
+  // Close modal on outside click
+  useEffect(() => {
+    if (!showSearchModal) return;
+    function handleClickOutside(event: MouseEvent) {
+      if (
+        modalRef.current &&
+        !modalRef.current.contains(event.target as Node) &&
+        searchIconRef.current &&
+        !searchIconRef.current.contains(event.target as Node)
+      ) {
+        setShowSearchModal(false);
+      }
+    }
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => document.removeEventListener('mousedown', handleClickOutside);
+  }, [showSearchModal]);
 
   return (
     <>
@@ -137,14 +190,87 @@ export function Sidebar({}: SidebarProps) {
         h-screen overflow-y-auto top-0
       `}>
         {/* Mobile Header */}
-        <div className="lg:hidden p-4 border-b border-gray-200">
-          <div className="flex items-center gap-3">
+        <div className="lg:hidden p-4 border-b border-gray-200 relative">
+          <div className="flex items-center justify-between gap-3">
             <img 
-              src="/BLACK-1-removebg-preview.png" 
+              src="/Skill Sage Logo.png" 
               alt="SKILL SAGE" 
               className="h-8 w-auto"
             />
+            <button
+              ref={searchIconRef}
+              className="p-2 text-gray-400 hover:text-gray-600 rounded-lg hover:bg-gray-100 transition-colors"
+              aria-label="Search"
+              onClick={() => setShowSearchModal((v) => !v)}
+            >
+              <Search className="w-5 h-5" />
+            </button>
           </div>
+          {/* Search Dropdown for Mobile - floats above menu, only input and results */}
+          {showSearchModal && (
+            <div
+              ref={modalRef}
+              className="absolute right-0 left-0 mx-auto mt-2 w-full max-w-full bg-white rounded-xl shadow-lg z-50 border border-gray-200"
+              style={{ minWidth: '0', width: '100%' }}
+            >
+              <div className="relative p-3">
+                <input
+                  type="text"
+                  className="w-full border border-gray-300 rounded-lg px-4 py-2 pr-10 focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                  placeholder="Search users, courses, notifications, badges..."
+                  value={searchTerm}
+                  onChange={e => setSearchTerm(e.target.value)}
+                  autoFocus
+                />
+                <button
+                  className="absolute top-1/2 right-4 -translate-y-1/2 text-gray-400 hover:text-gray-600"
+                  onClick={() => setShowSearchModal(false)}
+                  aria-label="Close search dropdown"
+                >
+                  <X className="w-5 h-5" />
+                </button>
+              </div>
+              <ul className="space-y-2 max-h-56 overflow-y-auto px-3 pb-3">
+                {searchTerm.trim() === '' ? null : globalResults.length === 0 ? (
+                  <li className="text-center text-gray-400 py-8">
+                    <Search className="mx-auto mb-2 w-8 h-8 text-gray-200" />
+                    <span>No results found.</span>
+                  </li>
+                ) : (
+                  globalResults.map(result => (
+                    <li key={result.type + '-' + result.id}>
+                      <button
+                        onClick={() => {
+                          // Best-practice navigation for each type
+                          if (result.type === 'User') {
+                            if (user?.id === result.id) navigate(`/profile/${result.id}`);
+                            else navigate(`/users/${result.id}`);
+                          } else if (result.type === 'Course') {
+                            navigate(`/courses/${result.id}`);
+                          } else if (result.type === 'Notification') {
+                            if (result.id) navigate(`/notifications/${result.id}`);
+                            else navigate(`/notifications`);
+                          } else if (result.type === 'Badge') {
+                            if (result.id) navigate(`/badges/${result.id}`);
+                            else navigate(`/gamification`);
+                          } else if (result.type === 'Gift') {
+                            navigate(`/dashboard/gifts`);
+                          } else {
+                            showToast('No detail page available for this item.', 'info');
+                          }
+                          setShowSearchModal(false);
+                        }}
+                        className="w-full flex items-center gap-3 px-3 py-2 rounded-lg text-left hover:bg-blue-50 transition-all"
+                      >
+                        <span className="text-xs font-semibold text-gray-400 w-20">{result.type}</span>
+                        <span className="font-medium truncate">{result.label}</span>
+                      </button>
+                    </li>
+                  ))
+                )}
+              </ul>
+            </div>
+          )}
         </div>
 
         <nav className="p-4">

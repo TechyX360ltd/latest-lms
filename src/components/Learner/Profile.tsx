@@ -79,8 +79,8 @@ export function Profile() {
 
   // Load user profile data
   const [profileData, setProfileData] = useState<ProfileData>({
-    firstName: user?.firstName || '',
-    lastName: user?.lastName || '',
+    firstName: user?.first_name || '',
+    lastName: user?.last_name || '',
     email: user?.email || '',
     phone: user?.phone || '',
     bio: user?.bio || '',
@@ -216,7 +216,7 @@ export function Profile() {
       const updatedUser = {
         ...user,
         ...profileData,
-        updatedAt: new Date().toISOString()
+        updated_at: new Date().toISOString()
       };
 
       // Update in localStorage
@@ -360,17 +360,34 @@ export function Profile() {
 
   return (
     <div className="space-y-8">
-      <div className="flex items-center justify-between">
+      <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-2 md:gap-0">
         <div>
           <h1 className="text-3xl font-bold text-gray-900 mb-2 flex items-center gap-3">
             <User className="w-8 h-8 text-blue-600" />
             My Profile
           </h1>
           <p className="text-gray-600">Manage your account settings and preferences</p>
+          {/* Profile Completion (mobile only) */}
+          <div className="block md:hidden mt-2">
+            <div className="flex items-center gap-2 mb-1">
+              <span className="text-sm font-medium text-gray-700">Profile Completion</span>
+              <div className={`w-3 h-3 rounded-full ${profileCompletion === 100 ? 'bg-green-500' : 'bg-yellow-500'}`}></div>
+            </div>
+            <div className="flex items-center gap-2">
+              <div className="w-24 bg-gray-200 rounded-full h-2">
+                <div 
+                  className={`h-2 rounded-full transition-all duration-300 ${
+                    profileCompletion === 100 ? 'bg-green-500' : 'bg-blue-500'
+                  }`}
+                  style={{ width: `${profileCompletion}%` }}
+                ></div>
+              </div>
+              <span className="text-sm font-bold text-gray-900">{profileCompletion}%</span>
+            </div>
+          </div>
         </div>
-        
-        {/* Profile Completion */}
-        <div className="text-right">
+        {/* Profile Completion (desktop only) */}
+        <div className="hidden md:block text-right">
           <div className="flex items-center gap-2 mb-1">
             <span className="text-sm font-medium text-gray-700">Profile Completion</span>
             <div className={`w-3 h-3 rounded-full ${profileCompletion === 100 ? 'bg-green-500' : 'bg-yellow-500'}`}></div>
@@ -427,7 +444,7 @@ export function Profile() {
         <div className="flex">
           <button
             onClick={() => setActiveTab('profile')}
-            className={`flex-1 flex items-center justify-center gap-2 px-6 py-3 rounded-lg font-medium transition-all duration-200 ${
+            className={`flex-1 flex items-center justify-center gap-2 px-2 md:px-4 py-3 rounded-lg font-medium transition-all duration-200 text-xs md:text-base ${
               activeTab === 'profile'
                 ? 'bg-blue-600 text-white shadow-md transform scale-105'
                 : 'text-gray-600 hover:text-gray-900 hover:bg-gray-50'
@@ -438,7 +455,7 @@ export function Profile() {
           </button>
           <button
             onClick={() => setActiveTab('password')}
-            className={`flex-1 flex items-center justify-center gap-2 px-6 py-3 rounded-lg font-medium transition-all duration-200 ${
+            className={`flex-1 flex items-center justify-center gap-2 px-2 md:px-4 py-3 rounded-lg font-medium transition-all duration-200 text-xs md:text-base ${
               activeTab === 'password'
                 ? 'bg-blue-600 text-white shadow-md transform scale-105'
                 : 'text-gray-600 hover:text-gray-900 hover:bg-gray-50'
@@ -449,7 +466,7 @@ export function Profile() {
           </button>
           <button
             onClick={() => setActiveTab('preferences')}
-            className={`flex-1 flex items-center justify-center gap-2 px-6 py-3 rounded-lg font-medium transition-all duration-200 ${
+            className={`flex-1 flex items-center justify-center gap-2 px-2 md:px-4 py-3 rounded-lg font-medium transition-all duration-200 text-xs md:text-base ${
               activeTab === 'preferences'
                 ? 'bg-blue-600 text-white shadow-md transform scale-105'
                 : 'text-gray-600 hover:text-gray-900 hover:bg-gray-50'
@@ -466,10 +483,11 @@ export function Profile() {
         <div className="bg-white rounded-xl shadow-sm border border-gray-100 overflow-hidden">
           {/* Profile Header */}
           <div className="bg-gradient-to-r from-blue-500 to-indigo-600 px-8 py-6 text-white">
-            <div className="flex items-center gap-8">
+            {/* First row: Avatar + Name+Badge */}
+            <div className="flex flex-row items-center gap-4">
               {/* Avatar Section */}
-              <div className="relative">
-                <div className="w-32 h-32 rounded-full overflow-hidden bg-white/20 border-4 border-white/30 shadow-xl relative">
+              <div className="relative flex-shrink-0">
+                <div className="w-20 h-20 md:w-32 md:h-32 rounded-full overflow-hidden bg-white/20 border-4 border-white/30 shadow-xl relative">
                   {profileData.avatar ? (
                     <img
                       src={profileData.avatar}
@@ -478,7 +496,7 @@ export function Profile() {
                     />
                   ) : (
                     <div className="w-full h-full flex items-center justify-center bg-white/10">
-                      <User className="w-16 h-16 text-white/70" />
+                      <User className="w-10 h-10 md:w-16 md:h-16 text-white/70" />
                     </div>
                   )}
                   {/* Verification tick overlay */}
@@ -518,125 +536,67 @@ export function Profile() {
                   className="hidden"
                 />
               </div>
-
-              {/* User Info */}
-              <div className="flex-1">
-                <h2 className="text-3xl font-bold mb-2">
-                  {(
-                    (user?.first_name && user?.last_name)
-                      ? `${user.first_name} ${user.last_name}`
-                    : ((user as any)?.firstName && (user as any)?.lastName)
-                      ? `${(user as any).firstName} ${(user as any).lastName}`
-                    : (profileData.firstName && profileData.lastName)
-                      ? `${profileData.firstName} ${profileData.lastName}`
-                    : (user?.first_name || user?.last_name)
-                      ? `${user.first_name || ''}${user?.last_name ? ' ' + user.last_name : ''}`
-                    : ((user as any)?.firstName)
-                      ? `${(user as any).firstName}${(user as any).lastName ? ' ' + (user as any).lastName : ''}`
-                    : (profileData.firstName || profileData.lastName)
-                      ? `${profileData.firstName || ''}${profileData.lastName ? ' ' + profileData.lastName : ''}`
-                    : 'Unnamed User'
-                  )}
-                  {gamificationStats?.badges && gamificationStats.badges.length > 0 && (
-                    <span className="ml-2 align-middle inline-flex items-center gap-1">
-                      {gamificationStats.badges.map((userBadge: any, idx: number) =>
-                        userBadge.badge?.icon_url ? (
-                          <span key={userBadge.badge.id} className="inline-flex items-center justify-center w-7 h-7 rounded-full bg-gray-100 shadow mr-1" style={{ aspectRatio: '1/1' }}>
-                            <img
-                              src={userBadge.badge.icon_url}
-                              alt={userBadge.badge.name}
-                              className="w-5 h-5 object-contain"
-                              title={userBadge.badge.name}
-                              style={{ aspectRatio: '1/1' }}
-                            />
-                          </span>
-                        ) : (
-                          <span key={userBadge.badge?.id || userBadge.id} className="inline-flex items-center justify-center w-7 h-7 rounded-full bg-gray-100 shadow mr-1" style={{ aspectRatio: '1/1' }}>
-                            <Award className="w-5 h-5 text-yellow-400" />
-                          </span>
-                        )
-                      )}
-                    </span>
-                  )}
-                </h2>
-                {/* Verification badge for instructors */}
-                {user?.role === 'instructor' && (
-                  <VerificationBadge status={(user as any)?.verification_status || 'unverified'} />
-                )}
-                <p className="text-blue-100 text-lg mb-1">{profileData.email}</p>
-                <p className="text-blue-200">{profileData.phone}</p>
-                <div className="mt-4 flex items-center gap-4">
-                  <div className="flex items-center gap-2">
-                    <Calendar className="w-4 h-4" />
-                    <span className="text-sm">
-                      Joined {
-                        (user?.created_at && !isNaN(Date.parse(user.created_at)))
-                          ? new Date(user.created_at).toLocaleDateString()
-                        : ((user as any)?.createdAt && !isNaN(Date.parse((user as any).createdAt)))
-                          ? new Date((user as any).createdAt).toLocaleDateString()
-                        : ((profileData as any)?.created_at && !isNaN(Date.parse((profileData as any).created_at)))
-                          ? new Date((profileData as any).created_at).toLocaleDateString()
-                        : ((profileData as any)?.createdAt && !isNaN(Date.parse((profileData as any).createdAt)))
-                          ? new Date((profileData as any).createdAt).toLocaleDateString()
-                        : (user?.updated_at && !isNaN(Date.parse(user.updated_at)))
-                          ? new Date(user.updated_at).toLocaleDateString()
-                        : ((user as any)?.updatedAt && !isNaN(Date.parse((user as any).updatedAt)))
-                          ? new Date((user as any).updatedAt).toLocaleDateString()
-                        : ((profileData as any)?.updated_at && !isNaN(Date.parse((profileData as any).updated_at)))
-                          ? new Date((profileData as any).updated_at).toLocaleDateString()
-                        : ((profileData as any)?.updatedAt && !isNaN(Date.parse((profileData as any).updatedAt)))
-                          ? new Date((profileData as any).updatedAt).toLocaleDateString()
-                        : 'Unknown'
-                      }
-                    </span>
-                  </div>
-                  <div className="flex items-center gap-2">
-                    <BookOpen className="w-4 h-4" />
-                    <span className="text-sm">{user?.enrolledCourses?.length || 0} Courses</span>
-                  </div>
-                  <div className="flex items-center gap-2">
-                    <Award className="w-4 h-4" />
-                    <span className="text-sm">{user?.completedCourses?.length || 0} Completed</span>
-                  </div>
-                </div>
-              </div>
-
-              {/* Edit Button */}
-              <div>
-                {!isEditing ? (
-                  <button
-                    onClick={() => setIsEditing(true)}
-                    className="bg-white/20 hover:bg-white/30 text-white px-6 py-3 rounded-lg font-medium transition-colors flex items-center gap-2 backdrop-blur-sm"
-                  >
-                    <Edit3 className="w-5 h-5" />
-                    Edit Profile
-                  </button>
-                ) : (
-                  <div className="flex gap-3">
-                    <button
-                      onClick={() => {
-                        setIsEditing(false);
-                        setProfileData({
-                          firstName: user?.firstName || '',
-                          lastName: user?.lastName || '',
-                          email: user?.email || '',
-                          phone: user?.phone || '',
-                          bio: user?.bio || '',
-                          location: user?.location || '',
-                          occupation: user?.occupation || '',
-                          education: user?.education || '',
-                          avatar: user?.avatar || null
-                        });
-                        setErrors({});
-                      }}
-                      className="bg-white/20 hover:bg-white/30 text-white px-4 py-2 rounded-lg font-medium transition-colors"
-                    >
-                      Cancel
-                    </button>
-                  </div>
+              {/* Name + Badge */}
+              <div className="flex flex-col justify-center">
+                <span className="text-xl md:text-3xl font-bold leading-tight">
+                  {(user?.first_name || profileData.firstName) || 'Unnamed User'}
+                </span>
+                <span className="text-xl md:text-3xl font-bold leading-tight">
+                  {(user?.last_name || profileData.lastName) ? `${user?.last_name || profileData.lastName}` : ''}
+                </span>
+                {gamificationStats?.badges && gamificationStats.badges.length > 0 && (
+                  <span className="mt-1 align-middle inline-flex items-center gap-1">
+                    {gamificationStats.badges.map((userBadge: any, idx: number) =>
+                      userBadge.badge?.icon_url ? (
+                        <span key={userBadge.badge.id} className="inline-flex items-center justify-center w-7 h-7 rounded-full bg-gray-100 shadow mr-1" style={{ aspectRatio: '1/1' }}>
+                          <img
+                            src={userBadge.badge.icon_url}
+                            alt={userBadge.badge.name}
+                            className="w-5 h-5 object-contain"
+                            title={userBadge.badge.name}
+                            style={{ aspectRatio: '1/1' }}
+                          />
+                        </span>
+                      ) : (
+                        <span key={userBadge.badge?.id || userBadge.id} className="inline-flex items-center justify-center w-7 h-7 rounded-full bg-gray-100 shadow mr-1" style={{ aspectRatio: '1/1' }}>
+                          <Award className="w-5 h-5 text-yellow-400" />
+                        </span>
+                      )
+                    )}
+                  </span>
                 )}
               </div>
             </div>
+            {/* Email below avatar+name row */}
+            <div className="mt-2">
+              <p className="text-blue-100 text-lg mb-0 break-all">{profileData.email}</p>
+            </div>
+            {/* Stats/info below email */}
+            <div className="mt-2 flex flex-wrap items-center gap-4">
+              <div className="flex items-center gap-2">
+                <Calendar className="w-4 h-4" />
+                <span className="text-sm">
+                  Joined {
+                    (user?.created_at && !isNaN(Date.parse(user.created_at)))
+                      ? new Date(user.created_at).toLocaleDateString()
+                    : ((user as any)?.createdAt && !isNaN(Date.parse((user as any).createdAt)))
+                      ? new Date((user as any).createdAt).toLocaleDateString()
+                    : ((profileData as any)?.created_at && !isNaN(Date.parse((profileData as any).created_at)))
+                      ? new Date((profileData as any).created_at).toLocaleDateString()
+                    : ((profileData as any)?.createdAt && !isNaN(Date.parse((profileData as any).createdAt)))
+                      ? new Date((profileData as any).createdAt).toLocaleDateString()
+                    : ''
+                  }
+                </span>
+              </div>
+              {/* Add more stats/info here if needed */}
+            </div>
+            {/* Verification badge for instructors */}
+            {user?.role === 'instructor' && (
+              <div className="mt-2">
+                <VerificationBadge status={(user as any)?.verification_status || 'unverified'} />
+              </div>
+            )}
           </div>
 
           {/* Profile Form */}
@@ -1064,7 +1024,7 @@ export function Profile() {
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4 text-sm">
               <div>
                 <span className="font-medium text-indigo-800">Member Since:</span>
-                <p className="text-indigo-700">{new Date(user?.createdAt || '').toLocaleDateString()}</p>
+                <p className="text-indigo-700">{new Date(user?.created_at || '').toLocaleDateString()}</p>
               </div>
               <div>
                 <span className="font-medium text-indigo-800">Account Type:</span>

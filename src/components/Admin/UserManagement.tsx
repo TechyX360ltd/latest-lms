@@ -127,14 +127,14 @@ export function UserManagement() {
   };
 
   const handleConfirmDelete = async (password: string) => {
-    if (password !== 'password') {
-      showToast('Incorrect admin password. User was not deleted.', 'error');
-      return;
-    }
     try {
-      await deleteUser(deleteModal.userId);
-      showToast('User deleted successfully.', 'success');
-      setDeleteModal({ open: false, userId: '', userEmail: '' });
+      const result = await deleteUser(deleteModal.userId, password);
+      if (result.success) {
+        showToast('User deleted successfully.', 'success');
+        setDeleteModal({ open: false, userId: '', userEmail: '' });
+      } else {
+        showToast(result.error || 'Failed to delete user.', 'error');
+      }
     } catch (err) {
       showToast('Failed to delete user.', 'error');
     }

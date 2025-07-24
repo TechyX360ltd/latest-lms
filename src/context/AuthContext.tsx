@@ -163,6 +163,57 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [state, dispatch] = useReducer(authReducer, initialState);
   const [isSupabaseConnected, setIsSupabaseConnected] = useState(false);
 
+  // Add this useEffect to automate welcome email after confirmation
+  useEffect(() => {
+    async function handlePostConfirmation() {
+      if (!state.isAuthenticated || !state.user) return;
+      const { data: { user: authUser } } = await supabase.auth.getUser();
+      if (!authUser || !authUser.email_confirmed_at) return;
+      const { data: existingUser } = await supabase
+        .from('users')
+        .select('id')
+        .eq('id', authUser.id)
+        .single();
+      if (!existingUser) {
+        console.log('Inserting user into users table:', authUser.email);
+        const { error: insertError } = await supabase.from('users').insert({
+          id: authUser.id,
+          email: authUser.email,
+          first_name: authUser.user_metadata?.first_name || '',
+          last_name: authUser.user_metadata?.last_name || '',
+          role: authUser.user_metadata?.role || 'learner',
+          created_at: new Date().toISOString(),
+        });
+        if (insertError) {
+          console.error('Failed to insert user into users table:', insertError);
+          return;
+        }
+        console.log('User inserted successfully, sending welcome email...');
+        // Fetch welcome template
+        const { data: templateData } = await supabase
+          .from('email_templates')
+          .select('subject_template, html_template')
+          .eq('name', 'welcome')
+          .single();
+        if (templateData) {
+          const subject = templateData.subject_template.replace('{{name}}', authUser.user_metadata?.first_name || 'Learner');
+          const html = templateData.html_template.replace('{{name}}', authUser.user_metadata?.first_name || 'Learner');
+          try {
+            await sendEmail({
+              to: authUser.email,
+              subject,
+              html
+            });
+            console.log('Welcome email sent successfully.');
+          } catch (e) {
+            console.error('Failed to send welcome email:', e);
+          }
+        }
+      }
+    }
+    handlePostConfirmation();
+  }, [state.isAuthenticated, state.user]);
+
   // Inactivity logout timer (6 hours = 21600000 ms)
   useEffect(() => {
     let timer: NodeJS.Timeout | null = null;
@@ -486,95 +537,12 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
           ) {
             msg = 'This email is already registered. Please log in or use a different email.';
           }
-          alert(msg);
-          throw authError;
+          throw new Error(msg);
         }
         if (!authData.user) throw new Error('Auth signup failed, no user returned');
 
-        // 2. Insert user profile into users table
-        const userPayload = {
-          id: authData.user.id,
-          email: userData.email,
-          role: userData.role,
-          first_name: userData.first_name,
-          last_name: userData.last_name,
-          points: 0,
-          coins: 0,
-          current_streak: 0,
-          longest_streak: 0,
-          referred_by: userData.referralCode || null,
-          verification_status: 'unverified',
-          phone: userData.phone || '',
-          bio: userData.bio || '',
-          location: userData.location || '',
-          occupation: userData.occupation || '',
-          education: userData.education || '',
-          avatar_url: null,
-          payout_email: userData.role === 'instructor' ? userData.payoutEmail || '' : '',
-          expertise: userData.role === 'instructor' ? userData.expertise || '' : '',
-          is_approved: userData.role === 'instructor' ? false : null,
-          created_at: new Date().toISOString(),
-        };
-        console.log('User insert payload:', userPayload);
-        const { error: userError } = await supabase
-          .from('users')
-          .insert(userPayload);
-        if (userError) {
-          console.error('User profile insert error:', userError);
-          alert(JSON.stringify(userError, null, 2));
-          throw userError;
-        }
-
-        // --- Custom Confirmation Email Trigger ---
-        try {
-          const learnerName = userData.first_name || 'Learner';
-          const { data: templateData } = await supabase
-            .from('email_templates')
-            .select('subject_template, html_template')
-            .eq('name', 'confirmation')
-            .single();
-          if (templateData) {
-            const subject = fillTemplate(templateData.subject_template, { name: learnerName });
-            // html will have {{confirmation_link}} placeholder
-            const html = fillTemplate(templateData.html_template, { name: learnerName });
-            await fetch('https://rpexcrwcgdmlfxihdmny.functions.supabase.co/send-email', {
-              method: 'POST',
-              headers: { 'Content-Type': 'application/json' },
-              body: JSON.stringify({
-                to: userData.email,
-                subject,
-                html,
-                type: 'confirmation',
-                user_id: authData.user.id
-              })
-            });
-          }
-        } catch (emailErr) {
-          console.error('Failed to send confirmation email:', emailErr);
-        }
-        // --- End Custom Confirmation Email Trigger ---
-
-        // --- Welcome Email Trigger ---
-        try {
-          const learnerName = userData.first_name || 'Learner';
-          const { data: templateData } = await supabase
-            .from('email_templates')
-            .select('subject_template, html_template')
-            .eq('name', 'welcome')
-            .single();
-          if (templateData) {
-            const subject = fillTemplate(templateData.subject_template, { name: learnerName });
-            const html = fillTemplate(templateData.html_template, { name: learnerName });
-            await sendEmail({
-              to: userData.email,
-              subject,
-              html
-            });
-          }
-        } catch (emailErr) {
-          console.error('Failed to send welcome email:', emailErr);
-        }
-        // --- End Welcome Email Trigger ---
+        // Do NOT insert into users table or send welcome email yet!
+        // These actions will be performed after email confirmation.
 
         dispatch({ type: 'SET_LOADING', payload: false });
         return;
@@ -610,7 +578,6 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       ) {
         msg = 'This email is already registered. Please log in or use a different email.';
       }
-      alert(msg);
       dispatch({ type: 'SET_LOADING', payload: false });
       throw new Error(msg);
     }
@@ -730,9 +697,17 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
             if (updateError) console.error('Error updating enrollment count:', updateError);
           }
 
-          // Fetch course details and send enrollment email using DB template
-          try {
-            for (const courseId of coursesToAdd) {
+          // After successful enrollment, send course_enroll email
+          const { data: existingEnrollmentsAfterInsert, error: fetchErrorAfterInsert } = await supabase
+            .from('user_courses')
+            .select('course_id, status')
+            .eq('user_id', state.user.id);
+          if (fetchErrorAfterInsert) throw fetchErrorAfterInsert;
+          const existingCourseIdsAfterInsert = existingEnrollmentsAfterInsert?.map(e => e.course_id) || [];
+          const coursesToAddAfterInsert = enrolledCourses.filter(id => !existingCourseIdsAfterInsert.includes(id));
+
+          if (coursesToAddAfterInsert.length > 0) {
+            for (const courseId of coursesToAddAfterInsert) {
               // Fetch course title
               const { data: courseData } = await supabase
                 .from('courses')
@@ -741,38 +716,26 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
                 .single();
               const courseTitle = courseData?.title || 'a course';
               const learnerName = state.user.first_name || 'Learner';
-
-              // Fetch email template from DB
+              // Fetch template and send email
               const { data: templateData } = await supabase
                 .from('email_templates')
                 .select('subject_template, html_template')
                 .eq('name', 'course_enroll')
                 .single();
-
-              if (!templateData) {
-                console.error('No email template found for course_enroll');
-                continue;
+              if (templateData) {
+                const subject = fillTemplate(templateData.subject_template, { name: learnerName, course: courseTitle });
+                const html = fillTemplate(templateData.html_template, { name: learnerName, course: courseTitle });
+                await fetch('https://rpexcrwcgdmlfxihdmny.supabase.co/functions/v1/send-email', {
+                  method: 'POST',
+                  headers: { 'Content-Type': 'application/json' },
+                  body: JSON.stringify({
+                    to: state.user.email,
+                    subject,
+                    html
+                  })
+                });
               }
-
-              // Fill in the template
-              const subject = fillTemplate(templateData.subject_template, {
-                course: courseTitle,
-                name: learnerName
-              });
-              const html = fillTemplate(templateData.html_template, {
-                course: courseTitle,
-                name: learnerName
-              });
-
-              // Send the email
-              await sendEmail({
-                to: state.user.email,
-                subject,
-                html
-              });
             }
-          } catch (emailErr) {
-            console.error('Failed to send enrollment email:', emailErr);
           }
         }
         
@@ -880,6 +843,34 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
           ]
         };
         
+        // After successful completion, send course_complete email
+        // Fetch course title
+        const { data: courseData } = await supabase
+          .from('courses')
+          .select('title')
+          .eq('id', courseId)
+          .single();
+        const courseTitle = courseData?.title || 'a course';
+        const learnerName = state.user.first_name || 'Learner';
+        // Fetch template and send email
+        const { data: templateData } = await supabase
+          .from('email_templates')
+          .select('subject_template, html_template')
+          .eq('name', 'course_complete')
+          .single();
+        if (templateData) {
+          const subject = fillTemplate(templateData.subject_template, { name: learnerName, course: courseTitle });
+          const html = fillTemplate(templateData.html_template, { name: learnerName, course: courseTitle });
+          await fetch('https://rpexcrwcgdmlfxihdmny.supabase.co/functions/v1/send-email', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              to: state.user.email,
+              subject,
+              html
+            })
+          });
+        }
         dispatch({ type: 'SET_USER', payload: updatedUser });
         return;
       }
@@ -981,10 +972,38 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     }
     if (isSupabaseConnected) {
       // Use Supabase password reset
-      const { error } = await supabase.auth.resetPasswordForEmail(email, {
-        redirectTo: window.location.origin + '/reset-password',
+      const { data, error } = await supabase.auth.admin.generateLink({
+        type: 'recovery',
+        email: email,
       });
       if (error) throw error;
+      const resetLink = data?.action_link;
+      // Fetch user for name
+      const { data: userData } = await supabase
+        .from('users')
+        .select('first_name')
+        .eq('email', email)
+        .single();
+      const learnerName = userData?.first_name || 'there';
+      // Fetch template and send email
+      const { data: templateData } = await supabase
+        .from('email_templates')
+        .select('subject_template, html_template')
+        .eq('name', 'password_reset')
+        .single();
+      if (templateData && resetLink) {
+        const subject = fillTemplate(templateData.subject_template, { name: learnerName });
+        const html = fillTemplate(templateData.html_template, { name: learnerName, reset_link: resetLink });
+        await fetch('https://rpexcrwcgdmlfxihdmny.supabase.co/functions/v1/send-email', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            to: email,
+            subject,
+            html
+          })
+        });
+      }
       return;
     }
     // Fallback: simulate local reset (no email sent)

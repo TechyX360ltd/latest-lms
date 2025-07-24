@@ -212,6 +212,13 @@ export function BrowseCourses() {
     setAppliedCoupon(null);
   };
 
+  // Helper: Track course views in localStorage
+  const trackCourseView = (courseId: string) => {
+    const views = JSON.parse(localStorage.getItem('recentCourseViews') || '{}');
+    views[courseId] = (views[courseId] || 0) + 1;
+    localStorage.setItem('recentCourseViews', JSON.stringify(views));
+  };
+
   // --- Course Card ---
   const CourseCard = ({ course }: { course: any }) => {
     const isEnrolled = user?.enrolledCourses.includes(course.id);
@@ -220,7 +227,7 @@ export function BrowseCourses() {
     // Find instructor by ID
     const instructor = users.find((u: any) => u.id === course.instructor_id);
     const instructorName = instructor
-      ? `${instructor.first_name || instructor.firstName || ''} ${instructor.last_name || instructor.lastName || ''}`.trim() || instructor.email || 'Instructor'
+      ? `${instructor.first_name || ''} ${instructor.last_name || ''}`.trim() || instructor.email || 'Instructor'
       : 'Instructor';
     return (
       <div className="bg-white rounded-xl shadow-sm border border-gray-100 overflow-hidden hover:shadow-md transition-shadow min-w-[270px] max-w-xs flex-shrink-0">
@@ -246,7 +253,14 @@ export function BrowseCourses() {
           )}
         </div>
         <div className="p-4">
-          <h3 className="text-base font-bold text-gray-900 mb-1 line-clamp-2">{course.title}</h3>
+          <Link
+            to={`/courses/${course.id}`}
+            className="text-base font-bold text-blue-700 hover:underline mb-1 line-clamp-2 text-left w-full cursor-pointer block"
+            style={{ background: 'none', border: 'none', padding: 0 }}
+            onClick={() => trackCourseView(course.id)}
+          >
+            {course.title}
+          </Link>
           <p className="text-gray-600 mb-2 text-xs line-clamp-2">{course.description}</p>
           <p className="text-xs mb-2">
             by{' '}
@@ -309,6 +323,19 @@ export function BrowseCourses() {
     );
   };
 
+  // --- Filtered course lists ---
+  const recentViews = JSON.parse(localStorage.getItem('recentCourseViews') || '{}');
+  const coursesByRecentViews = [...courses]
+    .filter((c) => recentViews[c.id])
+    .sort((a, b) => (recentViews[b.id] || 0) - (recentViews[a.id] || 0));
+  const coursesByRating = [...courses].sort((a, b) => (b.rating || 0) - (a.rating || 0));
+  const basicCourses = courses.filter((c) =>
+    (c.title?.toLowerCase().includes('basic') || c.description?.toLowerCase().includes('basic'))
+  );
+  const newestCourses = [...courses].sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime());
+  const skillsUnder2h = courses.filter((c) => Number(c.duration) <= 2);
+  const mostPopular = [...courses].sort((a, b) => (b.enrolled_count || 0) - (a.enrolled_count || 0));
+
   return (
     <div className="space-y-8">
       <div>
@@ -332,20 +359,97 @@ export function BrowseCourses() {
       </div>
       {/* Filter Sections */}
       <div className="flex flex-col gap-8">
-        {FILTERS.map(filter => (
-          <div key={filter.key} className="space-y-4">
-            <h2 className="text-xl font-bold text-gray-900 mb-2">{filter.label}</h2>
-            <div className="flex gap-4 overflow-x-auto pb-2">
-              {courses.length === 0 ? (
-                <div className="text-gray-400 italic">No courses found.</div>
-              ) : (
-                courses.map((course: any) => (
-                  <CourseCard key={course.id} course={course} />
-                ))
-              )}
-            </div>
+        {/* All Courses */}
+        <div className="space-y-4">
+          <h2 className="text-xl font-bold text-gray-900 mb-2">All Courses</h2>
+          <div className="flex gap-4 overflow-x-auto pb-2">
+            {courses.length === 0 ? (
+              <div className="text-gray-400 italic">No courses found.</div>
+            ) : (
+              courses.map((course: any) => (
+                <CourseCard key={course.id} course={course} />
+              ))
+            )}
           </div>
-        ))}
+        </div>
+        {/* Based on Your Recent Views */}
+        <div className="space-y-4">
+          <h2 className="text-xl font-bold text-gray-900 mb-2">Based on your recent views</h2>
+          <div className="flex gap-4 overflow-x-auto pb-2">
+            {coursesByRecentViews.length === 0 ? (
+              <div className="text-gray-400 italic">No recent views yet.</div>
+            ) : (
+              coursesByRecentViews.map((course: any) => (
+                <CourseCard key={course.id} course={course} />
+              ))
+            )}
+          </div>
+        </div>
+        {/* Course Ratings */}
+        <div className="space-y-4">
+          <h2 className="text-xl font-bold text-gray-900 mb-2">Course rating (by stars)</h2>
+          <div className="flex gap-4 overflow-x-auto pb-2">
+            {coursesByRating.length === 0 ? (
+              <div className="text-gray-400 italic">No courses found.</div>
+            ) : (
+              coursesByRating.map((course: any) => (
+                <CourseCard key={course.id} course={course} />
+              ))
+            )}
+          </div>
+        </div>
+        {/* Basic Courses */}
+        <div className="space-y-4">
+          <h2 className="text-xl font-bold text-gray-900 mb-2">Basic courses</h2>
+          <div className="flex gap-4 overflow-x-auto pb-2">
+            {basicCourses.length === 0 ? (
+              <div className="text-gray-400 italic">No basic courses found.</div>
+            ) : (
+              basicCourses.map((course: any) => (
+                <CourseCard key={course.id} course={course} />
+              ))
+            )}
+          </div>
+        </div>
+        {/* Newest */}
+        <div className="space-y-4">
+          <h2 className="text-xl font-bold text-gray-900 mb-2">Newest</h2>
+          <div className="flex gap-4 overflow-x-auto pb-2">
+            {newestCourses.length === 0 ? (
+              <div className="text-gray-400 italic">No new courses found.</div>
+            ) : (
+              newestCourses.map((course: any) => (
+                <CourseCard key={course.id} course={course} />
+              ))
+            )}
+          </div>
+        </div>
+        {/* Skills under 2 hours */}
+        <div className="space-y-4">
+          <h2 className="text-xl font-bold text-gray-900 mb-2">Skills under 2 hours</h2>
+          <div className="flex gap-4 overflow-x-auto pb-2">
+            {skillsUnder2h.length === 0 ? (
+              <div className="text-gray-400 italic">No short courses found.</div>
+            ) : (
+              skillsUnder2h.map((course: any) => (
+                <CourseCard key={course.id} course={course} />
+              ))
+            )}
+          </div>
+        </div>
+        {/* Most Popular */}
+        <div className="space-y-4">
+          <h2 className="text-xl font-bold text-gray-900 mb-2">Most popular</h2>
+          <div className="flex gap-4 overflow-x-auto pb-2">
+            {mostPopular.length === 0 ? (
+              <div className="text-gray-400 italic">No popular courses found.</div>
+            ) : (
+              mostPopular.map((course: any) => (
+                <CourseCard key={course.id} course={course} />
+              ))
+            )}
+          </div>
+        </div>
       </div>
       {/* Payment Modal */}
       {showPaymentModal && selectedCourse && (
