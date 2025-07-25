@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { Clock, Users, Star, CheckCircle, Award, Tag } from 'lucide-react';
-import { useCategories } from '../../hooks/useData';
+import { useCategories, useCourses } from '../../hooks/useData';
 import { useUsers } from '../../hooks/useData';
 import { useAuth } from '../../context/AuthContext';
 import { supabase } from '../../lib/supabase';
@@ -11,6 +11,7 @@ import { useWindowSize } from 'react-use';
 import { useToast } from '../Auth/ToastContext';
 import { CouponInput } from './CouponInput';
 import { CouponValidationResult } from '../../types';
+import { useGamification } from '../../hooks/useGamification';
 
 const FILTERS = [
   { key: 'recentlyViewed', label: 'Based on your recent views' },
@@ -25,10 +26,10 @@ export function BrowseCourses() {
   const { categories, loading: categoriesLoading } = useCategories();
   const { users } = useUsers();
   const { user, updateUserEnrollment, updateUserProfile, refreshUserEnrollments } = useAuth();
+  const { triggerCourseEnrollment } = useGamification();
+  const { courses: allCourses, loading: coursesLoading, refreshCourses } = useCourses();
   const [selectedCategory, setSelectedCategory] = useState('all');
   const [enrollingCourses, setEnrollingCourses] = useState<Set<string>>(new Set());
-  const [courses, setCourses] = useState<any[]>([]);
-  const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [showPaymentModal, setShowPaymentModal] = useState(false);
   const [selectedCourse, setSelectedCourse] = useState<any>(null);
@@ -41,36 +42,12 @@ export function BrowseCourses() {
   const [coinConfirmCourse, setCoinConfirmCourse] = useState<any>(null); // course to confirm coin payment
   const [appliedCoupon, setAppliedCoupon] = useState<CouponValidationResult | null>(null);
 
-  useEffect(() => {
-    async function fetchCourses() {
-      setLoading(true);
-      setError(null);
-      try {
-        // Fetch all published courses from Supabase, filter by category if needed
-        let query = supabase
-          .from('courses')
-          .select('*')
-          .eq('is_published', true);
-        if (selectedCategory !== 'all') {
-          query = query.eq('category', selectedCategory);
-        }
-        const { data, error } = await query;
-        if (error) {
-          setError(error.message);
-          setCourses([]);
-        } else {
-          setCourses(data || []);
-        }
-      } catch (err) {
-        setError('Failed to fetch courses');
-        setCourses([]);
-      }
-      setLoading(false);
-    }
-    fetchCourses();
-  }, [selectedCategory]);
+  // Filter courses based on selected category
+  const courses = allCourses.filter(course => 
+    selectedCategory === 'all' || course.category_id === selectedCategory
+  );
 
-  if (categoriesLoading || loading) {
+  if (categoriesLoading || coursesLoading) {
     return (
       <div className="flex items-center justify-center h-64">
         <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-500"></div>
@@ -102,11 +79,23 @@ export function BrowseCourses() {
     setShowPaymentModal(true);
   };
 
-  const handlePaymentSuccess = (reference: any) => {
+  const handlePaymentSuccess = async (reference: any) => {
     // Call your enrollment logic here (e.g., updateUserEnrollment)
     if (user && selectedCourse) {
       if (updateUserEnrollment) {
-        updateUserEnrollment([...user.enrolledCourses, selectedCourse.id]);
+        await updateUserEnrollment([...user.enrolledCourses, selectedCourse.id]);
+        
+        // Trigger gamification for course enrollment
+        try {
+          await triggerCourseEnrollment(selectedCourse.id);
+          showToast('Enrollment successful! +5000 points earned!', 'success');
+        } catch (error) {
+          console.error('Error triggering course enrollment gamification:', error);
+          showToast('Enrollment successful!', 'success');
+        }
+        
+        // Refresh courses to update enrollment status
+        if (refreshCourses) await refreshCourses();
       }
     }
     setShowPaymentModal(false);
@@ -143,7 +132,15 @@ export function BrowseCourses() {
         coin_cost: coinCost,
       });
       if (!error) {
-        showToast('Enrollment successful! You paid with coins.', 'success');
+        // Trigger gamification for course enrollment
+        try {
+          await triggerCourseEnrollment(course.id);
+          showToast('Enrollment successful! You paid with coins. +5000 points earned!', 'success');
+        } catch (gamificationError) {
+          console.error('Error triggering course enrollment gamification:', gamificationError);
+          showToast('Enrollment successful! You paid with coins.', 'success');
+        }
+        
         setCoinLoading(null);
         // Update user coin balance and enrollment in UI
         if (refreshUserEnrollments) {
@@ -152,6 +149,8 @@ export function BrowseCourses() {
         if (updateUserProfile) {
           updateUserProfile({ coins: (user.coins || 0) - coinCost });
         }
+        // Refresh courses to update enrollment status
+        if (refreshCourses) await refreshCourses();
         return;
       } else {
         rpcError = error;

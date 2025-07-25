@@ -61,6 +61,21 @@ serve(async (req) => {
     return new Response(JSON.stringify({ error: 'Failed to enroll recipient.' }), { status: 500 });
   }
 
+  // Trigger gamification for course enrollment
+  try {
+    await supabase.rpc('award_points_and_check_badges', {
+      p_user_id: recipientId,
+      p_points: 5000,
+      p_coins: 5000,
+      p_event_type: 'course_enrollment',
+      p_description: 'Enrolled in a new course',
+      p_metadata: JSON.stringify({ course_id: courseId })
+    });
+  } catch (gamificationError) {
+    console.error('Error triggering gamification for gifted course:', gamificationError);
+    // Continue with the gift process even if gamification fails
+  }
+
   // 4. Record the gift
   await supabase.from('gifts').insert({
     sender_id: user.id,

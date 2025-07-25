@@ -19,9 +19,10 @@ const recurrenceOptions = [
 interface ScheduleSessionFormProps {
   courses: Course[];
   onSessionCreated: () => void;
+  coursesLoading?: boolean;
 }
 
-export default function ScheduleSessionForm({ courses, onSessionCreated }: ScheduleSessionFormProps) {
+export default function ScheduleSessionForm({ courses, onSessionCreated, coursesLoading = false }: ScheduleSessionFormProps) {
   const { user } = useAuth();
   const [form, setForm] = useState({
     courseId: '',
@@ -39,7 +40,7 @@ export default function ScheduleSessionForm({ courses, onSessionCreated }: Sched
   const [submitting, setSubmitting] = useState(false);
   const [success, setSuccess] = useState(false);
   const [error, setError] = useState('');
-  const [coursesLoading, setCoursesLoading] = useState(true);
+
   const [learners, setLearners] = useState<any[]>([]);
   const [learnersLoading, setLearnersLoading] = useState(false);
 
@@ -54,8 +55,14 @@ export default function ScheduleSessionForm({ courses, onSessionCreated }: Sched
     );
   }
 
-  // Filter to only published courses
-  const publishedCourses = courses.filter((c: any) => c.is_published);
+  // Filter to only published courses, but show all if none are published
+  const publishedCourses = courses.filter((c: any) => c.is_published === true);
+  const availableCourses = publishedCourses.length > 0 ? publishedCourses : courses;
+  
+  // Debug logging
+  console.log('Total courses:', courses.length);
+  console.log('Published courses:', publishedCourses.length);
+  console.log('Available courses:', availableCourses.length);
 
   // Fetch learners for selected course
   useEffect(() => {
@@ -177,11 +184,11 @@ export default function ScheduleSessionForm({ courses, onSessionCreated }: Sched
   };
 
   return (
-    <div className="bg-white rounded-xl shadow p-6 border border-gray-100 h-full w-full max-w-4xl mx-auto">
+    <div className="bg-white rounded-xl shadow p-6 border border-gray-100 w-full">
       <h2 className="text-xl font-bold mb-6">Schedule Live Session</h2>
-      <form onSubmit={handleSubmit} className="grid grid-cols-1 md:grid-cols-2 gap-6">
-        {/* Course - full width */}
-        <div className="md:col-span-2">
+      <form onSubmit={handleSubmit} className="grid grid-cols-1 md:grid-cols-2 gap-4">
+        {/* Course and Session Title on same line */}
+        <div>
           <label className="block text-sm font-medium mb-1">Course</label>
           <select
             name="courseId"
@@ -193,18 +200,17 @@ export default function ScheduleSessionForm({ courses, onSessionCreated }: Sched
           >
             {coursesLoading ? (
               <option value="">Loading courses...</option>
-            ) : publishedCourses.length === 0 ? (
-              <option value="" disabled>No courses published</option>
+            ) : availableCourses.length === 0 ? (
+              <option value="" disabled>No courses available</option>
             ) : [
               <option value="" key="select">Select a course</option>,
-              ...publishedCourses.map((course: any) => (
+              ...availableCourses.map((course: any) => (
               <option key={course.id} value={course.id}>{course.title}</option>
               ))
             ]}
           </select>
         </div>
-        {/* Session Title - full width */}
-        <div className="md:col-span-2">
+        <div>
           <label className="block text-sm font-medium mb-1">Session Title</label>
           <input
             type="text"
@@ -277,8 +283,8 @@ export default function ScheduleSessionForm({ courses, onSessionCreated }: Sched
             ))}
           </select>
         </div>
-        {/* Recurrence - full width */}
-        <div className="md:col-span-2">
+        {/* Recurrence and Join Link on same line */}
+        <div>
           <label className="block text-sm font-medium mb-1">Recurrence</label>
           <select
             name="recurrence"
@@ -301,6 +307,18 @@ export default function ScheduleSessionForm({ courses, onSessionCreated }: Sched
             />
           )}
         </div>
+        <div>
+          <label className="block text-sm font-medium mb-1">Join Link</label>
+          <input
+            type="url"
+            name="joinLink"
+            value={form.joinLink}
+            onChange={handleChange}
+            className="w-full border rounded px-3 py-2"
+            placeholder="Paste Zoom/Google Meet link here"
+            required
+          />
+        </div>
         {/* Invitees - full width */}
         {form.courseId && (
           <div className="md:col-span-2">
@@ -313,19 +331,6 @@ export default function ScheduleSessionForm({ courses, onSessionCreated }: Sched
             {!learnersLoading && learners.length === 0 && <div className="text-sm text-gray-500 mt-1">No learners enrolled in this course.</div>}
           </div>
         )}
-        {/* Join Link */}
-        <div className="md:col-span-2">
-          <label className="block text-sm font-medium mb-1">Join Link</label>
-          <input
-            type="url"
-            name="joinLink"
-            value={form.joinLink}
-            onChange={handleChange}
-            className="w-full border rounded px-3 py-2"
-            placeholder="Paste Zoom/Google Meet link here"
-            required
-          />
-        </div>
         {/* Error/Success - full width */}
         {error && <div className="md:col-span-2 text-red-600 text-sm">{error}</div>}
         {success && <div className="md:col-span-2 text-green-600 text-sm">Session scheduled successfully!</div>}

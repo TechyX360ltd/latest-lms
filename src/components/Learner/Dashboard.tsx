@@ -305,7 +305,7 @@ export function LearnerDashboard({}: LearnerDashboardProps) {
       )}
 
       {/* Quick Actions */}
-      <div className="bg-white rounded-xl shadow-sm p-6 lg:p-8 border border-gray-100">
+      <div className="bg-white rounded-xl shadow-sm p-6 lg:p-8 border border-gray-100 mt-6">
         <h2 className="text-xl lg:text-2xl font-bold text-gray-900 mb-6">Quick Actions</h2>
         <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
           <button

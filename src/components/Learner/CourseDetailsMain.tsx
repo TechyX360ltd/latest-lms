@@ -13,17 +13,19 @@ import { supabase } from '../../lib/supabase';
 import ShareCourseModal from './ShareCourseModal';
 import GiftCourseModal from './GiftCourseModal';
 import { Helmet } from 'react-helmet-async';
+import { useGamification } from '../../hooks/useGamification';
 
 interface CourseDetailsMainProps {
   courseSlug?: string;
 }
 
 const CourseDetailsMain: React.FC<CourseDetailsMainProps> = ({ courseSlug }) => {
-  const { getCourseBySlug, loading: coursesLoading } = useCourses();
+  const { getCourseBySlug, loading: coursesLoading, refreshCourses } = useCourses();
   const { users } = useUsers();
   const { categories } = useCategories();
   const { user, updateUserEnrollment, updateUserProfile, refreshUserEnrollments } = useAuth();
   const { showToast } = useToast();
+  const { triggerCourseEnrollment } = useGamification();
   const navigate = useNavigate();
   const [showPaymentModal, setShowPaymentModal] = React.useState(false);
   const [appliedCoupon, setAppliedCoupon] = React.useState<CouponValidationResult | null>(null);
@@ -81,12 +83,23 @@ const CourseDetailsMain: React.FC<CourseDetailsMainProps> = ({ courseSlug }) => 
   const handleCouponRemoved = () => setAppliedCoupon(null);
   const handlePaymentSuccess = async () => {
     if (user && updateUserEnrollment) {
-      await updateUserEnrollment([...(user.enrolledCourses || []), course.id]);
-      showToast('Enrollment successful!', 'success');
-      if (refreshUserEnrollments) await refreshUserEnrollments(user.id);
-      setShowPaymentModal(false);
-      setAppliedCoupon(null);
-      setShowSuccessModal(true);
+              await updateUserEnrollment([...(user.enrolledCourses || []), course.id]);
+        
+        // Trigger gamification for course enrollment
+        try {
+          await triggerCourseEnrollment(course.id);
+          showToast('Enrollment successful! +5000 points earned!', 'success');
+        } catch (error) {
+          console.error('Error triggering course enrollment gamification:', error);
+          showToast('Enrollment successful!', 'success');
+        }
+      
+              if (refreshUserEnrollments) await refreshUserEnrollments(user.id);
+        // Refresh courses to update enrollment status
+        if (refreshCourses) await refreshCourses();
+        setShowPaymentModal(false);
+        setAppliedCoupon(null);
+        setShowSuccessModal(true);
     }
   };
   const handlePaymentClose = () => {
@@ -112,9 +125,19 @@ const CourseDetailsMain: React.FC<CourseDetailsMainProps> = ({ courseSlug }) => 
         coin_cost: coinCost,
       });
       if (!error) {
-        showToast('Enrollment successful! You paid with coins.', 'success');
+        // Trigger gamification for course enrollment
+        try {
+          await triggerCourseEnrollment(course.id);
+          showToast('Enrollment successful! You paid with coins. +5000 points earned!', 'success');
+        } catch (gamificationError) {
+          console.error('Error triggering course enrollment gamification:', gamificationError);
+          showToast('Enrollment successful! You paid with coins.', 'success');
+        }
+        
         if (refreshUserEnrollments) await refreshUserEnrollments(user.id);
         if (updateUserProfile) updateUserProfile({ coins: (user.coins || 0) - coinCost });
+        // Refresh courses to update enrollment status
+        if (refreshCourses) await refreshCourses();
         setShowPaymentModal(false);
         setCoinConfirm(false);
         setShowSuccessModal(true);
@@ -156,7 +179,7 @@ const CourseDetailsMain: React.FC<CourseDetailsMainProps> = ({ courseSlug }) => 
         <meta name="twitter:description" content={course.description} />
         <meta name="twitter:image" content={safeThumbnail} />
       </Helmet>
-      <section className="bg-white border-b border-gray-200 px-4 md:px-8 pt-6 pb-8">
+      <section className="bg-white border-b border-gray-200 px-3 md:px-8 pt-6 pb-8">
         {/* Breadcrumbs */}
         <nav className="text-xs text-gray-500 mb-2 flex items-center gap-2">
           <Link to="/dashboard" className="hover:underline flex items-center gap-1"><Home className="w-4 h-4 inline" /> Home</Link>
@@ -171,7 +194,7 @@ const CourseDetailsMain: React.FC<CourseDetailsMainProps> = ({ courseSlug }) => 
             <div className="relative w-full h-48 bg-gray-100 flex items-center justify-center">
               <img src={safeThumbnail} alt={course.title} className="w-full h-full object-cover" onError={e => (e.currentTarget.src = '/public/Skill Sage Logo.png')} />
             </div>
-            <div className="p-6 flex flex-col gap-4">
+            <div className="p-4 md:p-6 flex flex-col gap-4">
               <div className="flex items-center gap-2">
                 <span className="text-2xl font-bold text-green-600">₦{course.price?.toLocaleString?.() ?? course.price}</span>
                 {course.price && <span className="text-sm text-gray-400 line-through">₦{(course.price * 5).toLocaleString?.()}</span>}
@@ -193,7 +216,7 @@ const CourseDetailsMain: React.FC<CourseDetailsMainProps> = ({ courseSlug }) => 
         </aside>
         <div className="flex flex-col md:flex-row md:items-start gap-8">
           {/* Main Content (Left) */}
-          <div className="flex-1 min-w-0 px-4 md:px-0">
+          <div className="flex-1 min-w-0 px-3 md:px-0">
             <h1 className="text-3xl md:text-4xl font-extrabold text-gray-900 mb-2 leading-tight">{course.title}</h1>
             <p className="text-lg text-gray-700 mb-4 max-w-2xl">{course.description}</p>
             <div className="flex flex-wrap gap-4 items-center text-gray-600 text-sm mb-4">
@@ -211,9 +234,9 @@ const CourseDetailsMain: React.FC<CourseDetailsMainProps> = ({ courseSlug }) => 
               <span>Language: English</span>
             </div>
             {/* Course Content Section (Modules) - moved up */}
-            <div className="max-w-3xl mt-8 mb-8 px-4 md:px-0">
-              <h2 className="text-2xl font-bold text-gray-900 mb-4">Course content</h2>
-              <div className="flex items-center text-sm text-gray-600 mb-4">
+            <div className="max-w-3xl mt-8 mb-8 px-0 md:px-0">
+              <h2 className="text-2xl font-bold text-gray-900 mb-4 px-3 md:px-0">Course content</h2>
+              <div className="flex items-center text-sm text-gray-600 mb-4 px-3 md:px-0">
                 <span>{totalSections} sections</span>
                 <span className="mx-2">•</span>
                 <span>{totalLectures} lectures</span>
@@ -237,7 +260,7 @@ const CourseDetailsMain: React.FC<CourseDetailsMainProps> = ({ courseSlug }) => 
                     return (
                       <div key={mod.id}>
                         <button
-                          className="w-full flex items-center justify-between px-6 py-4 bg-gray-50 hover:bg-gray-100 transition-colors text-left font-semibold text-gray-900 text-base focus:outline-none"
+                          className="w-full flex items-center justify-between px-4 md:px-6 py-4 bg-gray-50 hover:bg-gray-100 transition-colors text-left font-semibold text-gray-900 text-base focus:outline-none"
                           onClick={() => toggleModule(idx)}
                         >
                           <span>{mod.title}</span>
@@ -249,7 +272,7 @@ const CourseDetailsMain: React.FC<CourseDetailsMainProps> = ({ courseSlug }) => 
                           </span>
                         </button>
                         {isOpen && mod.lessons && mod.lessons.length > 0 && (
-                          <ul className="bg-white px-8 pb-4">
+                          <ul className="bg-white px-4 md:px-8 pb-4">
                             {mod.lessons.map((lesson, lidx) => (
                               <li key={lesson.id} className="flex items-center gap-2 py-1 text-gray-700 text-sm border-b border-gray-50 last:border-b-0">
                                 <span className="w-6 text-xs text-gray-400">{lidx + 1}.</span>
@@ -323,14 +346,69 @@ const CourseDetailsMain: React.FC<CourseDetailsMainProps> = ({ courseSlug }) => 
         courseTitle={course.title}
         courseSlug={course.slug}
       />
-      <GiftCourseModal
-        isOpen={showGiftModal}
-        onClose={handleCloseGift}
-        course={course}
-        instructor={instructor}
-      />
-    </>
-  );
-};
+             {/* Payment Modal */}
+       {showPaymentModal && (
+         <div className="fixed inset-0 flex items-center justify-center bg-black bg-opacity-40 z-50">
+           <div className="bg-white rounded-2xl shadow-2xl p-8 w-full max-w-md flex flex-col items-center">
+             <h2 className="text-2xl font-extrabold text-gray-900 mb-2">Proceed to Payment</h2>
+             <div className="w-12 h-1 bg-blue-100 rounded-full mb-4"></div>
+             <p className="text-gray-700 text-center mb-6">
+               You are about to enroll in <span className="font-semibold text-blue-700">{course.title}</span>
+               <br />
+               <span className="text-lg font-bold text-green-700 mt-2 block">
+                 ₦{appliedCoupon ? appliedCoupon.final_amount?.toLocaleString() : course.price?.toLocaleString?.() ?? course.price}
+               </span>
+               {appliedCoupon && (
+                 <span className="text-sm text-gray-500 line-through">
+                   ₦{course.price?.toLocaleString?.() ?? course.price}
+                 </span>
+               )}
+             </p>
+
+             {/* Coupon Input */}
+             <div className="w-full mb-6">
+               <CouponInput
+                 courseId={course.id}
+                 originalAmount={course.price}
+                 onCouponApplied={handleCouponApplied}
+                 onCouponRemoved={handleCouponRemoved}
+                 appliedCoupon={appliedCoupon || undefined}
+               />
+             </div>
+
+             <PaystackButton
+               publicKey={PAYSTACK_PUBLIC_KEY}
+               email={user?.email || 'test@example.com'}
+               amount={(appliedCoupon ? appliedCoupon.final_amount : course.price) * 100}
+               currency="NGN"
+               text="Pay with Paystack"
+               onSuccess={handlePaymentSuccess}
+               onClose={handlePaymentClose}
+               metadata={{ 
+                 courseId: course.id, 
+                 userId: user?.id, 
+                 couponId: appliedCoupon?.coupon_id,
+                 custom_fields: [] 
+               }}
+               className="bg-blue-600 hover:bg-blue-700 transition-colors text-white px-6 py-3 rounded-lg font-semibold text-lg w-full mb-3"
+             />
+             <button
+               onClick={handlePaymentClose}
+               className="w-full py-2 rounded-lg text-gray-600 hover:bg-gray-100 transition-colors font-medium"
+             >
+               Cancel
+             </button>
+           </div>
+         </div>
+       )}
+       <GiftCourseModal
+         isOpen={showGiftModal}
+         onClose={handleCloseGift}
+         course={course}
+         instructor={instructor}
+       />
+     </>
+   );
+ };
 
 export default CourseDetailsMain; 

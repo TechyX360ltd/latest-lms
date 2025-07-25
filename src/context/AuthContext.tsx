@@ -214,6 +214,58 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     handlePostConfirmation();
   }, [state.isAuthenticated, state.user]);
 
+  // Daily visit tracking for streak updates
+  useEffect(() => {
+    if (!state.isAuthenticated || !state.user?.id) return;
+
+    const checkDailyVisit = async () => {
+      try {
+        const today = new Date().toDateString();
+        const lastVisit = localStorage.getItem(`dailyVisit_${state.user?.id}`);
+        
+        if (lastVisit !== today && state.user?.id) {
+          // Update streak for daily visit
+          const { error } = await supabase.rpc('update_user_streak', {
+            p_user_id: state.user.id
+          });
+          
+          if (error) {
+            console.error('Error updating daily streak:', error);
+          } else {
+            console.log('Daily streak updated for user:', state.user.id);
+            // Store today's visit
+            localStorage.setItem(`dailyVisit_${state.user.id}`, today);
+            
+            // Refresh user stats to get updated streak
+            const { data: userData, error: userError } = await supabase
+              .from('users')
+              .select('current_streak, longest_streak, last_active_date')
+              .eq('id', state.user.id)
+              .single();
+            
+            if (!userError && userData && state.user) {
+              // Update user in context with new streak data
+              dispatch({ 
+                type: 'SET_USER', 
+                payload: { 
+                  ...state.user, 
+                  currentStreak: userData.current_streak,
+                  longestStreak: userData.longest_streak,
+                  lastActiveDate: userData.last_active_date
+                } 
+              });
+            }
+          }
+        }
+      } catch (error) {
+        console.error('Error checking daily visit:', error);
+      }
+    };
+
+    // Check daily visit when component mounts and user is authenticated
+    checkDailyVisit();
+  }, [state.isAuthenticated, state.user?.id]);
+
   // Inactivity logout timer (6 hours = 21600000 ms)
   useEffect(() => {
     let timer: NodeJS.Timeout | null = null;
@@ -669,7 +721,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         if (fetchError) throw fetchError;
         
         // Find courses to add (new enrollments)
-        const existingCourseIds = existingEnrollments?.map(e => e.course_id) || [];
+        const existingCourseIds = existingEnrollments?.map((e: any) => e.course_id) || [];
         const coursesToAdd = enrolledCourses.filter(id => !existingCourseIds.includes(id));
         
         // Add new enrollments

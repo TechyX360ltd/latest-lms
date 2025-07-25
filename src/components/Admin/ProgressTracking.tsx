@@ -62,23 +62,53 @@ export function ProgressTracking() {
     const progressList: UserProgress[] = [];
 
     if (!users || !Array.isArray(users)) {
+      console.log('No users data available');
       setProgressData([]);
       setLoading(false);
       return;
     }
 
+    console.log('Processing users for progress data:', users.length);
+    console.log('Sample user data:', users[0]);
+    console.log('Courses data:', courses);
+    console.log('Courses length:', courses?.length || 0);
+
     users.forEach(user => {
-      if (user.role === 'learner' && Array.isArray(user.enrolledCourses) && user.enrolledCourses.length > 0) {
-        user.enrolledCourses.forEach(courseId => {
+      console.log(`Processing user: ${user.first_name} ${user.last_name}, role: ${user.role}`);
+      console.log(`User enrolledCourses:`, user.enrolledCourses);
+      console.log(`User user_courses:`, user.user_courses);
+      
+      // Check both enrolledCourses and user_courses for enrollment data
+      let userEnrollments: any[] = [];
+      
+      if (user.enrolledCourses && Array.isArray(user.enrolledCourses)) {
+        userEnrollments = user.enrolledCourses;
+      } else if (user.user_courses && Array.isArray(user.user_courses)) {
+        // user_courses contains objects with course_id and status
+        userEnrollments = user.user_courses.map((enrollment: any) => enrollment.course_id);
+      }
+      
+      if (user.role === 'learner' && userEnrollments.length > 0) {
+        console.log(`Found ${userEnrollments.length} enrollments for user ${user.first_name}`);
+        
+        userEnrollments.forEach(courseId => {
           const course = courses.find(c => c.id === courseId);
           if (course) {
+            console.log(`Processing course: ${course.title}`);
+            
+            // Get the enrollment status from user_courses if available
+            const enrollmentData = user.user_courses?.find((e: any) => e.course_id === courseId);
+            const enrollmentStatus = enrollmentData?.status || 'enrolled';
+            
             const totalLessons = Array.isArray(course.lessons) ? course.lessons.length : 0;
             const completedLessons = Math.floor(Math.random() * (totalLessons + 1)); // Replace with real completion logic if available
             const progressPercentage = totalLessons > 0 ? Math.round((completedLessons / totalLessons) * 100) : 0;
             
-            // Determine status based on progress
+            // Determine status based on enrollment status and progress
             let status: UserProgress['status'] = 'not-started';
-            if (progressPercentage === 0) {
+            if (enrollmentStatus === 'completed') {
+              status = 'completed';
+            } else if (progressPercentage === 0) {
               status = 'not-started';
             } else if (progressPercentage === 100) {
               status = 'completed';
@@ -105,7 +135,7 @@ export function ProgressTracking() {
               progressPercentage,
               timeSpent: Math.floor(Math.random() * 300) + 30, // 30-330 minutes
               status,
-              certificateEarned: progressPercentage === 100,
+              certificateEarned: enrollmentStatus === 'completed' || progressPercentage === 100,
               assignments: {
                 total: totalAssignments,
                 completed: completedAssignments,
@@ -115,9 +145,12 @@ export function ProgressTracking() {
             });
           }
         });
+      } else {
+        console.log(`No enrollments found for user ${user.first_name} (role: ${user.role})`);
       }
     });
 
+    console.log(`Generated ${progressList.length} progress records`);
     setProgressData(progressList);
     setLoading(false);
   };

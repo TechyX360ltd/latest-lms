@@ -606,23 +606,63 @@ export function useCourses() {
   const [courses, setCourses] = useState<Course[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  // const { user } = useAuth(); // Not needed for public course browsing
+  const { user } = useAuth(); // Now needed to get user enrollment data
 
   useEffect(() => {
     const fetchCourses = async () => {
       setLoading(true);
       setError(null);
       try {
-        // Fetch all published courses for learners
-        const { data, error } = await supabase
-          .from('courses')
-          .select('*')
-          .eq('is_published', true);
-        if (error) {
-          setError(error.message);
-          setCourses([]);
+        if (user) {
+          // Fetch all published courses
+          const { data: coursesData, error: coursesError } = await supabase
+            .from('courses')
+            .select('*')
+            .eq('is_published', true);
+          
+          if (coursesError) {
+            setError(coursesError.message);
+            setCourses([]);
+            return;
+          }
+
+          // Fetch user's course enrollments
+          const { data: userCoursesData, error: userCoursesError } = await supabase
+            .from('user_courses')
+            .select('course_id, status')
+            .eq('user_id', user.id);
+
+          if (userCoursesError) {
+            console.error('Error fetching user courses:', userCoursesError);
+            setCourses(coursesData || []);
+            return;
+          }
+
+          // Create a map of course_id to enrollment status
+          const enrollmentMap = new Map();
+          (userCoursesData || []).forEach((uc: any) => {
+            enrollmentMap.set(uc.course_id, uc.status);
+          });
+
+          // Map courses to include enrollment status
+          const mappedCourses = (coursesData || []).map((course: any) => ({
+            ...course,
+            user_course_status: enrollmentMap.get(course.id) || null
+          }));
+          
+          setCourses(mappedCourses);
         } else {
-          setCourses(data || []);
+          // Fetch all published courses for non-logged-in users
+          const { data, error } = await supabase
+            .from('courses')
+            .select('*')
+            .eq('is_published', true);
+          if (error) {
+            setError(error.message);
+            setCourses([]);
+          } else {
+            setCourses(data || []);
+          }
         }
       } catch (err) {
         setError('Failed to fetch courses');
@@ -631,7 +671,7 @@ export function useCourses() {
       setLoading(false);
     };
     fetchCourses();
-  }, []);
+  }, [user]);
 
   const addCourse = async (newCourse: Partial<Course> & { modules?: Module[] }) => {
     let createdCourseId: string | undefined;
@@ -750,6 +790,68 @@ export function useCourses() {
     return courses.find(course => course.slug === slug);
   };
 
+  const refreshCourses = async () => {
+    setLoading(true);
+    setError(null);
+    try {
+      if (user) {
+        // Fetch all published courses
+        const { data: coursesData, error: coursesError } = await supabase
+          .from('courses')
+          .select('*')
+          .eq('is_published', true);
+        
+        if (coursesError) {
+          setError(coursesError.message);
+          setCourses([]);
+          return;
+        }
+
+        // Fetch user's course enrollments
+        const { data: userCoursesData, error: userCoursesError } = await supabase
+          .from('user_courses')
+          .select('course_id, status')
+          .eq('user_id', user.id);
+
+        if (userCoursesError) {
+          console.error('Error fetching user courses:', userCoursesError);
+          setCourses(coursesData || []);
+          return;
+        }
+
+        // Create a map of course_id to enrollment status
+        const enrollmentMap = new Map();
+        (userCoursesData || []).forEach((uc: any) => {
+          enrollmentMap.set(uc.course_id, uc.status);
+        });
+
+        // Map courses to include enrollment status
+        const mappedCourses = (coursesData || []).map((course: any) => ({
+          ...course,
+          user_course_status: enrollmentMap.get(course.id) || null
+        }));
+        
+        setCourses(mappedCourses);
+      } else {
+        // Fetch all published courses for non-logged-in users
+        const { data, error } = await supabase
+          .from('courses')
+          .select('*')
+          .eq('is_published', true);
+        if (error) {
+          setError(error.message);
+          setCourses([]);
+        } else {
+          setCourses(data || []);
+        }
+      }
+    } catch (err) {
+      setError('Failed to fetch courses');
+      setCourses([]);
+    }
+    setLoading(false);
+  };
+
   return {
     courses,
     setCourses,
@@ -758,6 +860,7 @@ export function useCourses() {
     deleteCourse,
     getCourseById,
     getCourseBySlug,
+    refreshCourses,
     loading,
     error
   };
@@ -920,8 +1023,11 @@ export function useUsers() {
   useEffect(() => {
     const fetchUsers = async () => {
       try {
-        // Select only columns that exist in the users table
-        const { data: usersData, error } = await supabase.from('users').select('id, first_name, last_name, email, phone, role, created_at, updated_at, is_approved, payout_email, expertise');
+        // Fetch users with their enrollment data
+        const { data: usersData, error } = await supabase.from('users').select(`
+          id, first_name, last_name, email, phone, role, created_at, updated_at, is_approved, payout_email, expertise,
+          user_courses:user_courses(course_id, status)
+        `);
         if (error) throw error;
         console.log('Raw users from Supabase:', usersData);
         const formattedUsers = (usersData || []).map((u: any) => ({
@@ -932,6 +1038,17 @@ export function useUsers() {
           isApproved: u.is_approved,
           payoutEmail: u.payout_email,
           createdAt: u.created_at,
+          // Add enrollment data
+          enrolledCourses: u.user_courses
+            ? u.user_courses
+                .filter((uc: any) => uc.status === 'enrolled')
+                .map((uc: any) => uc.course_id)
+            : [],
+          completedCourses: u.user_courses
+            ? u.user_courses
+                .filter((uc: any) => uc.status === 'completed')
+                .map((uc: any) => uc.course_id)
+            : [],
         }));
         setUsers(formattedUsers);
         console.log('Mapped users for frontend:', formattedUsers);
@@ -955,7 +1072,10 @@ export function useUsers() {
 
   const refreshUsers = async () => {
     try {
-      const { data: usersData, error } = await supabase.from('users').select('id, first_name, last_name, email, phone, role, created_at, updated_at, is_approved, payout_email, expertise');
+      const { data: usersData, error } = await supabase.from('users').select(`
+        id, first_name, last_name, email, phone, role, created_at, updated_at, is_approved, payout_email, expertise,
+        user_courses:user_courses(course_id, status)
+      `);
       if (error) throw error;
       const formattedUsers = (usersData || []).map((u: any) => ({
         ...u,
@@ -965,6 +1085,17 @@ export function useUsers() {
         isApproved: u.is_approved,
         payoutEmail: u.payout_email,
         createdAt: u.created_at,
+        // Add enrollment data
+        enrolledCourses: u.user_courses
+          ? u.user_courses
+              .filter((uc: any) => uc.status === 'enrolled')
+              .map((uc: any) => uc.course_id)
+          : [],
+        completedCourses: u.user_courses
+          ? u.user_courses
+              .filter((uc: any) => uc.status === 'completed')
+              .map((uc: any) => uc.course_id)
+          : [],
       }));
       setUsers(formattedUsers);
     } catch (error) {
@@ -1303,11 +1434,12 @@ export function useCourseStructure(courseId: string) {
           setLoading(false);
           return;
         }
-        // Fetch lessons for the course
+        // Fetch lessons for the course, ordered by their order field
         const { data: lessonsData, error: lessonsError } = await supabase
           .from('lessons')
           .select('*')
-          .eq('course_id', courseId);
+          .eq('course_id', courseId)
+          .order('order', { ascending: true });
         if (lessonsError) throw lessonsError;
         // Fetch assignments for the course
         const { data: assignmentsData, error: assignmentsError } = await supabase
