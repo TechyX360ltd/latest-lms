@@ -14,6 +14,8 @@ import { supabase } from '../../lib/supabase';
 import { Header } from '../Layout/Header';
 import { Sidebar } from '../Layout/Sidebar';
 import ShareCourseModal from './ShareCourseModal';
+import GiftCourseModal from './GiftCourseModal';
+import { Helmet } from 'react-helmet-async';
 
 export default function CourseDetailsPage() {
   const { courseSlug } = useParams<{ courseSlug: string }>();
@@ -30,6 +32,7 @@ export default function CourseDetailsPage() {
   const [coinLoading, setCoinLoading] = React.useState(false);
   const [showSuccessModal, setShowSuccessModal] = React.useState(false);
   const [showShareModal, setShowShareModal] = React.useState(false);
+  const [showGiftModal, setShowGiftModal] = React.useState(false);
   const { width, height } = useWindowSize();
   const PAYSTACK_PUBLIC_KEY = 'pk_test_78329ea72cb43b6435a12075cb3a2bca07ec53be';
 
@@ -144,6 +147,14 @@ export default function CourseDetailsPage() {
     setShowShareModal(false);
   };
 
+  // Gift modal handlers
+  const handleGift = () => {
+    setShowGiftModal(true);
+  };
+  const handleCloseGift = () => {
+    setShowGiftModal(false);
+  };
+
   // Helper: Calculate total lectures and duration
   const totalLectures = modules.reduce((sum, mod) => sum + (mod.lessons?.length || 0), 0);
   const totalSections = modules.length;
@@ -152,6 +163,18 @@ export default function CourseDetailsPage() {
 
   return (
     <div className="min-h-screen bg-gray-50 flex">
+      <Helmet>
+        <title>{course.title} | Skill Sage</title>
+        <meta property="og:title" content={course.title} />
+        <meta property="og:description" content={course.description} />
+        <meta property="og:image" content={safeThumbnail} />
+        <meta property="og:url" content={`${window.location.origin}/courses/${course.slug}`} />
+        <meta property="og:type" content="website" />
+        <meta name="twitter:card" content="summary_large_image" />
+        <meta name="twitter:title" content={course.title} />
+        <meta name="twitter:description" content={course.description} />
+        <meta name="twitter:image" content={safeThumbnail} />
+      </Helmet>
       <Sidebar />
       <div className="flex-1 flex flex-col min-w-0">
         <Header />
@@ -187,7 +210,7 @@ export default function CourseDetailsPage() {
                   </div>
                   <div className="flex items-center gap-3 mt-2">
                     <button onClick={handleShare} className="text-blue-600 hover:underline text-xs font-medium">Share</button>
-                    <button className="text-blue-600 hover:underline text-xs font-medium">Gift this course</button>
+                    <button onClick={handleGift} className="text-blue-600 hover:underline text-xs font-medium">Gift this course</button>
                     <button className="text-blue-600 hover:underline text-xs font-medium">Apply Coupon</button>
                   </div>
                 </div>
@@ -291,7 +314,7 @@ export default function CourseDetailsPage() {
                     </div>
                     <div className="flex items-center gap-3 mt-2">
                       <button onClick={handleShare} className="text-blue-600 hover:underline text-xs font-medium">Share</button>
-                      <button className="text-blue-600 hover:underline text-xs font-medium">Gift this course</button>
+                      <button onClick={handleGift} className="text-blue-600 hover:underline text-xs font-medium">Gift this course</button>
                       <button className="text-blue-600 hover:underline text-xs font-medium">Apply Coupon</button>
                     </div>
                   </div>
@@ -330,6 +353,12 @@ export default function CourseDetailsPage() {
         onClose={handleCloseShare}
         courseTitle={course.title}
         courseSlug={course.slug}
+      />
+      <GiftCourseModal
+        isOpen={showGiftModal}
+        onClose={handleCloseGift}
+        course={course}
+        instructor={instructor}
       />
     </div>
   );
