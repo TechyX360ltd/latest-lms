@@ -306,7 +306,7 @@ export function InstructorProfilePage() {
             <div className="flex flex-col lg:flex-row items-start lg:items-center gap-8">
               {/* Avatar */}
               <div className="relative">
-                <div className="w-32 h-32 rounded-full overflow-hidden bg-white/20 border-4 border-white/30 shadow-xl">
+                <div className="w-20 h-20 sm:w-32 sm:h-32 rounded-full overflow-hidden bg-white/20 border-4 border-white/30 shadow-xl">
                   {instructor.avatar_url ? (
                     <img
                       src={instructor.avatar_url}
@@ -315,7 +315,7 @@ export function InstructorProfilePage() {
                     />
                   ) : (
                     <div className="w-full h-full flex items-center justify-center bg-white/10">
-                      <Users className="w-16 h-16 text-white/70" />
+                      <Users className="w-10 h-10 sm:w-16 sm:h-16 text-white/70" />
                     </div>
                   )}
                 </div>
