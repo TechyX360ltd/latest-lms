@@ -254,7 +254,7 @@ export function BrowseCourses() {
         </div>
         <div className="p-4">
           <Link
-            to={`/courses/${course.id}`}
+            to={`/courses/${course.slug}`}
             className="text-base font-bold text-blue-700 hover:underline mb-1 line-clamp-2 text-left w-full cursor-pointer block"
             style={{ background: 'none', border: 'none', padding: 0 }}
             onClick={() => trackCourseView(course.id)}

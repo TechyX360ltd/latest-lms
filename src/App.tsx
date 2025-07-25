@@ -67,6 +67,7 @@ import AdminJobBoardPage from './pages/AdminJobBoardPage';
 import AdminRoleManagementPage from './pages/AdminRoleManagementPage';
 import { Toaster } from 'react-hot-toast';
 import CertificateTemplateEditor from './components/Admin/CertificateTemplateEditor';
+import CourseDetailsPage from './components/Learner/CourseDetailsPage';
 
 function AuthPage() {
   const [isLogin, setIsLogin] = useState(true);
@@ -309,7 +310,7 @@ function AppContent() {
           <Route path="gamification" element={<GamificationDashboard />} />
           <Route path="referrals" element={<ReferralsPage />} />
           <Route path="job-board" element={<JobBoardPage />} />
-          <Route path="/dashboard/my-store-items" element={<MyStoreItemsPage />} />
+          <Route path="my-store-items" element={<MyStoreItemsPage />} />
         </Route>
 
         {/* Admin Dashboard Routes */}
@@ -378,6 +379,9 @@ function AppContent() {
             </ProtectedRoute>
           }
         />
+
+        {/* Learner Course Details Route (top-level, not nested) */}
+        <Route path="/courses/:courseSlug" element={<CourseDetailsPage />} />
 
         {/* Catch all route */}
         <Route path="*" element={<Navigate to="/" replace />} />
