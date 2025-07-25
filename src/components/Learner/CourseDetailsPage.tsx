@@ -2,7 +2,7 @@ import React from 'react';
 import { useParams, Link, useNavigate } from 'react-router-dom';
 import { useCourses, useUsers, useCategories } from '../../hooks/useData';
 import { useCourseStructure } from '../../hooks/useData';
-import { Award, Users, Clock, Star, Tag, Home, CheckCircle, ChevronDown, ChevronUp } from 'lucide-react';
+import { Users, Clock, Star, Tag, Home, ChevronDown, ChevronUp } from 'lucide-react';
 import { useAuth } from '../../context/AuthContext';
 import { useToast } from '../Auth/ToastContext';
 import { PaystackButton } from 'react-paystack';
@@ -13,6 +13,7 @@ import { useWindowSize } from 'react-use';
 import { supabase } from '../../lib/supabase';
 import { Header } from '../Layout/Header';
 import { Sidebar } from '../Layout/Sidebar';
+import ShareCourseModal from './ShareCourseModal';
 
 export default function CourseDetailsPage() {
   const { courseSlug } = useParams<{ courseSlug: string }>();
@@ -28,6 +29,7 @@ export default function CourseDetailsPage() {
   const [coinConfirm, setCoinConfirm] = React.useState(false);
   const [coinLoading, setCoinLoading] = React.useState(false);
   const [showSuccessModal, setShowSuccessModal] = React.useState(false);
+  const [showShareModal, setShowShareModal] = React.useState(false);
   const { width, height } = useWindowSize();
   const PAYSTACK_PUBLIC_KEY = 'pk_test_78329ea72cb43b6435a12075cb3a2bca07ec53be';
 
@@ -133,6 +135,15 @@ export default function CourseDetailsPage() {
     setCoinLoading(false);
   };
 
+  // Share modal handlers
+  const handleShare = () => {
+    setShowShareModal(true);
+  };
+
+  const handleCloseShare = () => {
+    setShowShareModal(false);
+  };
+
   // Helper: Calculate total lectures and duration
   const totalLectures = modules.reduce((sum, mod) => sum + (mod.lessons?.length || 0), 0);
   const totalSections = modules.length;
@@ -154,6 +165,35 @@ export default function CourseDetailsPage() {
               <Link to="/dashboard/browse" className="hover:underline">Browse Courses</Link>
               {category && <><span>/</span><span>{category.name}</span></>}
             </nav>
+
+            {/* Mobile Sidebar (cover photo + pricing card) */}
+            <aside className="block md:hidden w-full mb-6">
+              <div className="bg-white rounded-2xl shadow-xl border border-gray-100 p-0 overflow-hidden">
+                {/* Course Preview Image */}
+                <div className="relative w-full h-48 bg-gray-100 flex items-center justify-center">
+                  <img src={safeThumbnail} alt={course.title} className="w-full h-full object-cover" onError={e => (e.currentTarget.src = '/public/Skill Sage Logo.png')} />
+                </div>
+                <div className="p-6 flex flex-col gap-4">
+                  <div className="flex items-center gap-2">
+                    <span className="text-2xl font-bold text-green-600">₦{course.price?.toLocaleString?.() ?? course.price}</span>
+                    {course.price && <span className="text-sm text-gray-400 line-through">₦{(course.price * 5).toLocaleString?.()}</span>}
+                    <span className="text-xs text-green-600 font-semibold">83% off</span>
+                  </div>
+                  <div className="text-xs text-red-600 font-semibold">21 hours left at this price!</div>
+                  <button onClick={handleEnroll} className="w-full bg-green-600 hover:bg-green-700 text-white font-bold py-3 rounded-lg text-lg shadow transition-colors">Enroll now</button>
+                  <div className="flex items-center justify-between text-xs text-gray-500 mt-2">
+                    <span>30-Day Money-Back Guarantee</span>
+                    <span>Full Lifetime Access</span>
+                  </div>
+                  <div className="flex items-center gap-3 mt-2">
+                    <button onClick={handleShare} className="text-blue-600 hover:underline text-xs font-medium">Share</button>
+                    <button className="text-blue-600 hover:underline text-xs font-medium">Gift this course</button>
+                    <button className="text-blue-600 hover:underline text-xs font-medium">Apply Coupon</button>
+                  </div>
+                </div>
+              </div>
+            </aside>
+
             <div className="flex flex-col md:flex-row md:items-start gap-8">
               {/* Main Content (Left) */}
               <div className="flex-1 min-w-0">
@@ -173,14 +213,69 @@ export default function CourseDetailsPage() {
                   <span>•</span>
                   <span>Language: English</span>
                 </div>
+
+                {/* Course Content Section (Modules) - moved up */}
+                <div className="max-w-3xl mt-8 mb-8">
+                  <h2 className="text-2xl font-bold text-gray-900 mb-4">Course content</h2>
+                  <div className="flex items-center text-sm text-gray-600 mb-4">
+                    <span>{totalSections} sections</span>
+                    <span className="mx-2">•</span>
+                    <span>{totalLectures} lectures</span>
+                    <span className="mx-2">•</span>
+                    <span>{totalDuration} total length</span>
+                    <button
+                      className="ml-auto text-purple-700 font-semibold hover:underline text-sm"
+                      onClick={() => setOpenModuleIdx(openModuleIdx === -1 ? null : -1)}
+                    >
+                      {openModuleIdx === -1 ? 'Collapse all sections' : 'Expand all sections'}
+                    </button>
+                  </div>
+                  <div className="rounded-xl border border-gray-200 overflow-hidden divide-y divide-gray-100 bg-white">
+                    {modules.length === 0 ? (
+                      <div className="text-gray-500 p-6">No modules available for this course yet.</div>
+                    ) : (
+                      modules.map((mod, idx) => {
+                        const isOpen = openModuleIdx === idx || openModuleIdx === -1;
+                        const lectureCount = mod.lessons?.length || 0;
+                        const duration = `${Math.floor((mod.lessons?.reduce((s, l) => s + (l.duration || 0), 0) || 0) / 60)}h ${(mod.lessons?.reduce((s, l) => s + (l.duration || 0), 0) || 0) % 60}m`;
+                        return (
+                          <div key={mod.id}>
+                            <button
+                              className="w-full flex items-center justify-between px-6 py-4 bg-gray-50 hover:bg-gray-100 transition-colors text-left font-semibold text-gray-900 text-base focus:outline-none"
+                              onClick={() => toggleModule(idx)}
+                            >
+                              <span>{mod.title}</span>
+                              <span className="flex items-center gap-4 text-sm font-normal text-gray-600">
+                                <span>{lectureCount} lectures</span>
+                                <span>•</span>
+                                <span>{duration}</span>
+                                {isOpen ? <ChevronUp className="w-5 h-5 text-gray-400" /> : <ChevronDown className="w-5 h-5 text-gray-400" />}
+                              </span>
+                            </button>
+                            {isOpen && mod.lessons && mod.lessons.length > 0 && (
+                              <ul className="bg-white px-8 pb-4">
+                                {mod.lessons.map((lesson, lidx) => (
+                                  <li key={lesson.id} className="flex items-center gap-2 py-1 text-gray-700 text-sm border-b border-gray-50 last:border-b-0">
+                                    <span className="w-6 text-xs text-gray-400">{lidx + 1}.</span>
+                                    <span className="flex-1">{lesson.title}</span>
+                                    {lesson.duration && <span className="text-xs text-gray-500 ml-2">{Math.floor(lesson.duration / 60)}h {lesson.duration % 60}m</span>}
+                                  </li>
+                                ))}
+                              </ul>
+                            )}
+                          </div>
+                        );
+                      })
+                    )}
+                  </div>
+                </div>
               </div>
-              {/* Sidebar (Right) */}
-              <aside className="w-full md:w-96 flex-shrink-0 md:sticky md:top-24 z-10">
+              {/* Desktop Sidebar (Right) */}
+              <aside className="hidden md:block w-full md:w-96 flex-shrink-0 md:sticky md:top-24 z-10">
                 <div className="bg-white rounded-2xl shadow-xl border border-gray-100 p-0 overflow-hidden">
                   {/* Course Preview Image */}
                   <div className="relative w-full h-48 md:h-56 bg-gray-100 flex items-center justify-center">
                     <img src={safeThumbnail} alt={course.title} className="w-full h-full object-cover" onError={e => (e.currentTarget.src = '/public/Skill Sage Logo.png')} />
-                    {/* Optionally, add a play button overlay for video preview */}
                   </div>
                   <div className="p-6 flex flex-col gap-4">
                     <div className="flex items-center gap-2">
@@ -195,188 +290,47 @@ export default function CourseDetailsPage() {
                       <span>Full Lifetime Access</span>
                     </div>
                     <div className="flex items-center gap-3 mt-2">
-                      <button className="text-blue-600 hover:underline text-xs font-medium">Share</button>
+                      <button onClick={handleShare} className="text-blue-600 hover:underline text-xs font-medium">Share</button>
                       <button className="text-blue-600 hover:underline text-xs font-medium">Gift this course</button>
                       <button className="text-blue-600 hover:underline text-xs font-medium">Apply Coupon</button>
                     </div>
                   </div>
-                  {/* Payment Modal (your logic) */}
-                  {showPaymentModal && course && (
-                    <div className="fixed inset-0 flex items-center justify-center bg-black bg-opacity-40 z-50">
-                      <div className="bg-white rounded-2xl shadow-2xl p-8 w-full max-w-md flex flex-col items-center animate-scale-in">
-                        <h2 className="text-2xl font-extrabold text-gray-900 mb-2 text-center">Enroll in {course.title}</h2>
-                        <div className="w-12 h-1 bg-blue-100 rounded-full mb-4"></div>
-                        <p className="text-gray-700 text-center mb-6">
-                          Complete your enrollment by paying with card, coupon, or coins.
-                        </p>
-                        {/* Coupon Input */}
-                        <div className="w-full mb-6">
-                          <CouponInput
-                            courseId={course.id}
-                            originalAmount={course.price}
-                            onCouponApplied={handleCouponApplied}
-                            onCouponRemoved={handleCouponRemoved}
-                            appliedCoupon={appliedCoupon || undefined}
-                          />
-                        </div>
-                        <PaystackButton
-                          publicKey={PAYSTACK_PUBLIC_KEY}
-                          email={user?.email || 'test@example.com'}
-                          amount={(appliedCoupon ? appliedCoupon.final_amount : course.price) * 100}
-                          currency="NGN"
-                          text="Pay with Paystack"
-                          onSuccess={handlePaymentSuccess}
-                          onClose={handlePaymentClose}
-                          metadata={{ 
-                            courseId: course.id, 
-                            userId: user?.id, 
-                            couponId: appliedCoupon?.coupon_id,
-                            custom_fields: [] 
-                          }}
-                          className="bg-blue-600 hover:bg-blue-700 transition-colors text-white px-6 py-3 rounded-lg font-semibold text-lg w-full mb-3"
-                        />
-                        {course.price > 0 && course.price <= 10000 && (
-                          <button
-                            onClick={() => setCoinConfirm(true)}
-                            className="bg-yellow-500 text-white px-6 py-3 rounded-lg font-semibold text-lg w-full mb-3 hover:bg-yellow-600 transition-colors"
-                            disabled={coinLoading || !user || typeof user?.coins !== 'number' || user?.coins < (course?.price ?? 0) * 100}
-                          >
-                            Pay with Coins ({course.price * 100} coins)
-                          </button>
-                        )}
-                        <button
-                          onClick={handlePaymentClose}
-                          className="w-full py-2 rounded-lg text-gray-600 hover:bg-gray-100 transition-colors font-medium"
-                        >
-                          Cancel
-                        </button>
-                      </div>
-                    </div>
-                  )}
-                  {/* Coin Payment Confirmation Modal */}
-                  {coinConfirm && course && (
-                    <div className="fixed inset-0 flex items-center justify-center bg-black bg-opacity-40 z-50">
-                      <div className="bg-white rounded-2xl shadow-2xl p-8 w-full max-w-md flex flex-col items-center">
-                        <h2 className="text-2xl font-extrabold text-gray-900 mb-2 text-center">Confirm Payment</h2>
-                        <div className="w-12 h-1 bg-yellow-100 rounded-full mb-4"></div>
-                        <p className="text-gray-700 text-center mb-6">
-                          You are about to enroll in <span className="font-semibold text-blue-700">{course.title}</span> using your coins.<br />
-                          <span className="text-lg font-bold text-yellow-700 mt-2 block">
-                            {course.price * 100} coins will be deducted
-                          </span>
-                        </p>
-                        <div className="flex gap-4 w-full">
-                          <button
-                            onClick={handlePayWithCoins}
-                            className="flex-1 bg-yellow-500 hover:bg-yellow-600 text-white px-6 py-3 rounded-lg font-semibold text-lg transition-colors shadow-md"
-                            disabled={coinLoading}
-                          >
-                            {coinLoading ? 'Processing...' : 'Confirm & Enroll'}
-                          </button>
-                          <button
-                            onClick={() => setCoinConfirm(false)}
-                            className="flex-1 py-3 rounded-lg text-gray-600 hover:bg-gray-100 transition-colors font-medium border border-gray-200"
-                            disabled={coinLoading}
-                          >
-                            Cancel
-                          </button>
-                        </div>
-                      </div>
-                    </div>
-                  )}
-                  {/* Success Modal */}
-                  {showSuccessModal && (
-                    <div className="fixed inset-0 flex items-center justify-center bg-black bg-opacity-40 z-50">
-                      <Confetti width={width} height={height} numberOfPieces={250} recycle={false} />
-                      <div className="bg-white rounded-2xl shadow-2xl p-8 w-full max-w-md flex flex-col items-center animate-scale-in">
-                        <svg className="w-16 h-16 text-green-500 mb-4" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="2" fill="none"/><path d="M8 12l2 2l4-4" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/></svg>
-                        <h2 className="text-2xl font-extrabold text-gray-900 mb-2 text-center">Congratulations!</h2>
-                        <div className="w-12 h-1 bg-green-100 rounded-full mb-4"></div>
-                        <p className="text-gray-700 text-center mb-6">
-                          You have just taken the <span className="font-semibold text-green-700">first step to success</span>.<br />
-                          Your enrollment was successful. Start learning now and unlock your full potential!
-                        </p>
-                        <button
-                          onClick={handleStartLearning}
-                          className="w-full py-3 rounded-lg bg-green-600 hover:bg-green-700 text-white font-semibold text-lg transition-colors shadow-md"
-                        >
-                          Start Learning
-                        </button>
-                      </div>
-                    </div>
-                  )}
                 </div>
               </aside>
-            </div>
-            {/* Course Content Section (Modules) */}
-            <div className="max-w-3xl mt-8 mb-8">
-              <h2 className="text-2xl font-bold text-gray-900 mb-4">Course content</h2>
-              <div className="flex items-center text-sm text-gray-600 mb-4">
-                <span>{totalSections} sections</span>
-                <span className="mx-2">•</span>
-                <span>{totalLectures} lectures</span>
-                <span className="mx-2">•</span>
-                <span>{totalDuration} total length</span>
-                <button
-                  className="ml-auto text-purple-700 font-semibold hover:underline text-sm"
-                  onClick={() => setOpenModuleIdx(openModuleIdx === -1 ? null : -1)}
-                >
-                  {openModuleIdx === -1 ? 'Collapse all sections' : 'Expand all sections'}
-                </button>
-              </div>
-              <div className="rounded-xl border border-gray-200 overflow-hidden divide-y divide-gray-100 bg-white">
-                {modules.length === 0 ? (
-                  <div className="text-gray-500 p-6">No modules available for this course yet.</div>
-                ) : (
-                  modules.map((mod, idx) => {
-                    const isOpen = openModuleIdx === idx || openModuleIdx === -1;
-                    const lectureCount = mod.lessons?.length || 0;
-                    const duration = `${Math.floor((mod.lessons?.reduce((s, l) => s + (l.duration || 0), 0) || 0) / 60)}h ${(mod.lessons?.reduce((s, l) => s + (l.duration || 0), 0) || 0) % 60}m`;
-                    return (
-                      <div key={mod.id}>
-                        <button
-                          className="w-full flex items-center justify-between px-6 py-4 bg-gray-50 hover:bg-gray-100 transition-colors text-left font-semibold text-gray-900 text-base focus:outline-none"
-                          onClick={() => toggleModule(idx)}
-                        >
-                          <span>{mod.title}</span>
-                          <span className="flex items-center gap-4 text-sm font-normal text-gray-600">
-                            <span>{lectureCount} lectures</span>
-                            <span>•</span>
-                            <span>{duration}</span>
-                            {isOpen ? <ChevronUp className="w-5 h-5 text-gray-400" /> : <ChevronDown className="w-5 h-5 text-gray-400" />}
-                          </span>
-                        </button>
-                        {isOpen && mod.lessons && mod.lessons.length > 0 && (
-                          <ul className="bg-white px-8 pb-4">
-                            {mod.lessons.map((lesson, lidx) => (
-                              <li key={lesson.id} className="flex items-center gap-2 py-1 text-gray-700 text-sm border-b border-gray-50 last:border-b-0">
-                                <span className="w-6 text-xs text-gray-400">{lidx + 1}.</span>
-                                <span className="flex-1">{lesson.title}</span>
-                                {lesson.duration && <span className="text-xs text-gray-500 ml-2">{Math.floor(lesson.duration / 60)}h {lesson.duration % 60}m</span>}
-                              </li>
-                            ))}
-                          </ul>
-                        )}
-                      </div>
-                    );
-                  })
-                )}
-              </div>
-            </div>
-            {/* What you'll learn section */}
-            <div className="max-w-3xl mt-10 mb-8">
-              <h2 className="text-2xl font-bold text-gray-900 mb-4">What you'll learn</h2>
-              <ul className="grid grid-cols-1 md:grid-cols-2 gap-4 list-none">
-                {/* Example bullet points, replace with real data if available */}
-                <li className="flex items-start gap-2"><CheckCircle className="w-5 h-5 text-green-500 mt-1" /> Course Fully Updated: Dive into animated videos, writing assignments, and interactive quizzes in our comprehensive, updated copywriting course.</li>
-                <li className="flex items-start gap-2"><CheckCircle className="w-5 h-5 text-green-500 mt-1" /> Mastering ChatGPT for Content Creation: Learn to use ChatGPT for generating creative content, effective SEO, social media, and more.</li>
-                <li className="flex items-start gap-2"><CheckCircle className="w-5 h-5 text-green-500 mt-1" /> Effective Influencer Outreach: Craft compelling messages and campaigns for influencer marketing.</li>
-                <li className="flex items-start gap-2"><CheckCircle className="w-5 h-5 text-green-500 mt-1" /> Advanced Copywriting Skills: Develop the skills to write persuasive, high-converting copy for any industry.</li>
-              </ul>
             </div>
           </section>
         </main>
       </div>
+
+      {/* Success Modal */}
+      {showSuccessModal && (
+        <div className="fixed inset-0 flex items-center justify-center bg-black bg-opacity-40 z-50">
+          <Confetti width={width} height={height} numberOfPieces={250} recycle={false} />
+          <div className="bg-white rounded-2xl shadow-2xl p-8 w-full max-w-md flex flex-col items-center animate-scale-in">
+            <svg className="w-16 h-16 text-green-500 mb-4" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="2" fill="none"/><path d="M8 12l2 2l4-4" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/></svg>
+            <h2 className="text-2xl font-extrabold text-gray-900 mb-2 text-center">Congratulations!</h2>
+            <div className="w-12 h-1 bg-green-100 rounded-full mb-4"></div>
+            <p className="text-gray-700 text-center mb-6">
+              You have just taken the <span className="font-semibold text-green-700">first step to success</span>.<br />
+              Your enrollment was successful. Start learning now and unlock your full potential!
+            </p>
+            <button
+              onClick={handleStartLearning}
+              className="w-full py-3 rounded-lg bg-green-600 hover:bg-green-700 text-white font-semibold text-lg transition-colors shadow-md"
+            >
+              Start Learning
+            </button>
+          </div>
+        </div>
+      )}
+
+      {/* Share Modal */}
+      <ShareCourseModal
+        isOpen={showShareModal}
+        onClose={handleCloseShare}
+        courseTitle={course.title}
+        courseSlug={course.slug}
+      />
     </div>
   );
 } 
