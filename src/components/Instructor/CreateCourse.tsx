@@ -166,7 +166,7 @@ export default function CreateCourse() {
   // Add module
   const handleAddModule = () => {
     if (!newModuleTitle.trim()) return;
-    setModules([...modules, { id: Date.now().toString(), title: newModuleTitle, lessons: [] }]);
+    setModules([...modules, { id: crypto.randomUUID(), title: newModuleTitle, lessons: [] }]);
     setNewModuleTitle('');
   };
   // Add lesson to module

@@ -606,45 +606,23 @@ export function useCourses() {
   const [courses, setCourses] = useState<Course[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  const { user } = useAuth();
+  // const { user } = useAuth(); // Not needed for public course browsing
 
   useEffect(() => {
     const fetchCourses = async () => {
       setLoading(true);
       setError(null);
       try {
-        // Temporary workaround: fetch from user_courses and join course
-        if (!user?.id) {
-          setCourses([]);
-          setLoading(false);
-          return;
-        }
+        // Fetch all published courses for learners
         const { data, error } = await supabase
-          .from('user_courses')
-          .select('*, course:course_id(*)')
-          .eq('user_id', user.id);
-        console.log('[useCourses] user_courses data:', data);
+          .from('courses')
+          .select('*')
+          .eq('is_published', true);
         if (error) {
           setError(error.message);
           setCourses([]);
         } else {
-          // Extract the joined course objects and preserve user_course fields
-          const joinedCourses = await Promise.all((data || [])
-            .map(async (uc: any) => {
-              // Count enrolled users for this course
-              const { count, error: countError } = await supabase
-                .from('user_courses')
-                .select('*', { count: 'exact', head: true })
-                .eq('course_id', uc.course_id)
-                .eq('status', 'enrolled');
-              return {
-                ...uc.course,
-                user_course_status: uc.status, // preserve status
-                user_course: uc, // preserve all user_course fields if needed
-                enrolled_count: count || 0,
-              };
-            }));
-          setCourses(joinedCourses.filter((c: any) => !!c && !!c.id));
+          setCourses(data || []);
         }
       } catch (err) {
         setError('Failed to fetch courses');
@@ -653,7 +631,7 @@ export function useCourses() {
       setLoading(false);
     };
     fetchCourses();
-  }, [user?.id]);
+  }, []);
 
   const addCourse = async (newCourse: Partial<Course> & { modules?: Module[] }) => {
     let createdCourseId: string | undefined;

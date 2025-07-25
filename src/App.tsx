@@ -67,7 +67,7 @@ import AdminJobBoardPage from './pages/AdminJobBoardPage';
 import AdminRoleManagementPage from './pages/AdminRoleManagementPage';
 import { Toaster } from 'react-hot-toast';
 import CertificateTemplateEditor from './components/Admin/CertificateTemplateEditor';
-import CourseDetailsPage from './components/Learner/CourseDetailsPage';
+import CourseDetailsPage from './pages/CourseDetailsPage';
 
 function AuthPage() {
   const [isLogin, setIsLogin] = useState(true);

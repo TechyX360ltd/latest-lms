@@ -482,7 +482,17 @@ export function Profile() {
       {activeTab === 'profile' && (
         <div className="bg-white rounded-xl shadow-sm border border-gray-100 overflow-hidden">
           {/* Profile Header */}
-          <div className="bg-gradient-to-r from-blue-500 to-indigo-600 px-8 py-6 text-white">
+          <div className="bg-gradient-to-r from-blue-500 to-indigo-600 px-8 py-6 text-white relative">
+            {/* Edit Button - top right */}
+            <button
+              onClick={() => setIsEditing((v) => !v)}
+              className="absolute top-4 right-4 flex items-center gap-2 px-4 py-2 bg-white/20 hover:bg-white/30 text-white rounded-lg font-medium shadow transition-colors md:top-6 md:right-8"
+              title={isEditing ? 'Cancel Edit' : 'Edit Profile'}
+              type="button"
+            >
+              <Edit3 className="w-5 h-5" />
+              <span className="hidden md:inline">{isEditing ? 'Cancel' : 'Edit'}</span>
+            </button>
             {/* First row: Avatar + Name+Badge */}
             <div className="flex flex-row items-center gap-4">
               {/* Avatar Section */}
@@ -537,43 +547,40 @@ export function Profile() {
                 />
               </div>
               {/* Name + Badge */}
-              <div className="flex flex-col justify-center">
+              <div className="flex flex-col justify-center md:flex-row md:items-center md:gap-3">
                 <span className="text-xl md:text-3xl font-bold leading-tight">
                   {(user?.first_name || profileData.firstName) || 'Unnamed User'}
                 </span>
-                <span className="text-xl md:text-3xl font-bold leading-tight">
+                <span className="text-xl md:text-3xl font-bold leading-tight md:ml-2">
                   {(user?.last_name || profileData.lastName) ? `${user?.last_name || profileData.lastName}` : ''}
                 </span>
-                {gamificationStats?.badges && gamificationStats.badges.length > 0 && (
-                  <span className="mt-1 align-middle inline-flex items-center gap-1">
-                    {gamificationStats.badges.map((userBadge: any, idx: number) =>
-                      userBadge.badge?.icon_url ? (
-                        <span key={userBadge.badge.id} className="inline-flex items-center justify-center w-7 h-7 rounded-full bg-gray-100 shadow mr-1" style={{ aspectRatio: '1/1' }}>
-                          <img
-                            src={userBadge.badge.icon_url}
-                            alt={userBadge.badge.name}
-                            className="w-5 h-5 object-contain"
-                            title={userBadge.badge.name}
-                            style={{ aspectRatio: '1/1' }}
-                          />
-                        </span>
-                      ) : (
-                        <span key={userBadge.badge?.id || userBadge.id} className="inline-flex items-center justify-center w-7 h-7 rounded-full bg-gray-100 shadow mr-1" style={{ aspectRatio: '1/1' }}>
-                          <Award className="w-5 h-5 text-yellow-400" />
-                        </span>
-                      )
-                    )}
-                  </span>
-                )}
               </div>
+              {gamificationStats?.badges && gamificationStats.badges.length > 0 && (
+                <span className="mt-1 align-middle inline-flex items-center gap-1">
+                  {gamificationStats.badges.map((userBadge: any, idx: number) =>
+                    userBadge.badge?.icon_url ? (
+                      <span key={userBadge.badge.id} className="inline-flex items-center justify-center w-7 h-7 rounded-full bg-gray-100 shadow mr-1" style={{ aspectRatio: '1/1' }}>
+                        <img
+                          src={userBadge.badge.icon_url}
+                          alt={userBadge.badge.name}
+                          className="w-5 h-5 object-contain"
+                          title={userBadge.badge.name}
+                          style={{ aspectRatio: '1/1' }}
+                        />
+                      </span>
+                    ) : (
+                      <span key={userBadge.badge?.id || userBadge.id} className="inline-flex items-center justify-center w-7 h-7 rounded-full bg-gray-100 shadow mr-1" style={{ aspectRatio: '1/1' }}>
+                        <Award className="w-5 h-5 text-yellow-400" />
+                      </span>
+                    )
+                  )}
+                </span>
+              )}
             </div>
-            {/* Email below avatar+name row */}
-            <div className="mt-2">
+            {/* Email, Date Joined, Verification Badge in a row on desktop */}
+            <div className="mt-2 flex flex-col md:flex-row md:items-center md:gap-6">
               <p className="text-blue-100 text-lg mb-0 break-all">{profileData.email}</p>
-            </div>
-            {/* Stats/info below email */}
-            <div className="mt-2 flex flex-wrap items-center gap-4">
-              <div className="flex items-center gap-2">
+              <div className="flex items-center gap-2 mt-1 md:mt-0">
                 <Calendar className="w-4 h-4" />
                 <span className="text-sm">
                   Joined {
@@ -589,14 +596,13 @@ export function Profile() {
                   }
                 </span>
               </div>
-              {/* Add more stats/info here if needed */}
+              {/* Verification badge for instructors */}
+              {user?.role === 'instructor' && (
+                <div className="mt-2 md:mt-0">
+                  <VerificationBadge status={(user as any)?.verification_status || 'unverified'} />
+                </div>
+              )}
             </div>
-            {/* Verification badge for instructors */}
-            {user?.role === 'instructor' && (
-              <div className="mt-2">
-                <VerificationBadge status={(user as any)?.verification_status || 'unverified'} />
-              </div>
-            )}
           </div>
 
           {/* Profile Form */}

@@ -50,7 +50,7 @@ export default function GiftCourseModal({ isOpen, onClose, course, instructor }:
       });
       const data = await res.json();
       if (data.success) {
-        setShowSuccess(true);
+      setShowSuccess(true);
         setRecipientEmail('');
         setMessage('');
         setAppliedCoupon(null);
@@ -60,7 +60,7 @@ export default function GiftCourseModal({ isOpen, onClose, course, instructor }:
     } catch (err) {
       showToast('Failed to send course gift', 'error');
     }
-    setLoading(false);
+      setLoading(false);
   };
 
   const handleClose = () => {

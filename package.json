@@ -10,7 +10,6 @@
     "preview": "vite preview"
   },
   "dependencies": {
-    "@sendgrid/mail": "^8.1.5",
     "@supabase/storage-js": "^2.10.1",
     "@supabase/supabase-js": "^2.50.5",
     "@tailwindcss/line-clamp": "^0.4.4",
